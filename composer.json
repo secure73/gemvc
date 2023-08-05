@@ -3,9 +3,9 @@
     "description": "core library of gemvc",
     "type": "library",
     "require": {
-        "phpmailer/phpmailer": "^6.8.0",
-        "guzzlehttp/psr7": "^2.5",
-        "firebase/php-jwt": "dev-main"
+        "firebase/php-jwt": "^6.3",
+        "phpmailer/phpmailer": "^6.6",
+        "guzzlehttp/guzzle": "^7.4"
     },
     "license": "MIT",
     "autoload": {
