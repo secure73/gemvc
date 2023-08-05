@@ -1,0 +1,1 @@
+you shall put your config file in the root of your application beside index.php
