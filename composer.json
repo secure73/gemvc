@@ -1,0 +1,23 @@
+{
+    "name": "gemvc/library",
+    "description": "core library of gemvc",
+    "type": "library",
+    "require": {
+        "phpmailer/phpmailer": "^6.8.0",
+        "guzzlehttp/psr7": "2.6.x-dev",
+        "firebase/php-jwt": "dev-main"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Gemvc\\Library\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ali",
+            "email": "secure73@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
