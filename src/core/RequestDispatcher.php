@@ -1,6 +1,7 @@
 <?php
 
 namespace Gemvc\Core;
+use Gemvc\Helper\TypeHelper;
 
 require_once('app/services.php');
 
@@ -20,6 +21,13 @@ class RequestDispatcher
     public    ?string   $error = "";
     public    int       $error_code = 0;
     protected string    $incommingRequest;
+    public ?object      $find;
+    public ?object      $orderby;
+    public ?object      $between;
+    public ?int         $page;
+    public ?int         $count;
+
+
 
     /**
      * @var array<string>
@@ -37,10 +45,16 @@ class RequestDispatcher
         }
     }
 
+    public function getIncommingRequest():string
+    {
+        return $this->incommingRequest;
+    }
+
     public function validateRequestSchema(): bool
     {
         if (!$this->error) {
             if (isset($_POST['service'])) {
+                $this->setOptionalRequest();
                 $this->incommingRequest = trim($_POST['service']);
                 $this->retriveServiceFromRequest($this->incommingRequest);
                 if (isset($_POST['payload'])) {
@@ -86,6 +100,83 @@ class RequestDispatcher
         }
         return false;
     }
+
+    
+
+    private function setOptionalRequest():void
+    {
+        $this->setBetweeen();
+        $this->setCount();
+        $this->setFind();
+        $this->setOrderBy();
+        $this->setPage();
+    }
+
+
+    private function setFind():void
+    {
+        if(isset($_POST['find']))
+        {
+            $find = trim($_POST['find']);
+            $find = JsonHelper::validateJsonStringReturnObject($find);
+            if($find)
+            {
+                $this->find = $find;
+            }
+        }
+    }
+
+    private function setOrderBy():void
+    {
+        if(isset($_POST['orderby']))
+        {
+            $find = trim($_POST['orderby']);
+            $find = JsonHelper::validateJsonStringReturnObject($find);
+            if($find)
+            {
+                $this->orderby = $find;
+            }
+        }
+    }
+
+    public function setBetweeen():void
+    {
+        if(isset($_POST['between']))
+        {
+            $find = trim($_POST['between']);
+            $find = JsonHelper::validateJsonStringReturnObject($find);
+            if($find)
+            {
+                $this->between = $find;
+            }
+        }
+    }
+
+    private function setCount():void
+    {
+        if(isset($_POST['count']))
+        {
+            $find = trim($_POST['count']);
+            if(is_numeric($find))
+            {
+                $this->count = intval($find);
+            }
+        }
+    }
+
+    private function setPage():void
+    {
+        if(isset($_POST['page']))
+        {
+            $find = trim($_POST['page']);
+            if(is_numeric($find))
+            {
+                $this->page = intval($find);
+            }
+        }
+    }
+
+
 
 
     private function extractPayload(string $payload): bool
