@@ -156,9 +156,9 @@ class Crud extends QueryProvider
      * @return null|array<$this>
      */
     public function columnSelect(
-        string $firstColumn,
-        \SqlEnumCondition $firstCondition,
-        mixed $firstValue,
+        ?string $firstColumn = null,
+        ?\SqlEnumCondition $firstCondition = null,
+        mixed $firstValue = null,
         ?string $secondColumn = null,
         ?\SqlEnumCondition $secondCondition = null,
         mixed $secondValue = null,
@@ -166,12 +166,18 @@ class Crud extends QueryProvider
         ?string $ASC_DES = null,
         ?int $limit_count = null,
         ?int $limit_offset = null,
-        ?bool $isDel = null
+        ?bool $isDel = null,
+        ?bool $deactives = null,
+        ?bool $actives = null
+
     ): null|array {
         $limit = '';
         $arrayBindValue = [];
 
         $isDel ? ' AND deleted_at IS NOT NULL ' : '';
+        $actives ? ' AND isActive = 1 ' : '';
+        
+        $deactives ? ' AND isActive IS NOT 1 ' : '';
         if ($orderBy) {
             $orderBy = " ORDER BY {$orderBy} {$ASC_DES}";
         }
@@ -182,20 +188,30 @@ class Crud extends QueryProvider
             }
         }
 
-        $firstValue = (' LIKE ' === (string) $firstCondition->value) ? '%'.$firstValue.'%' : $firstValue;
-        $query = "SELECT * FROM {$this->table} WHERE {$firstColumn} {$firstCondition->value} :{$firstColumn}";
-        $arrayBindValue[':'.$firstColumn] = $firstValue;
+        $query = "SELECT * FROM {$this->table} ";
+        $firstColumnQuery = null;
+        $secondColumnQuery = null;
+
+        if(null !== $firstColumn && null !== $firstCondition)
+        {
+            $firstValue = (' LIKE ' === (string) $firstCondition->value) ? '%'.$firstValue.'%' : $firstValue;
+            $firstColumnQuery = " {$firstColumn} {$firstCondition->value} :{$firstColumn}";
+            $arrayBindValue[':'.$firstColumn] = $firstValue;
+        }
 
         if (null !== $secondColumn && null !== $secondCondition) {
-            $query .= " AND {$secondColumn} {$secondCondition->value} :{$secondColumn}";
+            $secondColumnQuery = " AND {$secondColumn} {$secondCondition->value} :{$secondColumn}";
             $secondValue = (' LIKE ' === $secondCondition->value) ? '%'.$secondValue.'%' : $secondValue;
             $arrayBindValue[':'.$secondColumn] = $secondValue;
         }
-
-        $query .= " {$isDel} {$orderBy} {$limit}";
+        $query .= "WHERE 1 {$firstColumnQuery} {$secondColumnQuery} {$isDel} {$actives} {$deactives} {$orderBy} {$limit}";
         $query = trim($query);
+        //echo $query;
         return $this->select($query, $arrayBindValue);
     }
+
+
+
 
     /**
      * @param array<int> $ids
@@ -378,7 +394,25 @@ class Crud extends QueryProvider
         return $this->updateQuery($query, [':id' => $id]);
     }
 
+    public function restoreActivate(int $id = null): int|null
+    {
+        if (!$id) {
+            $id = $this->id;
+        }
+        $query = "UPDATE {$this->table} SET deleted_at = NULL WHERE id = :id AND isActive = :isActive";
 
+        return $this->updateQuery($query, [':id' => $id,':isActive'=>1]);
+    }
+
+    /**
+     * @return array<mixed>|null
+     */
+    public function list():null|array
+    {
+        $arrayBindValue =[];
+        $query = "SELECT * FROM {$this->table} WHERE deleted_at IS NULL";
+        return $this->select($query, $arrayBindValue);
+    }
 
     /**
      * @param array<mixed> $row
