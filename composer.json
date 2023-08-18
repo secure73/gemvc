@@ -10,7 +10,10 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Gemvc\\Library\\": "src/"
+            "Gemvc\\": "src/",
+            "Gemvc\\Core\\": "src/core/",
+            "Gemvc\\Database\\": "src/database/",
+            "Gemvc\\Helper\\": "src/helper/"
         }
     },
     "authors": [
