@@ -50,9 +50,11 @@ class GemToken
         $this->request = $request;
         if ($this->request) {
             $this->token = $this->_getBearerToken($request->token);
-            $this->validate();
             if (!$this->token) {
                 $this->error = 'Bearer Token is not found in request Dispatcher';
+            }
+            else{
+                $this->validate();
             }
         }
     }

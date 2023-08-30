@@ -13,21 +13,17 @@ declare(strict_types=1);
 namespace Gemvc\Core;
 
 use Gemvc\Core\GemToken;
-
-class Security extends GemToken
+use Gemvc\Core\RequestDispatcher;
+class Security
 {
-    public string   $serviceName;
-    public string   $functionName;
     public ?int     $error_code;
     public ?string  $error_message;
+    public RequestDispatcher $request;
+    public GemToken $gemToken;
 
-
-    public function __construct(string $serviceName, string $functionName)
+    public function __construct(RequestDispatcher $request)
     {
-        parent::__construct();
-        $this->serviceName = $serviceName;
-        $this->functionName = $functionName;
-
+        $this->request = $request;
     }
 
     public function check(): bool
@@ -104,8 +100,8 @@ class Security extends GemToken
     private function isRequestOnPublicService(): bool
     {
         $result = false;
-        if ($this->serviceName) {
-            if (isset(PUBLIC_SERVICES[$this->serviceName])) {
+        if ($this->request->service) {
+            if (isset(PUBLIC_SERVICES[$this->request->service])) {
                 foreach (PUBLIC_SERVICES[$this->serviceName] as $item) {
 
                     if ($item == $this->functionName) {

@@ -30,7 +30,7 @@ $publicServices=[
     'User'=>['help'],
     'Index'=>['help'],
     'Address'=>['help'],
-    'Auth'=>['help','byEmail','register','renew'],
+    'Auth'=>['help','byEmail','register','renew','token/update'],
     'Service'=>['help','id','index','create','update','delete']
 ];
 
