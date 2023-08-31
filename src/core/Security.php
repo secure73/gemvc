@@ -31,10 +31,10 @@ class Security
         if ($this->isRequestOnPublicService()) {
             return true;
         } else {
-            if ($this->token_valid) {
+            if ($this->gemToken->isTokenValid) {
                 if (in_array(
-                    $this->functionName,
-                    $this->permissions[$this->serviceName],
+                    $this->request->service,
+                    $this->gemToken->permissions[$this->request->service],
                     true
                 )) {
                     return true;
@@ -45,7 +45,7 @@ class Security
                 }
             } else {
                 $this->error_code = 403;
-                $this->error_message = 'Token: ' . $this->token_error;
+                $this->error_message = 'Token: ' . $this->gemToken->error;
             }
         }
         return false;
@@ -102,9 +102,9 @@ class Security
         $result = false;
         if ($this->request->service) {
             if (isset(PUBLIC_SERVICES[$this->request->service])) {
-                foreach (PUBLIC_SERVICES[$this->serviceName] as $item) {
+                foreach (PUBLIC_SERVICES[$this->request->service] as $method) {
 
-                    if ($item == $this->functionName) {
+                    if ($method == $this->request->method) {
                         $result = true;
                     }
                 }
