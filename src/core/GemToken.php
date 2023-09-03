@@ -24,39 +24,23 @@ class GemToken
     public string   $iss;
     public int      $exp;
     public bool     $isTokenValid;
-    /** @phpstan-ignore-next-line */
-    public array    $permissions;
     public ?string  $token = null;
-    public ?string  $type;
-    public ?string  $projectName;
-    public ?int     $projectId;
-    public ?int     $permissionId;
-    public ?int     $jobId;
-    public ?int     $instituteId;
     public ?string  $error;
+    public array    $payload;
+    public ?string $remoteIP;
+    public ?string $remoteMachine;
 
-    private ?RequestDispatcher $request;
-
-    public function __construct(?RequestDispatcher $request = null)
+    public function __construct(string $remoteIP , string $remoteMachine)
     {
         $this->tokenId = 'Not Initialized';
-        $this->permissions = [];
-        $this->error = 'Not Initialized';
-        $this->isTokenValid = false;
-        $this->exp = 0;
-        $this->iss = '';
-        $this->request = $request;
         $this->userId = null;
-        $this->request = $request;
-        if ($this->request) {
-            $this->token = $this->_getBearerToken($request->token);
-            if (!$this->token) {
-                $this->error = 'Bearer Token is not found in request Dispatcher';
-            }
-            else{
-                $this->validate();
-            }
-        }
+        $this->iss = '';
+        $this->exp = 0;
+        $this->isTokenValid = false;
+        $this->error = 'Not Initialized';
+        $this->payload = [];
+        $this->remoteIP = $remoteIP;
+        $this->remoteMachine = $remoteMachine;
     }
 
 
@@ -66,49 +50,25 @@ class GemToken
      * @return string
      * create JWT TOKEN
      */
-    public function create(int|string $userId, string $type, int $valid_till_sec): string
+    public function create(int|string $userId, int $valid_till_sec ,array $payload ): string
     {
-        $this->tokenId = TypeHelper::guid();
-        $instituteId = $this->instituteId ?? null;
-        $projectId = $this->projectId ?? null;
-        $projectName = $this->projectName ?? null;
-        $permissionId = $this->permissionId ?? null;
-        $jobId = $this->jobId ?? null;
         $payloadArray = [
-            'userId' => $userId, 'type' => $type, 'iss' => URL, 'exp' => (time() + $valid_till_sec), 'projectName' => $projectName, 'projectId' => $projectId, 'permissionId' => $permissionId,
-            'jobId' => $jobId, 'instituteId' => $instituteId, 'permissions' => $this->permissions,
+             'tokenId'=> TypeHelper::guid(), 'userId' => $userId,'iss' => URL, 'exp' => (time() + $valid_till_sec), 
+             'payload' => $payload
         ];
         return JWT::encode($payloadArray, $this->_generate_key(), 'HS256');
     }
 
-    public function validate(): bool
+    public function validate(string $token): bool
     {
-        if ($this->token) {
             try {
-                $decodedToken = JWT::decode($this->token, new Key($this->_generate_key(), 'HS256'));
+                $decodedToken = JWT::decode($token, new Key($this->_generate_key(), 'HS256'));
                 if (isset($decodedToken->userId)) {
-                    $this->tokenId = $decodedToken->tokenId ?? 'not defined';
-                    $this->type = $decodedToken->type ?? null;
+                    $this->tokenId = $decodedToken->tokenId;
                     $this->userId = $decodedToken->userId;
-                    $this->exp = $decodedToken->exp ?? 0;
-                    $this->iss = $decodedToken->iss ?? '';
-
-                    $permissions = $decodedToken->permissions ?? [];
-                    $array = [];
-                    foreach ($permissions as $key => $val) {
-                        $array[$key] = $val;
-                    }
-                    $this->permissions = $array;
-                    $this->projectName = $decodedToken->projectName ?? '';
-                    $permissionId = $decodedToken->permissionId ?? null;
-                    $this->permissionId = $permissionId ? (int) $permissionId : null;
-
-                    $jobId = $decodedToken->jobId ?? null;
-                    $this->jobId = $jobId ? (int) $jobId : null;
-
-                    $projectId = $decodedToken->projectId ?? null;
-                    $this->projectId = $projectId ? (int) $projectId : null;
-
+                    $this->exp = $decodedToken->exp;
+                    $this->iss = $decodedToken->iss;
+                    $this->payload = $decodedToken->payload;
                     $this->isTokenValid = true;
                     $this->error = null;
                     return true;
@@ -116,19 +76,18 @@ class GemToken
             } catch (\Exception $e) {
                 $this->error = $e->getMessage();
             }
-        }
         return false;
     }
 
     public function renew(int $extensionTime_sec): false|string
     {
         if ($this->isTokenValid) {
-            return $this->create($this->userId, $this->type, $extensionTime_sec);
+            return $this->create($this->userId, $extensionTime_sec , $this->payload);
         }
         return false;
     }
 
-    private function _getBearerToken(string $BearerToken): null|string
+    public function _getBearerToken(string $BearerToken): null|string
     {
 
         if (preg_match('/Bearer\s(\S+)/', $BearerToken, $matches)) {
@@ -144,10 +103,10 @@ class GemToken
         $machinRestrict = '';
         // @phpstan-ignore-next-line
         if (TOKEN_IP_RESTRICT) {
-            $ipRestrict = md5($this->request->remoteAddress);
+            $ipRestrict = md5($this->remoteIP);
         }
         if (TOKEN_USER_MACHINE_RESTRICT) {
-            $machinRestrict = md5($this->request->userMachine);
+            $machinRestrict = md5($this->remoteMachine);
         }
         return API_TOKEN_SECRET_KEY . $ipRestrict . $machinRestrict;
     }
