@@ -87,16 +87,6 @@ class Security
         }
     }
 
-    public static function hashPassword(string $passwordToHash): string
-    {
-        return password_hash(trim($passwordToHash), PASSWORD_ARGON2I);
-    }
-
-    public static function passwordVerify(string $passwordToCheck, string $hash): bool
-    {
-        return password_verify(trim($passwordToCheck), $hash);
-    }
-
     private function isRequestOnPublicService(): bool
     {
         $result = false;

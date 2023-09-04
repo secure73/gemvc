@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Gemvc\Core;
 
-use Gemvc\Core\RequestDispatcher;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Gemvc\Helper\TypeHelper;

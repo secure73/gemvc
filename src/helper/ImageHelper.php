@@ -4,13 +4,13 @@ namespace Gemvc\Helper;
 
 use GdImage;
 
-class Image extends FileHelper
+class ImageHelper extends FileHelper
 {
     /**
      * @param string $sourceFile The image path
      * @param string $outputFile The output image path, if null will be the same as $sourceFile
      */
-    public function __construct(string $sourceFile, ?string $outputFile=null , ?bool $notIncludeRoot = null)
+    public function __construct(string $sourceFile, ?string $outputFile = null, ?bool $notIncludeRoot = null)
     {
         parent::__construct($sourceFile, $outputFile, $notIncludeRoot);
     }
@@ -51,6 +51,40 @@ class Image extends FileHelper
         return false;
     }
 
+    public static function isImage(string $filePath): bool
+    {
+        // Get the MIME type and image information
+        $imageInfo = @getimagesize($filePath);
+        if ($imageInfo !== false) {
+            // Check if the MIME type corresponds to an image
+            $imageMimeTypes = array(
+                IMAGETYPE_GIF,
+                IMAGETYPE_JPEG,
+                IMAGETYPE_PNG,
+                IMAGETYPE_BMP,
+                IMAGETYPE_WEBP,
+                IMAGETYPE_ICO,
+                IMAGETYPE_TIFF_II,
+                // TIFF little-endian (Intel byte order)
+                IMAGETYPE_TIFF_MM // TIFF big-endian (Motorola byte order)
+            );
+            if (in_array($imageInfo[2], $imageMimeTypes)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function getAsBase64String(): string|false
+    {
+        $content = $this->readFileContents();
+        if ($content) {
+            return base64_encode($content);
+        }
+        return false;
+    }
+
+
     protected function toPhphImageObject(int $width = null, int $height = null): GdImage|false
     {
         if ($this->error) {
@@ -72,14 +106,6 @@ class Image extends FileHelper
         return $image;
     }
 
-    public function getAsBase64String(): string|false
-    {
-        $content = $this->readFileContents();
-        if ($content) {
-            return base64_encode($content);
-        }
-        return false;
-    }
 
     private function resize(GdImage $image, int $width = null, int $height = null): GdImage|false
     {
@@ -120,7 +146,7 @@ class Image extends FileHelper
     private function calculateNewImageHeight(GdImage $image, int $newWidth): int
     {
         $ratio = $newWidth / imagesx($image);
-        return   intval(imagesy($image) * $ratio);
+        return intval(imagesy($image) * $ratio);
     }
     private function calculateNewImageWidth(GdImage $image, int $newHeight): int
     {
