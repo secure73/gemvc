@@ -26,20 +26,30 @@ class RequestDispatcher
     public    ?string      $controller;
     public    ?string      $method;
 
-
-    public function __construct(object $sequest)
+    /**
+     * @param object $incommingRequestObject
+     */
+    public function __construct(object $swooleRquest)
     {
         $this->time = microtime(true);
-        $this->incommingRequestObject = $sequest;
-        $this->requestedUrl = $sequest->server['request_uri'];
-        $this->queryString = $sequest->server['query_string'];
-        $this->remoteAddress = $sequest->server['remote_addr'] .':'. $sequest->server['remote_port'];
-        $this->userMachine = $sequest->server['user_agent'];
-        $this->setData();
+
+        $this->incommingRequestObject = $swooleRquest;
+        if(isset($swooleRquest->server['request_uri']))
+        {
+            $this->requestedUrl = $swooleRquest->server['request_uri'];
+            $this->queryString = $swooleRquest->server['query_string'];
+            $this->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
+            $this->userMachine = $swooleRquest->server['user_agent'];
+            $this->setData();
+        }
+        else
+        {
+            $this->error = "incomming request is not openSwoole request";
+        }
 
     }
 
-    public function getOriginalRequest():object
+    public function getOriginalSwooleRequest():object
     {
         return $this->incommingRequestObject;
     }

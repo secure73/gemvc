@@ -29,6 +29,23 @@ class JsonHelper
 
 
     /**
+     * @return string|false
+     * @param string $jsonStringToValidate
+     * return json string if given string is valid json format, false otherwise
+     */
+    public static function validateJson(string $jsonStringToValidate): string|false
+    {
+        $jsonStringToValidate = trim($jsonStringToValidate);
+        $result = json_decode($jsonStringToValidate);
+        if(0 ===  json_last_error())
+        {
+            return $jsonStringToValidate;
+        }
+        return false;
+    }
+
+
+    /**
      * @return null|object
      */
     public static function validateJsonStringReturnObject(string $jsonStringToValidate): object|null
