@@ -8,7 +8,6 @@ class Controller
 {
     public HttpResponse      $response;
     public RequestDispatcher $request;
-    public Security          $security;
     public ?object           $payload;
     public ?int              $user_id;
     public float             $cost;
