@@ -53,49 +53,49 @@ class GemToken
      * @param null|string $userMachinTobeSensetive 
      * @return string
      */
-    public static function create(string $secret , int|string $userId, int $timeToLiveSecond ,array $payload ,string $issuer = null,  string $type = null , string $ipAddressTobeSensitive = null , string $userMachinToBeSensetive = null): string
+    public static function create(string $secret, int|string $userId, int $timeToLiveSecond, array $payload, string $issuer = null,  string $type = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
-             'tokenId'=> TypeHelper::guid(), 
-             'userId' => $userId,'iss' => URL, 
-             'iss'=> $issuer,
-             'exp' => (time() + $timeToLiveSecond),
-             'type'=> $type, 
-             'payload' => $payload
+            'tokenId' => TypeHelper::guid(),
+            'userId' => $userId, 'iss' => URL,
+            'iss' => $issuer,
+            'exp' => (time() + $timeToLiveSecond),
+            'type' => $type,
+            'payload' => $payload
         ];
-        return JWT::encode($payloadArray, self::_generate_key($secret,$ipAddressTobeSensitive,$userMachinToBeSensetive), 'HS256');
+        return JWT::encode($payloadArray, self::_generate_key($secret, $ipAddressTobeSensitive, $userMachinToBeSensetive), 'HS256');
     }
 
     /**
      * @param string $token
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function validate(string $token , string $secret , string $ip = null , string $userMachine = null): bool
+    public function validate(string $token, string $secret, string $ip = null, string $userMachine = null): bool
     {
-            try {
-                $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret,$ip,$userMachine), 'HS256'));
-                if (isset($decodedToken->userId)) {
-                    $this->tokenId = $decodedToken->tokenId;
-                    $this->userId = $decodedToken->userId;
-                    $this->exp = $decodedToken->exp;
-                    $this->iss = $decodedToken->iss;
-                    $this->payload = $decodedToken->payload;
-                    $this->isTokenValid = true;
-                    $this->ip = $ip;
-                    $this->userMachine = $userMachine;
-                    $this->error = null;
-                    return true;
-                }
-            } catch (\Exception $e) {
-                $this->error = $e->getMessage();
+        try {
+            $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret, $ip, $userMachine), 'HS256'));
+            if (isset($decodedToken->userId)) {
+                $this->tokenId = $decodedToken->tokenId;
+                $this->userId = $decodedToken->userId;
+                $this->exp = $decodedToken->exp;
+                $this->iss = $decodedToken->iss;
+                $this->payload = $decodedToken->payload;
+                $this->isTokenValid = true;
+                $this->ip = $ip;
+                $this->userMachine = $userMachine;
+                $this->error = null;
+                return true;
             }
+        } catch (\Exception $e) {
+            $this->error = $e->getMessage();
+        }
         return false;
     }
 
-    public function renew(int $extensionTime_sec): false|string
+    public function renew(string $token, string $secret, int $extensionTime_sec): false|string
     {
-        if ($this->isTokenValid) {
-            return $this->create($this->userId, $extensionTime_sec , $this->payload);
+        if ($this->validate($token, $secret, $this->ip, $this->userMachine)) {
+            return $this->create($secret, $this->userId, $extensionTime_sec, $this->payload, $this->ip, $this->userMachine);
         }
         return false;
     }
@@ -106,13 +106,14 @@ class GemToken
      * @param string $machin
      * @return string
      */
-    private static function _generate_key(string $secret , string $ip = null , string $machin = null): string
+    private static function _generate_key(string $secret, string $ip = null, string $machin = null): string
     {
+        $miniSecret = 'it is mini secret that use to add to md5!';
         if ($ip) {
-            $ip = md5($ip);
+            $ip = md5($ip . $miniSecret);
         }
         if ($machin) {
-            $machin = md5($this->$machin);
+            $machin = md5($machin . $miniSecret);
         }
         return $secret . $ip . $machin;
     }
