@@ -19,17 +19,17 @@ use Gemvc\Helper\TypeHelper;
 class GemToken
 {
     public string   $tokenId;
-    public ?int     $userId;
     public string   $iss;
     public int      $exp;
     public bool     $isTokenValid;
-    public ?string  $token = null;
-    public ?string  $error;
+    public string   $type;
     public array    $payload;
-    public ?string $remoteIP;
-    public ?string $remoteMachine;
+    public ?int     $userId;
+    public ?string  $error;
+    public ?string  $userMachine;
+    public ?string  $ip;
 
-    public function __construct(string $remoteIP , string $remoteMachine)
+    public function __construct()
     {
         $this->tokenId = 'Not Initialized';
         $this->userId = null;
@@ -38,30 +38,42 @@ class GemToken
         $this->isTokenValid = false;
         $this->error = 'Not Initialized';
         $this->payload = [];
-        $this->remoteIP = $remoteIP;
-        $this->remoteMachine = $remoteMachine;
+        $this->type = 'not defined';
     }
 
 
     /**
-     * @param string $type
-     *
+     * @param string $secret
+     * @param int|string $userId
+     * @param int $timeToLiveSecond
+     * @param array<mixed> $payload
+     * @param null|string $type
+     * @param null|string $issuer
+     * @param null|string $ipAddressTobeSensitive
+     * @param null|string $userMachinTobeSensetive 
      * @return string
-     * create JWT TOKEN
      */
-    public function create(int|string $userId, int $valid_till_sec ,array $payload ): string
+    public static function create(string $secret , int|string $userId, int $timeToLiveSecond ,array $payload ,string $issuer = null,  string $type = null , string $ipAddressTobeSensitive = null , string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
-             'tokenId'=> TypeHelper::guid(), 'userId' => $userId,'iss' => URL, 'exp' => (time() + $valid_till_sec), 
+             'tokenId'=> TypeHelper::guid(), 
+             'userId' => $userId,'iss' => URL, 
+             'iss'=> $issuer,
+             'exp' => (time() + $timeToLiveSecond),
+             'type'=> $type, 
              'payload' => $payload
         ];
-        return JWT::encode($payloadArray, $this->_generate_key(), 'HS256');
+        return JWT::encode($payloadArray, self::_generate_key($secret,$ipAddressTobeSensitive,$userMachinToBeSensetive), 'HS256');
     }
 
-    public function validate(string $token): bool
+    /**
+     * @param string $token
+     * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
+     */
+    public function validate(string $token , string $secret , string $ip = null , string $userMachine = null): bool
     {
             try {
-                $decodedToken = JWT::decode($token, new Key($this->_generate_key(), 'HS256'));
+                $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret,$ip,$userMachine), 'HS256'));
                 if (isset($decodedToken->userId)) {
                     $this->tokenId = $decodedToken->tokenId;
                     $this->userId = $decodedToken->userId;
@@ -69,6 +81,8 @@ class GemToken
                     $this->iss = $decodedToken->iss;
                     $this->payload = $decodedToken->payload;
                     $this->isTokenValid = true;
+                    $this->ip = $ip;
+                    $this->userMachine = $userMachine;
                     $this->error = null;
                     return true;
                 }
@@ -86,27 +100,20 @@ class GemToken
         return false;
     }
 
-    public function _getBearerToken(string $BearerToken): null|string
+    /**
+     * @param string $secret
+     * @param string $ip
+     * @param string $machin
+     * @return string
+     */
+    private static function _generate_key(string $secret , string $ip = null , string $machin = null): string
     {
-
-        if (preg_match('/Bearer\s(\S+)/', $BearerToken, $matches)) {
-            $BearerToken = $matches[1];
-            return $BearerToken;
+        if ($ip) {
+            $ip = md5($ip);
         }
-        return null;
-    }
-
-    private function _generate_key(): string
-    {
-        $ipRestrict = '';
-        $machinRestrict = '';
-        // @phpstan-ignore-next-line
-        if (TOKEN_IP_RESTRICT) {
-            $ipRestrict = md5($this->remoteIP);
+        if ($machin) {
+            $machin = md5($this->$machin);
         }
-        if (TOKEN_USER_MACHINE_RESTRICT) {
-            $machinRestrict = md5($this->remoteMachine);
-        }
-        return API_TOKEN_SECRET_KEY . $ipRestrict . $machinRestrict;
+        return $secret . $ip . $machin;
     }
 }

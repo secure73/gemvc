@@ -50,5 +50,20 @@ class WebHelper{
         return $safe;
     }
 
+    
+    /**
+     * @param string $tokenStringInHttpHeader
+     * @return string|null
+     * @description BearerToken in header is like Brearer ey... this function remove Bearer and space return pure token to be used in JWT
+     */
+    public static function BearerTokenPurify(string $tokenStringInHttpHeader): null|string
+    {
+        if (preg_match('/Bearer\s(\S+)/', $tokenStringInHttpHeader, $matches)) {
+            $tokenStringInHttpHeader = $matches[1];
+            return $tokenStringInHttpHeader;
+        }
+        return null;
+    }
+
 
 }
