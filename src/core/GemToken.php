@@ -53,7 +53,7 @@ class GemToken
      * @param null|string $userMachinTobeSensetive 
      * @return string
      */
-    public static function create(string $secret, int|string $userId, int $timeToLiveSecond, array $payload, string $issuer = null,  string $type = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
+    public static function create(string $type ,string $secret, int|string $userId, int $timeToLiveSecond, array $payload, string $issuer = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
             'tokenId' => TypeHelper::guid(),
@@ -99,6 +99,30 @@ class GemToken
         }
         return false;
     }
+
+    /**
+     * @param string $token
+     * @return string|null
+     * @description Returns type without validation token
+     */
+    public function GetType(string $token):string|null
+    {
+        $tokenParts = explode('.', $token);
+
+        // The payload is the second part of the token
+        $payloadBase64 = $tokenParts[1];
+
+        // Decode the payload from base64
+        $payload = json_decode(base64_decode($payloadBase64), true);
+
+        // Access the "type" property from the payload
+        if (isset($payload['type'])) {
+          return $payload['type'];
+        } 
+        else return null;
+    }
+
+    
 
     /**
      * @param string $secret
