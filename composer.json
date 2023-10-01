@@ -13,7 +13,8 @@
             "Gemvc\\": "src/",
             "Gemvc\\Core\\": "src/core/",
             "Gemvc\\Database\\": "src/database/",
-            "Gemvc\\Helper\\": "src/helper/"
+            "Gemvc\\Helper\\": "src/helper/",
+            "Gemvc\\ControllerTraits\\": "src/controllerTraits/"
         }
     },
     "authors": [
