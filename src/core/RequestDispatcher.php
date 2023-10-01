@@ -25,6 +25,7 @@ class RequestDispatcher
     public    ?string      $service;
     public    ?string      $controller;
     public    ?string      $method;
+    public    ?string      $requestMethod;
 
     /**
      * @param object $incommingRequestObject
@@ -36,10 +37,11 @@ class RequestDispatcher
         $this->incommingRequestObject = $swooleRquest;
         if(isset($swooleRquest->server['request_uri']))
         {
+            $this->requestMethod = $swooleRquest->server['request_method'];
             $this->requestedUrl = $swooleRquest->server['request_uri'];
-            $this->queryString = $swooleRquest->server['query_string'];
+            isset($swooleRquest->server['query_string']) ? $this->queryString = $swooleRquest->server['query_string'] : $this->queryString = null;
             $this->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
-            $this->userMachine = $swooleRquest->server['user_agent'];
+            $this->userMachine = $swooleRquest->header['user-agent'];
             $this->setData();
         }
         else
@@ -69,9 +71,9 @@ class RequestDispatcher
     private function setServiceRequest():void
     {
         $result = explode('/',$this->requestedUrl);
-        $this->service = $result[0];
-        isset($result[1]) ? $this->controller = ucfirst($result[1]) : $this->controller = 'Index';
-        isset($result[2]) ? $this->method = $result[2] : $this->controller = 'index';
+        $this->service = $result[1];
+        isset($result[2]) ? $this->controller = $result[2] : $this->controller = 'Index';
+        isset($result[3]) ? $this->method = $result[3] : $this->controller = 'index';
     }
 
 
