@@ -19,7 +19,7 @@ use PDO;
  *
  * @param bool $isConnected
  */
-class DatabasePdoConnection
+class PdoConnection
 {
     private bool $isConnected;
     private ?string $error;
@@ -32,9 +32,16 @@ class DatabasePdoConnection
     private ?string $_query;
 
     /**
-     * @param string $connectionName
+     * @param string $connection_string  mysql:host=localhost;dbname=your_db_name;charset=utf8mb4
+     * @param string $db_username your database username
+     * @param string $db_password your database password
+     * @param null|array<mixed> $options PDO Options
      * create new PDO Database connection Instance and create connection
-     * to assert connection sucess ,$instance->getError();
+     * to assert connection success ,$instance->getError();
+     * PDO Options Example:  $options__db = [
+                \PDO::ATTR_PERSISTENT => true,
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ];
      */
     public function __construct(string $connection_string,string $db_username, string $db_password , array $options = null)
     {

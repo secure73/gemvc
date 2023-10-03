@@ -12,19 +12,19 @@ declare(strict_types=1);
 
 namespace Gemvc\Database;
 
-class QueryProvider extends DatabasePdoConnection
+class QueryProvider extends PdoConnection
 {
-    private DatabasePdoConnection $connection;
+    private PdoConnection $connection;
     /**
      * @if null , use default connection in config.php
      * pass $connection name to parent and create PDO Connection to Execute Query
      */
-    public function __construct(DatabasePdoConnection $connection)
+    public function __construct(PdoConnection $connection)
     {
         $this->connection = $connection;
     }
 
-    public function getConnection():DatabasePdoConnection
+    public function getConnection():PdoConnection
     {
         return $this->connection;
     }
