@@ -29,52 +29,46 @@ class DatabasePdoConnection
     private ?\PDO $db;
     private float $startExecutionTime;
     private float $endExecutionTime;
-    private string $connectionName;
     private ?string $_query;
 
     /**
      * @param string $connectionName
-     *                               create new PDO Database connection Instance
-     *                               to assert connection sucess ,$instance->getError();
+     * create new PDO Database connection Instance and create connection
+     * to assert connection sucess ,$instance->getError();
      */
-    public function __construct(string $connectionName)
+    public function __construct(string $connection_string,string $db_username, string $db_password , array $options = null)
     {
         $this->startExecutionTime = microtime(true);
         $this->error = null;
         $this->affectedRows = null;
         $this->lastInsertedId = false;
         $this->isConnected = false;
-        $this->connectionName = $connectionName;
         $this->db = null;
         $this->stsment = null;
         $this->_query = null;
+        $this->connect($connection_string,$db_username,$db_password,$options);
     }
 
-    /**
-     * @return string
-     *                current in use connection
-     */
-    public function getConnectionName(): string
-    {
-        return $this->connectionName;
-    }
-
-    public function isConnect(): bool
+    public function isConnected(): bool
     {
         return $this->isConnected;
     }
 
-    public function connect(): bool
+    public function connect(string $connection_string , string $db_username , string $db_password , array $options = null): bool
     {
-        $db_connection_info = DB_CONNECTIONS[$this->connectionName];
-        $dsn__db = $db_connection_info['type'].':host='.$db_connection_info['host'].';dbname='.$db_connection_info['database_name'].';charset=utf8mb4';
+        //$db_connection_info = DB_CONNECTIONS[$this->connectionName];
+        //$dsn__db = $db_connection_info['type'].':host='.$db_connection_info['host'].';dbname='.$db_connection_info['database_name'].';charset=utf8mb4';
 
         try {
             $options__db = [
                 \PDO::ATTR_PERSISTENT => true,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ];
-            $this->db = new \PDO($dsn__db, $db_connection_info['username'], $db_connection_info['password'], $options__db);
+            if (is_array($options))
+            {
+                $options__db = $options;
+            }
+            $this->db = new \PDO($connection_string, $db_username, $db_password, $options__db);
             $this->isConnected = true;
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
@@ -94,8 +88,8 @@ class DatabasePdoConnection
 
     /**
      * @return \PDO
-     *              Database Connection or null in case of error
-     *              in case of null , you can see Error  in created instance : $db->error
+     * Database Connection or null in case of error
+     * in case of null , you can see Error  in created instance : $db->error
      */
     public function db(): \PDO|null
     {
@@ -109,8 +103,8 @@ class DatabasePdoConnection
 
     /**
      * @param string $query
-     *                      convert sql query to PDO Statement trough PDO::prepare()
-     *                      if connect to databse is failed, set error
+     * convert sql query to PDO Statement trough PDO::prepare()
+     * if connect to databse is failed, set error
      */
     public function query(string $query): void
     {
@@ -124,7 +118,7 @@ class DatabasePdoConnection
 
     /**
      * @param mixed $value
-     *                     this method automatically detect value Type and bind Parameter to value
+     * this method automatically detect value Type and bind Parameter to value
      */
     public function bind(string $param, mixed $value): void
     {
@@ -198,8 +192,8 @@ class DatabasePdoConnection
 
     /**
      * @return null|string
-     *                     if SQL Query executed Successfully , this method return null
-     *                     otherwise return relevant Error string Message
+     * if SQL Query executed Successfully , this method return null
+     * otherwise return relevant Error string Message
      */
     public function getError(): null|string
     {
