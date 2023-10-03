@@ -7,5 +7,6 @@ use Gemvc\Core\Bootstrap;
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 */
+//start chnange Library Without Config
 NoCors::NoCors();
 $bootstrap = new Bootstrap();
