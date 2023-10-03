@@ -15,7 +15,7 @@ namespace Gemvc\Database\Query;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
-class Delete extends QueryProvider implements QueryBuilderInterface
+class Delete  implements QueryBuilderInterface
 {
     use WhereTrait;
 
@@ -37,10 +37,9 @@ class Delete extends QueryProvider implements QueryBuilderInterface
 
     private string $_query;
 
-    public function __construct(string $table, string $connection = null)
+    public function __construct(string $table)
     {
         $this->table = $table;
-        parent::__construct($connection);
     }
 
     public function __toString(): string
@@ -50,9 +49,9 @@ class Delete extends QueryProvider implements QueryBuilderInterface
         return $this->_query;
     }
 
-    public function run(): self
+    public function run(QueryProvider $queryProvider): self
     {
-        $this->result = $this->deleteQuery($this->_query, $this->arrayBindValues);
+        $this->result = $queryProvider->deleteQuery($this->_query, $this->arrayBindValues);
 
         return $this;
     }

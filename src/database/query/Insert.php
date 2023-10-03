@@ -15,7 +15,7 @@ namespace Gemvc\Database\Query;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
-class Insert extends QueryProvider implements QueryBuilderInterface
+class Insert implements QueryBuilderInterface
 {
     /**
      * @var null|int
@@ -46,11 +46,10 @@ class Insert extends QueryProvider implements QueryBuilderInterface
      */
     private $keyValue = [];
 
-    public function __construct(string $table, ?string $connection = null)
+    public function __construct(string $table)
     {
         $this->table = $table;
         $this->_query = '';
-        parent::__construct($connection);
     }
 
     public function __toString(): string
@@ -85,9 +84,9 @@ class Insert extends QueryProvider implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(): self
+    public function run(QueryProvider $queryProvider): self
     {
-        $this->result = $this->insertQuery($this->_query, $this->keyValue);
+        $this->result = $queryProvider->insertQuery($this->_query, $this->keyValue);
 
         return $this;
     }

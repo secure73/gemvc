@@ -15,7 +15,7 @@ namespace Gemvc\Database\Query;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
-class Select extends QueryProvider implements QueryBuilderInterface
+class Select implements QueryBuilderInterface
 {
     use LimitTrait;
     use WhereTrait;
@@ -73,10 +73,9 @@ class Select extends QueryProvider implements QueryBuilderInterface
     /**
      * @param array<mixed> $select
      */
-    public function __construct(array $select, string $connection = null)
+    public function __construct(array $select)
     {
         $this->fields = $select;
-        parent::__construct($connection);
     }
 
     public function __toString(): string
@@ -138,24 +137,27 @@ class Select extends QueryProvider implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(): self
+    /**
+     * @param QueryProvider $queryProvider
+     */
+    public function run(QueryProvider $queryProvider): self
     {
-        $this->result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $this->result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function count(): self
+    public function count(QueryProvider $queryProvider): self
     {
-        $this->result = $this->countQuery($this->query, $this->arrayBindValues);
+        $this->result = $queryProvider->countQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function json(): self
+    public function json(QueryProvider $queryProvider): self
     {
         $array = [];
-        $result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 $encoded = json_encode($item, JSON_PRETTY_PRINT);
@@ -174,12 +176,12 @@ class Select extends QueryProvider implements QueryBuilderInterface
 
     /**
      * @param object $object
-     *                       retrun array of Objects
+     * retrun array of Objects
      */
-    public function object(object $object): self
+    public function object(QueryProvider $queryProvider , object $object): self
     {
         $class = $object::class;
-        $result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 if (\is_array($item)) {

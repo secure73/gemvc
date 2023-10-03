@@ -15,7 +15,7 @@ namespace Gemvc\Database\Query;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
-class Update extends QueryProvider implements QueryBuilderInterface
+class Update  implements QueryBuilderInterface
 {
     use WhereTrait;
 
@@ -45,10 +45,9 @@ class Update extends QueryProvider implements QueryBuilderInterface
      */
     private array $whereConditions = [];
 
-    public function __construct(string $table, string $connection = null)
+    public function __construct(string $table)
     {
         $this->table = $table;
-        parent::__construct($connection);
     }
 
     public function __toString(): string
@@ -68,10 +67,9 @@ class Update extends QueryProvider implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(): self
+    public function run(QueryProvider $queryProvider): self
     {
-        $this->result = $this->updateQuery($this->_query, $this->arrayBindValues);
-
+        $this->result = $queryProvider->updateQuery($this->_query, $this->arrayBindValues);
         return $this;
     }
 }
