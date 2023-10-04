@@ -6,7 +6,7 @@ trait ListTrait
     {
         $model = new $this->model();
         $table = $model->getTable();
-        $sql = "SELECT * FROM $table WHERE deleted_at IS NULL  ";;
+        $sql = "SELECT * FROM $table WHERE deleted_at IS NULL  ";
         if (isset($this->request->count)) {
             $sql = "SELECT count(*) as founded FROM $table WHERE deleted_at IS NULL  ";
         }
