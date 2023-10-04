@@ -1,5 +1,5 @@
 <?php
-namespace Gemvc\ControllerTraits;
+namespace Gemvc\Trait\Controller;
 use Gemvc\Helper\TypeHelper;
 trait CreateTrait
 {

@@ -1,17 +1,18 @@
 <?php
-namespace Gemvc\ControllerTraits;
-trait ActivateTrait
+namespace Gemvc\Trait\Controller;
+
+trait DeleteTrait
 {
-    public function activate(): void
+    public function delete(): void
     {
         if ($this->PayloadHasId()) {
             $model = new $this->model($this->payload->id);
             if (!isset($model->id) || $model->id < 1) {
                 $this->response->notFound('no object found with given id: ' . $this->payload->id);
             } else {
-                if ($model->activate()) {
+                if ($model->safeDelete()) {
                     $model = new $this->model($this->payload->id);
-                    $this->response->success($model, 1, 'activated');
+                    $this->response->deleted($model, 1, 'deleted');
                 } else {
                     $this->response->internalError($model->getError());
                 }

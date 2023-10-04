@@ -1,8 +1,8 @@
 <?php
 
-namespace Gemvc\Http\Response;
+namespace Gemvc\Http;
 
-class HttpResponse
+class Response
 {
     public string|false $json_response;
     public int $http_response_code;

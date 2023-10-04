@@ -3,13 +3,13 @@
 namespace Gemvc\Core;
 
 use Gemvc\Helper\TypeHelper;
-use Gemvc\Request\RequestDispatcher;
-use Gemvc\Response\HttpResponse;
+use Gemvc\Http\Request;
+use Gemvc\Http\Response;
 
 class Controller
 {
-    public HttpResponse      $response;
-    public RequestDispatcher $request;
+    public Response          $response;
+    public Request           $request;
     public ?object           $payload;
     public ?int              $user_id;
     public float             $cost;
@@ -20,7 +20,7 @@ class Controller
 
     public function __construct()
     {
-        $this->response = new HttpResponse();
+        $this->response = new Response();
         $this->requestTime = TypeHelper::timeStamp();
         $this->start_execution_time = microtime(true);
     }

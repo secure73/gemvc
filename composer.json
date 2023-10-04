@@ -13,11 +13,14 @@
             "Gemvc\\": "src/",
             "Gemvc\\Core\\": "src/core/",
             "Gemvc\\Database\\": "src/database/",
-            "Gemvc\\Helper\\": "src/helper/",
-            "Gemvc\\ControllerTraits\\": "src/controllerTraits/",
             "Gemvc\\Email\\": "src/email/",
+            "Gemvc\\Helper\\": "src/helper/",
+            "Gemvc\\Trait\\": "src/trait/",
             "Gemvc\\Http\\Request\\": "src/http/request/",
-            "Gemvc\\http\\Response\\": "src/http/response/"
+            "Gemvc\\http\\Response\\": "src/http/response/",
+            "Gemvc\\Trait\\Controller\\": "src/trait/controller/",
+            "Gemvc\\Trait\\Model\\": "src/trait/model/",
+            "Gemvc\\Trait\\Table\\": "src/trait/table/"
         }
     },
     "authors": [

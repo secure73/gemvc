@@ -1,14 +1,14 @@
 <?php
-namespace Gemvc\ControllerTraits;
-trait ActivateTrait
+namespace Gemvc\Trait\Controller;
+trait ActivseTrait
 {
-    public function trash()
+    public function actives(): void
     {
         $model = new $this->model();
         $table = $model->getTable();
-        $sql = "SELECT * FROM $table WHERE deleted_at IS NOT NULL  ";
+        $sql = "SELECT * FROM $table WHERE deleted_at IS NULL AND isActive = 1 ";
         if (isset($this->request->count)) {
-            $sql = "SELECT count(*) as founded FROM $table WHERE deleted_at IS NOT NULL  ";
+            $sql = "SELECT count(*) as founded FROM $table WHERE deleted_at IS NULL AND isActive = 1 ";
         }
 
         $arrayBind = [];

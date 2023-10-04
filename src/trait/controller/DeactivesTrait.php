@@ -1,5 +1,5 @@
 <?php
-namespace Gemvc\ControllerTraits;
+namespace Gemvc\Trait\Controller;
 trait DeactivsTrait
 {
     public function deactives(): void

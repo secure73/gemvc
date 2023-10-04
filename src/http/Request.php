@@ -1,9 +1,9 @@
 <?php
 
-namespace Gemvc\Http\Request;
+namespace Gemvc\Http;
 use Gemvc\Helper\JsonHelper;
 
-class RequestDispatcher
+class Request
 {
     private   object       $incommingRequestObject;    
     public    string       $requestedUrl;
