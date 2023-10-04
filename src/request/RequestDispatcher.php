@@ -1,6 +1,6 @@
 <?php
 
-namespace Gemvc\Core;
+namespace Gemvc\Request;
 use Gemvc\Helper\JsonHelper;
 
 class RequestDispatcher

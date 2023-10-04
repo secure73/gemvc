@@ -15,13 +15,13 @@
             "Gemvc\\Database\\": "src/database/",
             "Gemvc\\Helper\\": "src/helper/",
             "Gemvc\\ControllerTraits\\": "src/controllerTraits/",
-            "Gemvc\\Email\\": "src/email/"
-
+            "Gemvc\\Email\\": "src/email/",
+            "Gemvc\\Request\\": "src/request/"
         }
     },
     "authors": [
         {
-            "name": "Ali",
+            "name": "Ali Khorsandfard",
             "email": "secure73@gmail.com"
         }
     ],

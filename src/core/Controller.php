@@ -3,6 +3,7 @@
 namespace Gemvc\Core;
 
 use Gemvc\Helper\TypeHelper;
+use Gemvc\Request;
 
 class Controller
 {

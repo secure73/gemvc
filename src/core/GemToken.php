@@ -95,7 +95,7 @@ class GemToken
     public function renew(string $token, string $secret, int $extensionTime_sec): false|string
     {
         if ($this->validate($token, $secret, $this->ip, $this->userMachine)) {
-            return $this->create($secret, $this->userId, $extensionTime_sec, $this->payload, $this->ip, $this->userMachine);
+            return $this->create($this->type ,$secret, $this->userId, $extensionTime_sec, $this->payload, $this->iss ,$this->ip, $this->userMachine);
         }
         return false;
     }

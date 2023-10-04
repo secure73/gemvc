@@ -10,7 +10,7 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Core;
+namespace Gemvc\Request;
 
 use Gemvc\Helper\TypeHelper;
 
@@ -19,13 +19,13 @@ class WhereQuery
     /**
      * @var array<string,mixed>
      */
-    public array $bind;
-    public string $whereQuery;
-    public string $orderBy;
-    public string $limit;
-    public ?bool $isCount;
-    private object $_model;
-    private ?bool $_isAll;
+    public  array   $bind;
+    public  string  $whereQuery;
+    public  string  $orderBy;
+    public  string  $limit;
+    public  ?bool   $isCount;
+    private object  $_model;
+    private ?bool   $_isAll;
 
     public function __construct(object $model, ?int $count = null, ?bool $isAll = null)
     {
