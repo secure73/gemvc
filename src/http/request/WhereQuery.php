@@ -10,7 +10,7 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Request;
+namespace Gemvc\Http\Request;
 
 use Gemvc\Helper\TypeHelper;
 

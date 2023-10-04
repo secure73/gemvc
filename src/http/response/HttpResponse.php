@@ -1,6 +1,6 @@
 <?php
 
-namespace Gemvc\Core;
+namespace Gemvc\Http\Response;
 
 class HttpResponse
 {

@@ -16,7 +16,8 @@
             "Gemvc\\Helper\\": "src/helper/",
             "Gemvc\\ControllerTraits\\": "src/controllerTraits/",
             "Gemvc\\Email\\": "src/email/",
-            "Gemvc\\Request\\": "src/request/"
+            "Gemvc\\Http\\Request\\": "src/http/request/",
+            "Gemvc\\http\\Response\\": "src/http/response/"
         }
     },
     "authors": [
