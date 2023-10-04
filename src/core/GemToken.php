@@ -57,7 +57,7 @@ class GemToken
     {
         $payloadArray = [
             'tokenId' => TypeHelper::guid(),
-            'userId' => $userId, 'iss' => URL,
+            'userId' => $userId,
             'iss' => $issuer,
             'exp' => (time() + $timeToLiveSecond),
             'type' => $type,
