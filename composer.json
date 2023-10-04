@@ -3,9 +3,9 @@
     "description": "core library of gemvc",
     "type": "library",
     "require": {
-        "firebase/php-jwt": "^6.3",
-        "phpmailer/phpmailer": "^6.6",
-        "guzzlehttp/guzzle": "^7.4"
+        "firebase/php-jwt": "^6.8",
+        "phpmailer/phpmailer": "^6.8",
+        "guzzlehttp/guzzle": "^7.6"
     },
     "license": "MIT",
     "autoload": {
@@ -14,7 +14,9 @@
             "Gemvc\\Core\\": "src/core/",
             "Gemvc\\Database\\": "src/database/",
             "Gemvc\\Helper\\": "src/helper/",
-            "Gemvc\\ControllerTraits\\": "src/controllerTraits/"
+            "Gemvc\\ControllerTraits\\": "src/controllerTraits/",
+            "Gemvc\\Email\\": "src/email/"
+
         }
     },
     "authors": [
@@ -23,5 +25,5 @@
             "email": "secure73@gmail.com"
         }
     ],
-    "minimum-stability": "dev"
+    "minimum-stability": "stable"
 }
