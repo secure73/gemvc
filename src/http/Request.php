@@ -13,9 +13,9 @@ class Request
     public    ?string      $authorizationHeader;
     public    string       $time;
     public    ?string      $remoteAddress;
-    public    array        $files;
-    public    array        $post;
-    public    array        $get;
+    public    mixed        $files;
+    public    mixed        $post;
+    public    mixed        $get;
     public    string       $userMachine;
     public    ?string      $requestMethod;
 
@@ -24,9 +24,6 @@ class Request
     {
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->files = array();
-        $this->post = array();
-        $this->get = array();
         $this->error = null;
     }
 
