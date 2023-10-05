@@ -2,7 +2,7 @@
 
 namespace Gemvc\Http;
 
-class Response
+class JsonResponse
 {
     public string|false $json_response;
     public int $http_response_code;
