@@ -18,12 +18,12 @@ class Request
     public    ?string      $requestMethod;
     private   string       $id;
     private   string       $time;
-    private   float        $start_execution_time;
+    private   float        $start_exec;
 
 
     public function __construct()
     {
-        $this->start_execution_time = microtime(true);
+        $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
         $this->error = null;
@@ -40,6 +40,6 @@ class Request
 
     public function getStartExecutionTime():float
     {
-        return  $this->start_execution_time;
+        return  $this->start_exec;
     }
 }
