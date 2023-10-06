@@ -1,2 +1,2 @@
 # gemvc
-gemvc is library over swoole that is suitable to create microservice API 
+gemvc is super light library that is suitable to create microservice API 
