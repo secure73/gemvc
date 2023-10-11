@@ -22,7 +22,7 @@ class Insert implements QueryBuilderInterface
      */
     public $result;
 
-    private string $table;
+    private string $_table;
 
     private string $_query;
 
@@ -48,13 +48,13 @@ class Insert implements QueryBuilderInterface
 
     public function __construct(string $table)
     {
-        $this->table = $table;
+        $this->_table = $table;
         $this->_query = '';
     }
 
     public function __toString(): string
     {
-        $this->_query = 'INSERT INTO '.$this->table
+        $this->_query = 'INSERT INTO '.$this->_table
         .' ('.implode(', ', $this->columns).') VALUES ('.implode(', ', $this->binds).')';
 
         return $this->_query;

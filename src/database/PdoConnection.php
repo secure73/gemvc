@@ -46,7 +46,7 @@ class PdoConnection
     public function __construct(string $connection_string,string $db_username, string $db_password , array $options = null)
     {
         $this->startExecutionTime = microtime(true);
-        $this->error = null;
+        $this->error = 'before initialize connect function';
         $this->affectedRows = null;
         $this->lastInsertedId = false;
         $this->isConnected = false;
@@ -59,6 +59,16 @@ class PdoConnection
     public function isConnected(): bool
     {
         return $this->isConnected;
+    }
+
+        /**
+     * @return null|string
+     * if SQL Query executed Successfully , this method return null
+     * otherwise return relevant Error string Message
+     */
+    public function getError(): null|string
+    {
+        return $this->error;
     }
 
     public function connect(string $connection_string , string $db_username , string $db_password , array $options = null): bool
@@ -76,21 +86,18 @@ class PdoConnection
                 $options__db = $options;
             }
             $this->db = new \PDO($connection_string, $db_username, $db_password, $options__db);
-            $this->isConnected = true;
+            if($this->db)
+            {
+                $this->isConnected = true;
+                $this->error  = null;
+            }
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
             $this->endExecutionTime = microtime(true);
+            return false;
         }
 
         return $this->isConnected;
-    }
-
-    /**
-     * If you want To Sect some Custome Error rather than Default SQL Exceptopn for special cases.
-     */
-    public function setError(string $message): void
-    {
-        $this->error = $message;
     }
 
     /**
@@ -197,15 +204,6 @@ class PdoConnection
         $this->isConnected = false;
     }
 
-    /**
-     * @return null|string
-     * if SQL Query executed Successfully , this method return null
-     * otherwise return relevant Error string Message
-     */
-    public function getError(): null|string
-    {
-        return $this->error;
-    }
 
     /**
      * @Query Execution time in microsecond

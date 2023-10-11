@@ -31,7 +31,7 @@ class Update  implements QueryBuilderInterface
      */
     public array $arrayBindValues = [];
 
-    private string $table;
+    private string $_table;
 
     private string $_query;
 
@@ -47,12 +47,12 @@ class Update  implements QueryBuilderInterface
 
     public function __construct(string $table)
     {
-        $this->table = $table;
+        $this->_table = $table;
     }
 
     public function __toString(): string
     {
-        $this->_query = 'UPDATE '.$this->table.' SET '.implode(', ', $this->columns)
+        $this->_query = 'UPDATE '.$this->_table.' SET '.implode(', ', $this->columns)
         .([] === $this->whereConditions ? '' : ' WHERE '.implode(' AND ', $this->whereConditions));
 
         return $this->_query;

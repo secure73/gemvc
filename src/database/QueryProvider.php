@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Gemvc\Database;
 
-class QueryProvider extends PdoConnection
+class QueryProvider
 {
     private PdoConnection $connection;
     /**
@@ -70,7 +70,7 @@ class QueryProvider extends PdoConnection
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
                 return (int) $this->lastInsertId();
             }
-            $this->secure();
+            $this->connection->secure();
         }
 
         return null;
@@ -92,7 +92,7 @@ class QueryProvider extends PdoConnection
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchAll();
             }
-            $this->secure();
+            $this->connection->secure();
         }
         return $result;
     }
@@ -112,7 +112,7 @@ class QueryProvider extends PdoConnection
             if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchColumn();
             }
-            $this->secure();
+            $this->connection->secure();
         }
 
         return $result;
