@@ -21,6 +21,8 @@ class QueryProvider
      */
     public function __construct(PdoConnection $connection)
     {
+        //TODO : continue code , first rename this class to crud! 
+        //TODO : make $this connection nullable, check if connection is connected then set this-connection, before each CRUD function check if this->connection
         $this->connection = $connection;
     }
 
