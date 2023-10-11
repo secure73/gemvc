@@ -2,7 +2,6 @@
 
 namespace Gemvc\Http;
 use Gemvc\Helper\TypeHelper;
-use TypeError;
 
 class Request
 {
