@@ -1,7 +1,6 @@
 <?php
 
 namespace Gemvc\Http;
-use Gemvc\Helper\JsonHelper;
 use Gemvc\Http\Request;
 
 class SwooleRequest
