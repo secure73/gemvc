@@ -14,5 +14,5 @@ namespace Gemvc\Database;
 
 interface QueryBuilderInterface
 {
-    public function run(QueryProvider $queryProvider): mixed;
+    public function run(PdoQuery $pdoQuery): mixed;
 }

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Gemvc\Database\Query;
 
+use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
@@ -80,12 +81,12 @@ class Select implements QueryBuilderInterface
 
     public function __toString(): string
     {
-        $this->query = $this->selectMaker().implode(', ', $this->from)
-            .([] === $this->leftJoin ? '' : ' LEFT JOIN '.implode(' LEFT JOIN ', $this->leftJoin))
-            .([] === $this->innerJoin ? '' : ' INNER JOIN '.implode(' INNER JOIN ', $this->innerJoin))
-            .([] === $this->whereConditions ? '' : ' WHERE '.implode(' AND ', $this->whereConditions))
-            .([] === $this->order ? '' : ' ORDER BY '.implode(', ', $this->order))
-            .$this->limitMaker();
+        $this->query = $this->selectMaker() . implode(', ', $this->from)
+            . ([] === $this->leftJoin ? '' : ' LEFT JOIN ' . implode(' LEFT JOIN ', $this->leftJoin))
+            . ([] === $this->innerJoin ? '' : ' INNER JOIN ' . implode(' INNER JOIN ', $this->innerJoin))
+            . ([] === $this->whereConditions ? '' : ' WHERE ' . implode(' AND ', $this->whereConditions))
+            . ([] === $this->order ? '' : ' ORDER BY ' . implode(', ', $this->order))
+            . $this->limitMaker();
         // echo $this->query;
         return $this->query;
     }
@@ -109,7 +110,7 @@ class Select implements QueryBuilderInterface
     public function orderBy(string $columnName, ?bool $descending = null): self
     {
         if ($descending) {
-            $this->order[] = $columnName.' '.\SqlEnumCondition::Descending->value.' ';
+            $this->order[] = $columnName . ' ' . \SqlEnumCondition::Descending->value . ' ';
         } else {
             $this->order[] = $columnName;
         }
@@ -140,21 +141,21 @@ class Select implements QueryBuilderInterface
     /**
      * @param QueryProvider $queryProvider
      */
-    public function run(QueryProvider $queryProvider): self
+    public function run(PdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function count(QueryProvider $queryProvider): self
+    public function count(PdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->countQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function json(QueryProvider $queryProvider): self
+    public function json(PdoQuery $queryProvider): self
     {
         $array = [];
         $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
@@ -178,7 +179,7 @@ class Select implements QueryBuilderInterface
      * @param object $object
      * retrun array of Objects
      */
-    public function object(QueryProvider $queryProvider , object $object): self
+    public function object(PdoQuery $queryProvider, object $object): self
     {
         $class = $object::class;
         $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
@@ -202,7 +203,7 @@ class Select implements QueryBuilderInterface
     private function selectMaker(): string
     {
         if (null !== $this->fields && \count($this->fields)) {
-            return 'SELECT '.implode(', ', $this->fields).' FROM ';
+            return 'SELECT ' . implode(', ', $this->fields) . ' FROM ';
         }
 
         return 'SELECT * FROM ';

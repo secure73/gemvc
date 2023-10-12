@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Gemvc\Database\Query;
 
+use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
@@ -54,8 +55,8 @@ class Insert implements QueryBuilderInterface
 
     public function __toString(): string
     {
-        $this->_query = 'INSERT INTO '.$this->_table
-        .' ('.implode(', ', $this->columns).') VALUES ('.implode(', ', $this->binds).')';
+        $this->_query = 'INSERT INTO ' . $this->_table
+            . ' (' . implode(', ', $this->columns) . ') VALUES (' . implode(', ', $this->binds) . ')';
 
         return $this->_query;
     }
@@ -84,7 +85,7 @@ class Insert implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(QueryProvider $queryProvider): self
+    public function run(PdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->insertQuery($this->_query, $this->keyValue);
 

@@ -48,10 +48,10 @@ trait LimitTrait
     {
         $limitQuery = '';
         if (!$this->offset && $this->limit) {
-            $limitQuery = ' LIMIT '.$this->limit;
+            $limitQuery = ' LIMIT ' . $this->limit;
         }
         if ($this->offset && $this->limit) {
-            $limitQuery = ' LIMIT '.$this->offset.','.$this->limit;
+            $limitQuery = ' LIMIT ' . $this->offset . ',' . $this->limit;
         }
 
         return $limitQuery;

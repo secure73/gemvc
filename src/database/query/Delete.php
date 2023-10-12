@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Gemvc\Database\Query;
 
+use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
@@ -44,12 +45,12 @@ class Delete  implements QueryBuilderInterface
 
     public function __toString(): string
     {
-        $this->_query = 'DELETE FROM '.$this->table.' WHERE '.implode(' AND ', $this->whereConditions);
+        $this->_query = 'DELETE FROM ' . $this->table . ' WHERE ' . implode(' AND ', $this->whereConditions);
 
         return $this->_query;
     }
 
-    public function run(QueryProvider $queryProvider): self
+    public function run(PdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->deleteQuery($this->_query, $this->arrayBindValues);
 

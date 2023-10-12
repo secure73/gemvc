@@ -12,28 +12,30 @@ declare(strict_types=1);
 
 namespace Gemvc\Database;
 
-class QueryProvider
+class PdoQuery
 {
-    private PdoConnection $connection;
+    private ?PdoConnection $connection;
+    private ?string $error;
     /**
      * @if null , use default connection in config.php
      * pass $connection name to parent and create PDO Connection to Execute Query
      */
     public function __construct(PdoConnection $connection)
     {
-        //TODO : continue code , first rename this class to crud! 
-        //TODO : make $this connection nullable, check if connection is connected then set this-connection, before each CRUD function check if this->connection
-        $this->connection = $connection;
+        if ($connection && $connection->isConnected()) {
+            $this->connection = $connection;
+        }
+        $this->setError();
     }
 
-    public function getConnection():PdoConnection
+    public function getConnection(): PdoConnection
     {
         return $this->connection;
     }
 
-    public function getError():string|null
+    public function getError(): string|null
     {
-        return $this->connection->getError();
+        return $this->error;
     }
 
     public function isConnected(): bool
@@ -41,7 +43,7 @@ class QueryProvider
         return $this->connection->isConnected();
     }
 
-    public function lastInsertId():string|false
+    public function lastInsertId(): string|false
     {
         return $this->connection->lastInsertId();
     }
@@ -67,8 +69,7 @@ class QueryProvider
      */
     public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|null
     {
-        if($this->isConnected())
-        {
+        if ($this->connection) {
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
                 return (int) $this->lastInsertId();
             }
@@ -89,8 +90,7 @@ class QueryProvider
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|null
     {
         $result = null;
-        if($this->isConnected())
-        {
+        if ($this->connection) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchAll();
             }
@@ -109,8 +109,7 @@ class QueryProvider
     public function countQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
     {
         $result = false;
-        if($this->isConnected())
-        {
+        if ($this->connection) {
             if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchColumn();
             }
@@ -131,8 +130,7 @@ class QueryProvider
     public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null
     {
         $result = null;
-        if($this->isConnected())
-        {
+        if ($this->connection) {
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
@@ -154,8 +152,7 @@ class QueryProvider
     public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null
     {
         $result = null;
-        if($this->isConnected())
-        {
+        if ($this->connection) {
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
@@ -179,8 +176,18 @@ class QueryProvider
             foreach ($arrayBind as $key => $value) {
                 $this->connection->bind($key, $value);
             }
-            return $this->connection->execute();
+            if (!$this->connection->execute()) {
+                $this->setError();
+                return false;
+            } else {
+                return true;
+            }
         }
         return false;
+    }
+
+    private function setError()
+    {
+        $this->error = $this->connection->getError();
     }
 }

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Gemvc\Database\Query;
 
+use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\QueryProvider;
 
@@ -52,22 +53,22 @@ class Update  implements QueryBuilderInterface
 
     public function __toString(): string
     {
-        $this->_query = 'UPDATE '.$this->_table.' SET '.implode(', ', $this->columns)
-        .([] === $this->whereConditions ? '' : ' WHERE '.implode(' AND ', $this->whereConditions));
+        $this->_query = 'UPDATE ' . $this->_table . ' SET ' . implode(', ', $this->columns)
+            . ([] === $this->whereConditions ? '' : ' WHERE ' . implode(' AND ', $this->whereConditions));
 
         return $this->_query;
     }
 
     public function set(string $column, mixed $value): self
     {
-        $colToUpdate = ':'.$column.'ToUpdate';
+        $colToUpdate = ':' . $column . 'ToUpdate';
         $this->columns[] = "{$column} = {$colToUpdate}";
         $this->arrayBindValues[$colToUpdate] = $value;
 
         return $this;
     }
 
-    public function run(QueryProvider $queryProvider): self
+    public function run(PdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->updateQuery($this->_query, $this->arrayBindValues);
         return $this;
