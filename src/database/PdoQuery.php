@@ -75,7 +75,6 @@ class PdoQuery
             }
             $this->connection->secure();
         }
-
         return null;
     }
 

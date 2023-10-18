@@ -39,9 +39,9 @@ class PdoConnection
      * create new PDO Database connection Instance and create connection
      * to assert connection success ,$instance->getError();
      * PDO Options Example:  $options__db = [
-                \PDO::ATTR_PERSISTENT => true,
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            ];
+     *          \PDO::ATTR_PERSISTENT => true,
+     *           \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+     *       ];
      */
     public function __construct(string $connection_string, string $db_username, string $db_password, array $options = null)
     {
@@ -54,6 +54,11 @@ class PdoConnection
         $this->stsment = null;
         $this->_query = null;
         $this->connect($connection_string, $db_username, $db_password, $options);
+    }
+
+    public function __destruct()
+    {
+        $this->secure();
     }
 
     public function isConnected(): bool
