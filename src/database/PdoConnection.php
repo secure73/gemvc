@@ -161,9 +161,11 @@ class PdoConnection
                 $this->affectedRows = $this->stsment->rowCount();
                 $this->lastInsertedId = $this->db->lastInsertId();
                 $this->endExecutionTime = microtime(true);
+                $this->secure();
             } catch (\PDOException $e) {
                 $this->endExecutionTime = microtime(true);
                 $this->error = $e->getMessage();
+                $this->secure();
             }
             if (!isset($this->error)) {
                 $this->endExecutionTime = microtime(true);
@@ -172,8 +174,9 @@ class PdoConnection
         } else {
             $this->error = 'PDO statement is NULL';
             $this->endExecutionTime = microtime(true);
+            $this->secure();
         }
-
+        $this->secure();
         return false;
     }
 
