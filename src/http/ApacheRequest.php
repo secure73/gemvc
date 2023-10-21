@@ -1,16 +1,15 @@
 <?php
 
 namespace Gemvc\Http;
-use Gemvc\Helper\JsonHelper;
 use Gemvc\Http\Request;
 
 class ApacheRequest
 {
-    public  Request $request; 
+    public  GemRequest $request; 
 
     public function __construct()
     {
-        $this->request = new Request();
+        $this->request = new GemRequest();
         $this->request->requestMethod = $_SERVER['REQUEST_METHOD'];
         $this->request->userMachine = $_SERVER['HTTP_USER_AGENT'];
         $this->request->remoteAddress = $_SERVER['REMOTE_ADDR'];
@@ -33,7 +32,6 @@ class ApacheRequest
     private function setAuthHeader()
     {
         $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
-
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
         if (empty($authorizationHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
             $this->request->authorizationHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];

@@ -5,7 +5,7 @@ use Gemvc\Http\Request;
 
 class SwooleRequest
 {
-    public   Request $request; 
+    public   GemRequest $request; 
     private  object  $incommingRequestObject;
        
     /**
@@ -13,7 +13,7 @@ class SwooleRequest
      */
     public function __construct(object $swooleRquest)
     {
-        $this->request = new Request();
+        $this->request = new GemRequest();
         $this->incommingRequestObject = $swooleRquest;
         if(isset($swooleRquest->server['request_uri']))
         {

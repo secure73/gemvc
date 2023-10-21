@@ -3,7 +3,7 @@
 namespace Gemvc\Http;
 use Gemvc\Helper\TypeHelper;
 
-class Request
+class GemRequest
 {
     public    string       $requestedUrl;
     public    ?string      $queryString;
@@ -25,7 +25,6 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->error = null;
     }
 
     public function getId():string
