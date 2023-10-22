@@ -1,7 +1,10 @@
 <?php
 
 namespace Gemvc\Http;
-use Gemvc\Http\Request;
+
+use Gemvc\Helper\StringHelper;
+use Gemvc\Helper\TypeHelper;
+use Gemvc\Http\GemRequest;
 
 class ApacheRequest
 {
@@ -31,7 +34,7 @@ class ApacheRequest
 
     private function setAuthHeader()
     {
-        $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
+        $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? StringHelper::sanitizedString($_SERVER['HTTP_AUTHORIZATION']) : '';
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
         if (empty($authorizationHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
             $this->request->authorizationHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];

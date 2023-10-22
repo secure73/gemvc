@@ -31,4 +31,18 @@ class StringHelper
 
         return $result;
     }
+
+    public static function sanitizedString(string $incomming_string)
+    {
+        $pattern = '/^[a-zA-Z0-9_\-\/\(\);,. ]{1,255}$/';
+
+        // Check if the User-Agent matches the pattern.
+        if (preg_match($pattern, $incomming_string)) {
+            // The User-Agent is safe.
+            return $incomming_string;
+        } else {
+            // The User-Agent is not in the expected format; handle it accordingly.
+            return "Invalid User-Agent";
+        }
+    }
 }

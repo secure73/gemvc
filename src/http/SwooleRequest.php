@@ -1,6 +1,8 @@
 <?php
 
 namespace Gemvc\Http;
+
+use Gemvc\Helper\StringHelper;
 use Gemvc\Http\GemRequest;
 
 class SwooleRequest
@@ -21,7 +23,7 @@ class SwooleRequest
             $this->request->requestedUrl = $swooleRquest->server['request_uri'];
             isset($swooleRquest->server['query_string']) ? $this->request->queryString = $swooleRquest->server['query_string'] : $this->request->queryString = null;
             $this->request->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
-            $this->request->userMachine = $swooleRquest->header['user-agent'];
+            $this->request->userMachine = StringHelper::sanitizedString($swooleRquest->header['user-agent']);
             $this->setData();
         }
         else
