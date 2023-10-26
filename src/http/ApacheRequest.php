@@ -1,14 +1,13 @@
 <?php
 
-namespace Gemvc\Http;
+namespace GemLibrary\Http;
 
-use Gemvc\Helper\StringHelper;
-use Gemvc\Helper\TypeHelper;
-use Gemvc\Http\GemRequest;
+use GemLibrary\Helper\StringHelper;
+use GemLibrary\Http\GemRequest as HttpGemRequest;
 
 class ApacheRequest
 {
-    public  GemRequest $request; 
+    public  HttpGemRequest $request; 
 
     public function __construct()
     {

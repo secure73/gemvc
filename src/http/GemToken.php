@@ -10,11 +10,11 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Http;
+namespace GemLibrary\Http;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Gemvc\Helper\TypeHelper;
+use GemLibrary\Helper\TypeHelper;
 
 class GemToken
 {

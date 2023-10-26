@@ -10,11 +10,11 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Database\Query;
+namespace GemLibrary\DBQuery;
 
-use Gemvc\Database\PdoQuery;
-use Gemvc\Database\QueryBuilderInterface;
-use Gemvc\Database\QueryProvider;
+use GemLibrary\Database\PdoQuery as DatabasePdoQuery;
+use GemLibrary\Database\QueryBuilderInterface;
+
 
 class Delete  implements QueryBuilderInterface
 {
@@ -50,7 +50,7 @@ class Delete  implements QueryBuilderInterface
         return $this->_query;
     }
 
-    public function run(PdoQuery $queryProvider): self
+    public function run(DatabasePdoQuery $queryProvider): self
     {
         $this->result = $queryProvider->deleteQuery($this->_query, $this->arrayBindValues);
 

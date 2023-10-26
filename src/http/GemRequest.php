@@ -1,7 +1,7 @@
 <?php
 
-namespace Gemvc\Http;
-use Gemvc\Helper\TypeHelper;
+namespace GemLibrary\Http;
+use GemLibrary\Helper\TypeHelper;
 
 class GemRequest
 {

@@ -1,5 +1,5 @@
 <?php
-namespace Gemvc\Helper;
+namespace GemLibrary\Helper;
 class WebHelper{
 
     /**

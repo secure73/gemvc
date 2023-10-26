@@ -1,6 +1,6 @@
 <?php
 
-namespace Gemvc\Http;
+namespace GemLibrary\Http;
 
 class JsonResponse
 {

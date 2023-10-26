@@ -1,6 +1,6 @@
 <?php
 
-namespace Gemvc\Helper;
+namespace GemLibrary\Helper;
 
 require 'vendor/autoload.php';
 

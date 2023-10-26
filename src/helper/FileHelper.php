@@ -1,6 +1,6 @@
 <?php
 
-namespace Gemvc\Helper;
+namespace GemLibrary\Helper;
 
 class FileHelper
 {
@@ -8,12 +8,11 @@ class FileHelper
     public string $outputFile;
     public ?string $error = null;
     public ?string $secret;
-    public function __construct(string $sourceFile, string $outputFile = null, bool $dontUseDefaultFileRoot = null)
+    public function __construct(string $sourceFile, string $outputFile = null)
     {
         $this->error = null;
-        $this->sourceFile = $dontUseDefaultFileRoot ? $sourceFile :  FILE_ROOT . $sourceFile;
+        $this->sourceFile =  $sourceFile;
         $outputFile = $outputFile ? $outputFile : $sourceFile;
-        $this->outputFile = $dontUseDefaultFileRoot ?  $outputFile : FILE_ROOT . $outputFile;
         if ($this->isDestinationDirectoryExists()) {
             if (!file_exists($this->sourceFile)) { {
                     $this->error = "Source-file not found $this->sourceFile";

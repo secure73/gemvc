@@ -10,7 +10,7 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Email;
+namespace GemLibrary\Email;
 
 use Gemvc\Helper\WebHelper;
 use PHPMailer\PHPMailer\PHPMailer;

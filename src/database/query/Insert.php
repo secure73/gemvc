@@ -10,11 +10,11 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Database\Query;
+ namespace GemLibrary\DBQuery;
 
-use Gemvc\Database\PdoQuery;
-use Gemvc\Database\QueryBuilderInterface;
-use Gemvc\Database\QueryProvider;
+use GemLibrary\Database\PdoQuery;
+use GemLibrary\Database\QueryBuilderInterface;
+use GemLibrary\Database\QueryProvider;
 
 class Insert implements QueryBuilderInterface
 {

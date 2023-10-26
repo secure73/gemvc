@@ -10,12 +10,12 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace Gemvc\Database;
+namespace GemLibrary\Database;
 
-use Gemvc\Database\Query\Delete;
-use Gemvc\Database\Query\Insert;
-use Gemvc\Database\Query\Select;
-use Gemvc\Database\Query\Update;
+use GemLibrary\DBQuery\Delete;
+use GemLibrary\DBQuery\Insert;
+use GemLibrary\DBQuery\Select;
+use GemLibrary\DBQuery\Update;
 
 class QueryBuilder
 {

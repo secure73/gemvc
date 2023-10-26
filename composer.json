@@ -10,12 +10,12 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Gemvc\\": "src/",
-            "Gemvc\\Database\\": "src/database/",
-            "Gemvc\\Email\\": "src/email/",
-            "Gemvc\\Helper\\": "src/helper/",
-            "Gemvc\\Http\\Request\\": "src/http/request/",
-            "Gemvc\\http\\Response\\": "src/http/response/"
+            "GemLibrary\\": "src/",
+            "GemLibrary\\Database\\": "src/database/",
+            "GemLibrary\\DBQuery\\": "src/database/query/",
+            "GemLibrary\\Email\\": "src/email/",
+            "GemLibrary\\Helper\\": "src/helper/",
+            "GemLibrary\\Http\\": "src/http/request/"
         }
     },
     "authors": [
