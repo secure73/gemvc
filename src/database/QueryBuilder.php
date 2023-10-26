@@ -12,10 +12,10 @@ declare(strict_types=1);
 
 namespace GemLibrary\Database;
 
-use GemLibrary\DBQuery\Delete;
-use GemLibrary\DBQuery\Insert;
-use GemLibrary\DBQuery\Select;
-use GemLibrary\DBQuery\Update;
+use GemLibrary\Database\Query\Delete;
+use GemLibrary\Database\Query\Insert;
+use GemLibrary\Database\Query\Select;
+use GemLibrary\Database\Query\Update;
 
 class QueryBuilder
 {

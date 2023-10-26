@@ -12,10 +12,10 @@
         "psr-4": {
             "GemLibrary\\": "src/",
             "GemLibrary\\Database\\": "src/database/",
-            "GemLibrary\\DBQuery\\": "src/database/query/",
+            "GemLibrary\\Database\\Query\\": "src/database/query/",
             "GemLibrary\\Email\\": "src/email/",
             "GemLibrary\\Helper\\": "src/helper/",
-            "GemLibrary\\Http\\": "src/http/request/"
+            "GemLibrary\\Http\\": "src/http/"
         }
     },
     "authors": [
