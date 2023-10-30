@@ -1,7 +1,7 @@
 <?php
 namespace GemLibrary\Helper;
 
-class CryptoHelper {
+class CryptHelper {
 
     public static function hashPassword(string $password):string
     {

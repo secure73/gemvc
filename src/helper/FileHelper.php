@@ -90,7 +90,7 @@ class FileHelper
         if (!$fileContents) {
             return false;
         }
-        $fileContents = CryptoHelper::encryptString($fileContents, $this->secret);
+        $fileContents = CryptHelper::encryptString($fileContents, $this->secret);
         if (!$fileContents) {
             $this->error = "Cannot encrypt file contents" . $this->sourceFile;
             return false;
@@ -119,7 +119,7 @@ class FileHelper
         if (!$fileContents) {
             return false;
         }
-        $fileContents = CryptoHelper::decryptString($fileContents, $this->secret);
+        $fileContents = CryptHelper::decryptString($fileContents, $this->secret);
         if (!$fileContents) {
             $this->error = "Cannot decrypt file - Secret is wrong" . $this->sourceFile;
             return false;

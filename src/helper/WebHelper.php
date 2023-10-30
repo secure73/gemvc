@@ -1,6 +1,6 @@
 <?php
 namespace GemLibrary\Helper;
-class WebHelper{
+class WebHelper {
 
     /**
      * @param string $url
