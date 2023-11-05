@@ -17,25 +17,19 @@ class ApacheRequest
         $this->request->remoteAddress = $_SERVER['REMOTE_ADDR'];
         $this->request->requestedUrl = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
         $this->request->queryString = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
+        $this->request->post = $_POST;
+        $this->request->get = $_GET;
         if (isset($_FILES['file'])) {
            $this->request->files = $_FILES['file'];
-        }
-        if(isset($_POST))
-        {
-            $this->request->post = $_POST;
-        }
-        if(isset($_GET))
-        {
-            $this->request->get = $_GET;
         }
         $this->setAuthHeader();
     }
 
-    private function setAuthHeader()
+    private function setAuthHeader():void
     {
-        $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? StringHelper::sanitizedString($_SERVER['HTTP_AUTHORIZATION']) : '';
+        $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? StringHelper::sanitizedString($_SERVER['HTTP_AUTHORIZATION']) : null;
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
-        if (empty($authorizationHeader) && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        if (!$this->request->authorizationHeader && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
             $this->request->authorizationHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
     }

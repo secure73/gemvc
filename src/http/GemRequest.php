@@ -1,6 +1,7 @@
 <?php
 
 namespace GemLibrary\Http;
+
 use GemLibrary\Helper\TypeHelper;
 
 class GemRequest
@@ -10,8 +11,14 @@ class GemRequest
     public    ?string      $error;
     public    ?string      $authorizationHeader;
     public    ?string      $remoteAddress;
-    public    mixed        $files;
-    public    mixed        $post;
+    /**
+     * @var array<mixed>
+     */
+    public    array        $files;
+    /**
+     * @var array<mixed>
+     */
+    public    array        $post;
     public    mixed        $get;
     public    string       $userMachine;
     public    ?string      $requestMethod;
@@ -27,16 +34,16 @@ class GemRequest
         $this->time = TypeHelper::timeStamp();
     }
 
-    public function getId():string
+    public function getId(): string
     {
         return $this->id;
     }
-    public function getTime():string
+    public function getTime(): string
     {
         return $this->time;
     }
 
-    public function getStartExecutionTime():float
+    public function getStartExecutionTime(): float
     {
         return  $this->start_exec;
     }
