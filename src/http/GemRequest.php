@@ -47,4 +47,18 @@ class GemRequest
     {
         return  $this->start_exec;
     }
+
+   /**
+    * @param array<string> $requieredPost
+    */
+    public function hasRequiredPost(array $requieredPost): bool
+    {
+        foreach ($requieredPost as $item) {
+            if (!isset($this->post[$item])) {
+                $this->error = "Missing required Post: $item";
+                return false;
+            }
+        }
+        return true;
+    }
 }

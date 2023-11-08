@@ -98,6 +98,10 @@ class JsonResponse
     public function unsupportedMediaType(string $service_message = null):bool{
         return $this->create(415, null, null, $service_message);
     }
+
+    public function unprocessableEntity(string $service_message = null):bool{
+        return $this->create(422, null, null, $service_message);
+    }
     
     public function badRequest(string $service_message = null):bool
     {

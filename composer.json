@@ -16,7 +16,10 @@
             "GemLibrary\\Email\\": "src/email/",
             "GemLibrary\\Helper\\": "src/helper/",
             "GemLibrary\\Http\\": "src/http/"
-        }
+        },
+        "files": [
+            "src/database/SqlEnumCondition.php"
+        ]
     },
     "authors": [
         {
