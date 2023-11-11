@@ -105,7 +105,7 @@ class JsonResponse
     
     public function badRequest(string $service_message = null):bool
     {
-        return $this->create(500, null, null, $service_message);
+        return $this->create(400, null, null, $service_message);
     }
     public function show():void
     {
