@@ -57,8 +57,7 @@ class GemRequest
      */
     public function definePostSchema(array $toValidatePost): bool
     {
-        foreach ($toValidatePost as $key => $item) {
-
+        foreach ($toValidatePost as $key => $validationString) {
             if ($key[0] !== '?') // it is required
             {
                 if (!isset($this->post[$key])) {
@@ -67,44 +66,68 @@ class GemRequest
                 }
             } //we are sure post is there
             else {
-                $key = substr($key, 1);
+                $key = substr($key, 0);
                 if (!isset($this->post[$key])) {
                     return true;
                 }
             }
 
-            if ($item === 'email' && !filter_var($this->post[$key], FILTER_VALIDATE_EMAIL)) {
-                $this->error = "$key is not a valid email";
-                return false;
-            }
-            if (strpos($item, 'min:') === 0 && strlen($this->post[$key]) < intval(substr($item, 4))) {
-                $this->error = "$key must be at least " . substr($item, 4) . " characters";
-                return false;
-            }
-            if (strpos($item, 'max:') === 0 && strlen($this->post[$key]) > intval(substr($item, 4))) {
-                $this->error = "$key must be at most " . substr($item, 4) . " characters";
-                return false;
-            }
-            if ($item === 'int' && !is_numeric($this->post[$key])) {
-                $this->error = "$key must be an integer";
-                return false;
-            }
-            if ($item === 'float' && !is_float($this->post[$key])) {
-                $this->error = "$key must be a float";
-                return false;
-            }
-            if ($item === 'bool' && !is_bool($this->post[$key])) {
-                $this->error = "$key must be a boolean";
-                return false;
-            }
-            if ($item === 'array' && !is_array($this->post[$key])) {
-                $this->error = "$key must be an array";
-                return false;
-            }
-            if ($item === 'json' && !JsonHelper::validateJson($this->post[$key])) {
-                $this->error = "$key must be an object";
-                return false;
+            switch($validationString)
+            {
+                case 'string':
+                    if(!is_string($this->post[$key]))
+                    {
+                        $this->error = "$key must be a string";
+                        return false;
+                    }
+                    break;
+                case 'int':
+                    if(!is_numeric($this->post[$key]))
+                    {
+                        $this->error = "$key must be an integer";
+                        return false;
+                    }
+                    break;
+                case 'float':
+                    if(!is_float($this->post[$key]))
+                    {
+                        $this->error = "$key must be a float";
+                        return false;
+                    }
+                    break;
+                case 'bool':
+                    if(!is_bool($this->post[$key]))
+                    {
+                        $this->error = "$key must be a boolean";
+                        return false;
+                    }
+                    break;
+                case 'array':
+                    if(!is_array($this->post[$key]))
+                    {
+                        $this->error = "$key must be an array";
+                        return false;
+                    }
+                    break;
+                case 'json':
+                    if(!JsonHelper::validateJson($this->post[$key]))
+                    {
+                        $this->error = "$key must be an object";
+                        return false;
+                    }
+                    break;
+                case 'email':
+                    if(!filter_var($this->post[$key], FILTER_VALIDATE_EMAIL))
+                    {
+                        $this->error = "$key is not a valid email";
+                        return false;
+                    }
+                    break;
+                default:
+                        $this->error = "unknown validation  $key &  $validationString";
+                        return false;
             }
         }
+        return false;
     }
 }
