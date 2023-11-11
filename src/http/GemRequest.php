@@ -58,76 +58,76 @@ class GemRequest
     public function definePostSchema(array $toValidatePost): bool
     {
         foreach ($toValidatePost as $key => $validationString) {
-            if ($key[0] !== '?') // it is required
-            {
-                if (!isset($this->post[$key])) {
+            $isRequired = $this->isRequired($key);
+            if ($isRequired) {
+                if (!isset($this->post[$key]) || empty($this->post[$key])) {
                     $this->error = "post $key is required";
                     return false;
+                } else {
+                    if (!$this->checkPostKeyValue($key, $validationString)) {
+                        return false;
+                    }
                 }
-            } //we are sure post is there
-            else {
-                $key = substr($key, 0);
-                if (!isset($this->post[$key])) {
-                    return true;
+            } else {
+                $key = substr($key, 1);
+                if (isset($this->post[$key]) && !empty($this->post[$key])) {
+                    if (!$this->checkPostKeyValue($key, $validationString)) {
+                        return false;
+                    }
                 }
-            }
-
-            switch($validationString)
-            {
-                case 'string':
-                    if(!is_string($this->post[$key]))
-                    {
-                        $this->error = "$key must be a string";
-                        return false;
-                    }
-                    break;
-                case 'int':
-                    if(!is_numeric($this->post[$key]))
-                    {
-                        $this->error = "$key must be an integer";
-                        return false;
-                    }
-                    break;
-                case 'float':
-                    if(!is_float($this->post[$key]))
-                    {
-                        $this->error = "$key must be a float";
-                        return false;
-                    }
-                    break;
-                case 'bool':
-                    if(!is_bool($this->post[$key]))
-                    {
-                        $this->error = "$key must be a boolean";
-                        return false;
-                    }
-                    break;
-                case 'array':
-                    if(!is_array($this->post[$key]))
-                    {
-                        $this->error = "$key must be an array";
-                        return false;
-                    }
-                    break;
-                case 'json':
-                    if(!JsonHelper::validateJson($this->post[$key]))
-                    {
-                        $this->error = "$key must be an object";
-                        return false;
-                    }
-                    break;
-                case 'email':
-                    if(!filter_var($this->post[$key], FILTER_VALIDATE_EMAIL))
-                    {
-                        $this->error = "$key is not a valid email";
-                        return false;
-                    }
-                    break;
-                default:
-                        $this->error = "unknown validation  $key &  $validationString";
-                        return false;
             }
         }
+        return true;
+    }
+
+    private function isRequired(string $post_key): bool
+    {
+        if ($post_key[0] !== '?') // it is required
+        {
+            return true;
+        }
         return false;
+    }
+
+    private function checkPostKeyValue(string $key, string $validationString): bool
+    {
+
+        if (!$this->checkValidationTypes($validationString)) {
+            return false;
+        }
+
+
+        $result = match ($validationString) {
+            'string' => is_string($this->post[$key]),
+            'int' => is_numeric($this->post[$key]),
+            'float' => is_float($this->post[$key]),
+            'bool' => is_bool($this->post[$key]),
+            'array' => is_array($this->post[$key]),
+            'json' => JsonHelper::validateJson($this->post[$key]),
+            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL),
+            default => false
+        };
+        if ($result == false) {
+            $this->error = "the $key must be $validationString";
+        }
+        return $result;
+    }
+
+    private function checkValidationTypes(string $validationString)
+    {
+        $validation = [
+            'string',
+            'int',
+            'float',
+            'bool',
+            'array',
+            'json',
+            'email'
+        ];
+        if (!in_array($validationString, $validation)) {
+            $this->error = "unvalid type of validation for $validationString";
+            return false;
+        }
+        return true;
     }
 }
