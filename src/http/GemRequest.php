@@ -51,73 +51,60 @@ class GemRequest
     }
 
 
-    public function validatePost(array $rules): bool
+    /**
+     * @param array<mixed> $toValidatePost
+     * @return bool
+     */
+    public function definePostSchema(array $toValidatePost): bool
     {
-        if(!$this->hasRequiredPost($rules))
-        {
-            return false;
-        }
+        foreach ($toValidatePost as $key => $item) {
 
-        foreach ($rules as $field => $rule) {
-            $rulesArr = explode('|', $rule);
-            foreach ($rulesArr as $r) {
-                if ($r === 'email' && !filter_var($this->post[$field], FILTER_VALIDATE_EMAIL)) {
-                    $this->error = "$field is not a valid email";
+            if ($key[0] !== '?') // it is required
+            {
+                if (!isset($this->post[$key])) {
+                    $this->error = "post $key is required";
                     return false;
                 }
-                if (strpos($r, 'min:') === 0 && strlen($this->post[$field]) < intval(substr($r, 4))) {
-                    $this->error = "$field must be at least " . substr($r, 4) . " characters";
-                    return false;
-                }
-
-                if (strpos($r, 'max:') === 0 && strlen($this->post[$field]) > intval(substr($r, 4))) {
-                    $this->error = "$field must be at most " . substr($r, 4) . " characters";
-                    return false;
-                }
-                if($r === 'int' && !is_numeric($this->post[$field]))
-                {
-                    $this->error = "$field must be an integer";
-                    return false;
-                }
-                if($r === 'float' && !is_float($this->post[$field]))
-                {
-                    $this->error = "$field must be a float";
-                    return false;
-                }
-                if($r === 'bool' && !is_bool($this->post[$field]))
-                {
-                    $this->error = "$field must be a boolean";
-                    return false;
-                }
-                if($r === 'array' && !is_array($this->post[$field]))
-                {
-                    $this->error = "$field must be an array";
-                    return false;
-                }
-                if($r === 'json' && !JsonHelper::validateJson($this->post[$field]))
-                {
-                    $this->error = "$field must be an object";
-                    return false;
+            } //we are sure post is there
+            else {
+                $key = substr($key, 1);
+                if (!isset($this->post[$key])) {
+                    return true;
                 }
             }
-        }
-        return true;
-    }
 
-    
-   /**
-    * @param array<string> $requieredPost
-    */
-    private function hasRequiredPost(array $requieredPost): bool
-    {
-        foreach ($requieredPost as $key => $item) {
-            
-            if (!isset($this->post[$key])) {
-                $this->error = "post $key is required";
+            if ($item === 'email' && !filter_var($this->post[$key], FILTER_VALIDATE_EMAIL)) {
+                $this->error = "$key is not a valid email";
+                return false;
+            }
+            if (strpos($item, 'min:') === 0 && strlen($this->post[$key]) < intval(substr($item, 4))) {
+                $this->error = "$key must be at least " . substr($item, 4) . " characters";
+                return false;
+            }
+            if (strpos($item, 'max:') === 0 && strlen($this->post[$key]) > intval(substr($item, 4))) {
+                $this->error = "$key must be at most " . substr($item, 4) . " characters";
+                return false;
+            }
+            if ($item === 'int' && !is_numeric($this->post[$key])) {
+                $this->error = "$key must be an integer";
+                return false;
+            }
+            if ($item === 'float' && !is_float($this->post[$key])) {
+                $this->error = "$key must be a float";
+                return false;
+            }
+            if ($item === 'bool' && !is_bool($this->post[$key])) {
+                $this->error = "$key must be a boolean";
+                return false;
+            }
+            if ($item === 'array' && !is_array($this->post[$key])) {
+                $this->error = "$key must be an array";
+                return false;
+            }
+            if ($item === 'json' && !JsonHelper::validateJson($this->post[$key])) {
+                $this->error = "$key must be an object";
                 return false;
             }
         }
-        return true;
     }
-
 }
