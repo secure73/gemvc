@@ -1,15 +1,4 @@
 <?php
-
-declare(strict_types=1);
-
-/*
- * This file is part of PHP CS Fixer.
- * (c) Fabien Potencier <fabien@symfony.com>
- *     Dariusz Rumiński <dariusz.ruminski@gmail.com>
- * This source file is subject to the MIT license that is bundled
- * with this source code in the file LICENSE.
- */
-
 namespace GemLibrary\Database;
 
 class PdoQuery
@@ -43,13 +32,13 @@ class PdoQuery
         return $this->connection->isConnected();
     }
 
-    public function lastInsertId(): string|false
+    public function lastInsertId(): int|false
     {
         return $this->connection->lastInsertId();
     }
 
     /**
-     * @return null|int Returns query affected rows
+     * @return false|int Returns query affected rows
      */
     public function affectedRows(): ?int
     {
@@ -60,14 +49,14 @@ class PdoQuery
      * @param string $insertQuery Sql insert query
      * @param array<string,mixed> $arrayBindKeyValue
      *
-     * @return null|int
+     * @return false|int
      * $query example: 'INSERT INTO users (name,email,password) VALUES (:name,:email,:password)'
      * arrayBindKeyValue Example [':name' => 'some new name' , ':email' => 'some@me.com , :password =>'si§d8x']
      * success : return last insertd id
      * you can call affectedRows() to get how many rows inserted
      * error: $this->getError();
      */
-    public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|null
+    public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|false
     {
         if ($this->connection) {
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
@@ -75,20 +64,20 @@ class PdoQuery
             }
             $this->connection->secure();
         }
-        return null;
+        return false;
     }
 
     /**
      * @param array<mixed> $arrayBindKeyValue
      *
-     * @return null|array<mixed>
+     * @return false|array<mixed>
      *
      * @$query example: 'SELECT * FROM users WHERE email = :email'
      * @arrayBindKeyValue Example [':email' => 'some@me.com']
      */
-    public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|null
+    public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
-        $result = null;
+        $result = false;
         if ($this->connection) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchAll();
@@ -100,6 +89,7 @@ class PdoQuery
 
     /**
      * @param array<mixed> $arrayBindKeyValue
+     * @return int|false
      *
      * @$query example: 'SELECT count(*) FROM users WHERE name LIKE :name'
      *
@@ -121,14 +111,14 @@ class PdoQuery
     /**
      * @param array<string,mixed> $arrayBindKeyValue
      *
-     * @return null|int
+     * @return false|int
      * $query example: 'UPDATE users SET name = :name , isActive = :isActive WHERE id = :id'
      * arrayBindKeyValue Example [':name' => 'some new name' , ':isActive' => true , :id => 32 ]
-     * in success return positive number affected rows and in error null
+     * in success return positive number affected rows and in error false
      */
-    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null
+    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|false
     {
-        $result = null;
+        $result = false;
         if ($this->connection) {
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
@@ -146,11 +136,11 @@ class PdoQuery
      *
      * @arrayBindKeyValue example [':id' => 32 ]
      *
-     * @success return positive number affected rows and in error null
+     * @success return positive number affected rows and in error false
      */
-    public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null
+    public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|false
     {
-        $result = null;
+        $result = false;
         if ($this->connection) {
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
