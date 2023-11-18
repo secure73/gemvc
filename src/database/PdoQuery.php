@@ -6,8 +6,6 @@ use GemLibrary\Database\PdoConnection;
 
 class PdoQuery extends PdoConnection
 {
-    private ?PdoConnection $connection;
-    private ?string $error;
     /**
      * @if null , use default connection in config.php
      * pass $connection name to parent and create PDO Connection to Execute Query
@@ -30,7 +28,7 @@ class PdoQuery extends PdoConnection
      */
     public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|false
     {
-        if ($this->connection) {
+        if ($this->isConnected()) {
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
                 return (int) $this->lastInsertId();
             }
@@ -49,9 +47,9 @@ class PdoQuery extends PdoConnection
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
         $result = false;
-        if ($this->connection) {
+        if ($this->isConnected()) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
-                $result = $this->connection->fetchAll();
+                $result = $this->fetchAll();
             }
         }
         return $result;
@@ -68,9 +66,9 @@ class PdoQuery extends PdoConnection
     public function countQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
     {
         $result = false;
-        if ($this->connection) {
+        if ($this->isConnected()) {
             if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
-                $result = $this->connection->fetchColumn();
+                $result = $this->fetchColumn();
             }
         }
         return $result;
@@ -87,7 +85,7 @@ class PdoQuery extends PdoConnection
     public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|false
     {
         $result = false;
-        if ($this->connection) {
+        if ($this->isConnected()) {
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
@@ -107,7 +105,7 @@ class PdoQuery extends PdoConnection
     public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|false
     {
         $result = false;
-        if ($this->connection) {
+        if ($this->isConnected()) {
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
@@ -126,11 +124,11 @@ class PdoQuery extends PdoConnection
     private function executeQuery(string $query, array $arrayBind): bool
     {
         if ($this->isConnected()) {
-            $this->connection->query($query);
+            $this->query($query);
             foreach ($arrayBind as $key => $value) {
-                $this->connection->bind($key, $value);
+                $this->bind($key, $value);
             }
-            return $this->connection->execute();
+            return $this->execute();
         }
         return false;
     }
