@@ -1,7 +1,10 @@
 <?php
+
 namespace GemLibrary\Database;
 
-class PdoQuery
+use GemLibrary\Database\PdoConnection;
+
+class PdoQuery extends PdoConnection
 {
     private ?PdoConnection $connection;
     private ?string $error;
@@ -9,40 +12,9 @@ class PdoQuery
      * @if null , use default connection in config.php
      * pass $connection name to parent and create PDO Connection to Execute Query
      */
-    public function __construct(PdoConnection $connection)
+    public function __construct()
     {
-        if ($connection && $connection->isConnected()) {
-            $this->connection = $connection;
-        }
-        $this->setError();
-    }
-
-    public function getConnection(): PdoConnection
-    {
-        return $this->connection;
-    }
-
-    public function getError(): string|null
-    {
-        return $this->error;
-    }
-
-    public function isConnected(): bool
-    {
-        return $this->connection->isConnected();
-    }
-
-    public function lastInsertId(): int|false
-    {
-        return $this->connection->lastInsertId();
-    }
-
-    /**
-     * @return false|int Returns query affected rows
-     */
-    public function affectedRows(): ?int
-    {
-        return $this->connection->affectedRows();
+        parent::__construct();
     }
 
     /**
@@ -62,7 +34,6 @@ class PdoQuery
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
                 return (int) $this->lastInsertId();
             }
-            $this->connection->secure();
         }
         return false;
     }
@@ -82,7 +53,6 @@ class PdoQuery
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchAll();
             }
-            $this->connection->secure();
         }
         return $result;
     }
@@ -102,9 +72,7 @@ class PdoQuery
             if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
                 $result = $this->connection->fetchColumn();
             }
-            $this->connection->secure();
         }
-
         return $result;
     }
 
@@ -123,9 +91,7 @@ class PdoQuery
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
-            $this->connection->secure();
         }
-
         return $result;
     }
 
@@ -145,7 +111,6 @@ class PdoQuery
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
                 $result = $this->affectedRows();
             }
-            $this->connection->secure();
         }
 
         return $result;
@@ -165,18 +130,8 @@ class PdoQuery
             foreach ($arrayBind as $key => $value) {
                 $this->connection->bind($key, $value);
             }
-            if (!$this->connection->execute()) {
-                $this->setError();
-                return false;
-            } else {
-                return true;
-            }
+            return $this->connection->execute();
         }
         return false;
-    }
-
-    private function setError()
-    {
-        $this->error = $this->connection->getError();
     }
 }

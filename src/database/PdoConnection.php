@@ -43,7 +43,7 @@ class PdoConnection
      *           \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
      *       ];
      */
-    public function __construct(string $connection_string, string $db_username, string $db_password, array $options = null)
+    public function __construct()
     {
         $this->startExecutionTime = microtime(true);
         $this->error = 'before initialize connect function';
@@ -53,7 +53,7 @@ class PdoConnection
         $this->db = null;
         $this->stsment = null;
         $this->_query = null;
-        $this->connect($connection_string, $db_username, $db_password, $options);
+        $this->connect();
     }
 
     public function __destruct()
@@ -76,20 +76,17 @@ class PdoConnection
         return $this->error;
     }
 
-    public function connect(string $connection_string, string $db_username, string $db_password, array $options = null): bool
+    public function connect(): bool
     {
         //$db_connection_info = DB_CONNECTIONS[$this->connectionName];
         //$dsn__db = $db_connection_info['type'].':host='.$db_connection_info['host'].';dbname='.$db_connection_info['database_name'].';charset=utf8mb4';
-
+        $dsn__db = 'mysql:host='.$_ENV['DB_HOST'].';port='.$_ENV['DB_PORT'].';dbname='.$_ENV['DB_NAME'].';charset='.$_ENV['DB_CHARSET'];
         try {
             $options__db = [
                 \PDO::ATTR_PERSISTENT => true,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ];
-            if (is_array($options)) {
-                $options__db = $options;
-            }
-            $this->db = new \PDO($connection_string, $db_username, $db_password, $options__db);
+            $this->db = new \PDO($dsn__db, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options__db);
             if ($this->db) {
                 $this->isConnected = true;
                 $this->error  = null;
