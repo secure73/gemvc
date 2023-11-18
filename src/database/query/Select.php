@@ -1,22 +1,10 @@
 <?php
-
-declare(strict_types=1);
-
-/*
- * This file is part of PHP CS Fixer.
- * (c) Fabien Potencier <fabien@symfony.com>
- *     Dariusz Rumiński <dariusz.ruminski@gmail.com>
- * This source file is subject to the MIT license that is bundled
- * with this source code in the file LICENSE.
- */
-
 namespace GemLibrary\Database\Query;
 
-use GemLibrary\Database\PdoQuery;
+use GemLibrary\Database\QueryBuilder;
 use GemLibrary\Database\QueryBuilderInterface;
-use GemLibrary\Database\QueryProvider;
 
-class Select implements QueryBuilderInterface
+class Select  extends QueryBuilder implements QueryBuilderInterface
 {
     use LimitTrait;
     use WhereTrait;
@@ -71,6 +59,8 @@ class Select implements QueryBuilderInterface
 
     private ?int $offset = null;
 
+    //private QueryBuilder $queryBuilder;
+
     /**
      * @param array<mixed> $select
      */
@@ -78,6 +68,13 @@ class Select implements QueryBuilderInterface
     {
         $this->fields = $select;
     }
+
+    // public function setQueryBuilder(QueryBuilder $queryBuilder): self
+    // {
+    //     $this->queryBuilder = $queryBuilder;
+
+    //     return $this;
+    // }
 
     public function __toString(): string
     {
@@ -141,24 +138,24 @@ class Select implements QueryBuilderInterface
     /**
      * @param QueryProvider $queryProvider
      */
-    public function run(PdoQuery $queryProvider): self
+    public function run(): self
     {
-        $this->result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
+        $this->result = $this->selectQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function count(PdoQuery $queryProvider): self
+    public function count(): self
     {
-        $this->result = $queryProvider->countQuery($this->query, $this->arrayBindValues);
+        $this->result = $this->countQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
-    public function json(PdoQuery $queryProvider): self
+    public function json(): self
     {
         $array = [];
-        $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
+        $result = $this->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 $encoded = json_encode($item, JSON_PRETTY_PRINT);
@@ -179,10 +176,10 @@ class Select implements QueryBuilderInterface
      * @param object $object
      * retrun array of Objects
      */
-    public function object(PdoQuery $queryProvider, object $object): self
+    public function object(object $object): self
     {
         $class = $object::class;
-        $result = $queryProvider->selectQuery($this->query, $this->arrayBindValues);
+        $result = $this->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 if (\is_array($item)) {

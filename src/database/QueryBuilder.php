@@ -1,25 +1,21 @@
 <?php
 
-declare(strict_types=1);
-
-/*
- * This file is part of PHP CS Fixer.
- * (c) Fabien Potencier <fabien@symfony.com>
- *     Dariusz Rumiński <dariusz.ruminski@gmail.com>
- * This source file is subject to the MIT license that is bundled
- * with this source code in the file LICENSE.
- */
-
 namespace GemLibrary\Database;
 
+use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\Query\Delete;
 use GemLibrary\Database\Query\Insert;
 use GemLibrary\Database\Query\Select;
 use GemLibrary\Database\Query\Update;
 
-class QueryBuilder
+class QueryBuilder extends PdoQuery
 {
-    public static function select(string ...$select): Select
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    public function select(string ...$select): Select
     {
         return new Select($select);
     }
@@ -27,7 +23,7 @@ class QueryBuilder
     /**
      * @param string $intoTable
      */
-    public static function insert(string $intoTable): Insert
+    public function insert(string $intoTable): Insert
     {
         return new Insert($intoTable);
     }
@@ -35,7 +31,7 @@ class QueryBuilder
     /**
      * @param string $table
      */
-    public static function update(string $table): Update
+    public function update(string $table): Update
     {
         return new Update($table);
     }
@@ -44,7 +40,7 @@ class QueryBuilder
      * @param string $table     
      * Delete from table
      */
-    public static function delete(string $table): Delete
+    public  function delete(string $table): Delete
     {
         return new Delete($table);
     }
