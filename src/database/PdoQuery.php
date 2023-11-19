@@ -55,6 +55,24 @@ class PdoQuery extends PdoConnection
         return $result;
     }
 
+     /**
+     * @param array<mixed> $arrayBindKeyValue
+     * @return false|array<object>
+     *
+     * @$query example: 'SELECT * FROM users WHERE email = :email'
+     * @arrayBindKeyValue Example [':email' => 'some@me.com']
+     */
+    public function selectQueryObjets(string $selectQuery, array $arrayBindKeyValue = []): array|false
+    {
+        $result = false;
+        if ($this->isConnected()) {
+            if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
+                $result = $this->fetchAllObjects();
+            }
+        }
+        return $result;
+    }
+
     /**
      * @param array<mixed> $arrayBindKeyValue
      * @return int|false
