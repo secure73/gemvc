@@ -95,6 +95,10 @@ class JsonResponse
         return $this->create(406, null, null, $service_message);
     }
 
+    public function conflict(string $service_message = null):bool{
+        return $this->create(409, null, null, $service_message);
+    }
+
     public function unsupportedMediaType(string $service_message = null):bool{
         return $this->create(415, null, null, $service_message);
     }
@@ -140,7 +144,10 @@ class JsonResponse
             case 403: return 'forbidden';
             case 404: return 'not found';
             case 406: return 'not acceptable';
+            case 409: return 'conflict';
             case 415: return 'unsupported media type';
+            case 415: return 'unsupported media type';
+            case 422: return 'unprocessable entity';
             case 500: return 'internal error';
             default:  return 'unknown error';
         }
