@@ -32,7 +32,7 @@ class StringHelper
         return $result;
     }
 
-    public static function sanitizedString(string $incomming_string)
+    public static function sanitizedString(string $incomming_string):string|null
     {
         $pattern = '/^[a-zA-Z0-9_\-\/\(\);,. ]{1,255}$/';
 
@@ -42,7 +42,7 @@ class StringHelper
             return $incomming_string;
         } else {
             // The User-Agent is not in the expected format; handle it accordingly.
-            return "Invalid User-Agent";
+            return null;
         }
     }
 }

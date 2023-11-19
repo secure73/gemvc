@@ -15,6 +15,7 @@ namespace GemLibrary\Database\Query;
 use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\QueryBuilderInterface;
 use GemLibrary\Database\QueryProvider;
+use stdClass;
 
 class Select implements QueryBuilderInterface
 {
@@ -67,9 +68,11 @@ class Select implements QueryBuilderInterface
      */
     private array $leftJoin = [];
 
-    private ?int $limit = null;
 
-    private ?int $offset = null;
+    private ?int $limit = null;/** @phpstan-ignore-line */
+
+
+    private ?int $offset = null;/** @phpstan-ignore-line */
 
     /**
      * @param array<mixed> $select
@@ -139,29 +142,25 @@ class Select implements QueryBuilderInterface
     }
 
     /**
-     * @param QueryProvider $queryProvider
+     * @param PdoQuery $pdoQuery
+     * @return array<mixed>|false
      */
-    public function run(): self
+    public function run(PdoQuery $pdoQuery): array|false
     {
-        $pdoQuery = new PdoQuery();
-        $this->result = $pdoQuery->selectQuery($this->query, $this->arrayBindValues);
-
-        return $this;
+        $query = $this->__toString();
+        return $pdoQuery->selectQuery($query, $this->arrayBindValues);
     }
 
-    public function count(): self
+    public function count(PdoQuery $pdoQuery): int|false
     {
-        $pdoQuery = new PdoQuery();
-        $this->result = $pdoQuery->countQuery($this->query, $this->arrayBindValues);
-
-        return $this;
+        return  $pdoQuery->countQuery($this->query, $this->arrayBindValues);
     }
 
-    public function json(): self
+    public function json(PdoQuery $pdoQuery): string|false
     {
-        $pdoQuery = new PdoQuery();
         $array = [];
-        $result = $pdoQuery->selectQuery($this->query, $this->arrayBindValues);
+        $query = $this->__toString();
+        $result = $pdoQuery->selectQuery($query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 $encoded = json_encode($item, JSON_PRETTY_PRINT);
@@ -170,38 +169,25 @@ class Select implements QueryBuilderInterface
                 }
             }
         }
-        $result = json_encode($array, JSON_PRETTY_PRINT);
-        if ($result) {
-            $this->json = $result;
-        }
-
-        return $this;
+        return  json_encode($array, JSON_PRETTY_PRINT);
     }
 
     /**
-     * @param object $object
-     * retrun array of Objects
+     * @param PdoQuery $classTable
+     * @return array<mixed>
      */
-    public function object(object $object): self
+    public function object(PdoQuery $classTable): array
     {
-        $pdoQuery = new PdoQuery();
-        $class = $object::class;
-        $result = $pdoQuery->selectQuery($this->query, $this->arrayBindValues);
+        $query = $this->__toString();
+        $result = $classTable->selectQuery($query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 if (\is_array($item)) {
-                    $temp_obj = new $class();
-                    foreach ($item as $key => $value) {
-                        if (property_exists($object, $key)) {
-                            $temp_obj->{$key} = $value;
-                        }
-                    }
-                    $this->object[] = $temp_obj;
+                    $this->object[] = (object) $item;
                 }
             }
         }
-
-        return $this;
+        return $this->object;
     }
 
     private function selectMaker(): string

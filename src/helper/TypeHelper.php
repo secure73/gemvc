@@ -14,22 +14,22 @@ namespace GemLibrary\Helper;
 
 class TypeHelper
 {
-    public static function justInt(mixed $var): false|int
+    public static function justInt(mixed $var): null|int
     {
         if (\is_int($var)) {
             return $var;
         }
 
-        return false;
+        return null;
     }
 
-    public static function justIntPositive(mixed $var): false|int
+    public static function justIntPositive(mixed $var): null|int
     {
         if (\is_int($var) && $var > 0) {
             return $var;
         }
 
-        return false;
+        return null;
     }
 
 

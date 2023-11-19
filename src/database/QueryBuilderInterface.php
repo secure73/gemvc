@@ -14,5 +14,5 @@ namespace GemLibrary\Database;
 
 interface QueryBuilderInterface
 {
-    public function run(): mixed;
+    public function run(PdoQuery $pdoQuery): mixed;
 }

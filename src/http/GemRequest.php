@@ -52,7 +52,7 @@ class GemRequest
 
 
     /**
-     * @param array<mixed> $toValidatePost
+     * @param array<string> $toValidatePost
      * @return bool
      */
     public function definePostSchema(array $toValidatePost): bool
@@ -103,17 +103,19 @@ class GemRequest
             'float' => is_float($this->post[$key]),
             'bool' => is_bool($this->post[$key]),
             'array' => is_array($this->post[$key]),
-            'json' => JsonHelper::validateJson($this->post[$key]),
+            /** @phpstan-ignore-next-line */
+            'json' => JsonHelper::validateJson($this->post[$key]) ? true : false,
             'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL),
             default => false
         };
         if ($result == false) {
             $this->error = "the $key must be $validationString";
         }
-        return $result;
+
+        return true;
     }
 
-    private function checkValidationTypes(string $validationString)
+    private function checkValidationTypes(string $validationString):bool
     {
         $validation = [
             'string',
