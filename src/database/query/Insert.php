@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 use GemLibrary\Database\QueryBuilderInterface;
 use GemLibrary\Database\QueryBuilder;
+use GemLibrary\Database\PdoQuery;
 
 class Insert extends QueryBuilder implements QueryBuilderInterface
 {
@@ -86,7 +87,8 @@ class Insert extends QueryBuilder implements QueryBuilderInterface
 
     public function run(): self
     {
-        $this->result = $this->insertQuery($this->_query, $this->keyValue);
+        $pdoQ= new PdoQuery();
+        $this->result = $pdoQ->insertQuery($this->_query, $this->keyValue);
 
         return $this;
     }

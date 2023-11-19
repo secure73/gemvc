@@ -1,6 +1,7 @@
 <?php
 namespace GemLibrary\Database\Query;
 
+use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\QueryBuilder;
 use GemLibrary\Database\QueryBuilderInterface;
 
@@ -135,27 +136,27 @@ class Select  extends QueryBuilder implements QueryBuilderInterface
         return $this;
     }
 
-    /**
-     * @param QueryProvider $queryProvider
-     */
     public function run(): self
     {
-        $this->result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $pdoQ = new PdoQuery();
+        $this->result = $pdoQ->selectQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
     public function count(): self
     {
-        $this->result = $this->countQuery($this->query, $this->arrayBindValues);
+        $pdoQ = new PdoQuery();
+        $this->result = $pdoQ->countQuery($this->query, $this->arrayBindValues);
 
         return $this;
     }
 
     public function json(): self
     {
+        $pdoQ= new PdoQuery();
         $array = [];
-        $result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $result = $pdoQ->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 $encoded = json_encode($item, JSON_PRETTY_PRINT);
@@ -178,8 +179,9 @@ class Select  extends QueryBuilder implements QueryBuilderInterface
      */
     public function object(object $object): self
     {
+        $pdoQ= new PdoQuery();
         $class = $object::class;
-        $result = $this->selectQuery($this->query, $this->arrayBindValues);
+        $result = $pdoQ->selectQuery($this->query, $this->arrayBindValues);
         if (\is_array($result)) {
             foreach ($result as $item) {
                 if (\is_array($item)) {

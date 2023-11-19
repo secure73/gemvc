@@ -11,6 +11,8 @@ declare(strict_types=1);
  */
 
 namespace GemLibrary\Database\Query;
+
+use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\QueryBuilder;
 
 use GemLibrary\Database\QueryBuilderInterface;
@@ -69,7 +71,8 @@ class Update  extends QueryBuilder implements QueryBuilderInterface
 
     public function run(): self
     {
-        $this->result = $this->updateQuery($this->_query, $this->arrayBindValues);
+        $pdoQ = new PdoQuery();
+        $this->result = $pdoQ->updateQuery($this->_query, $this->arrayBindValues);
         return $this;
     }
 }
