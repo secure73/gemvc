@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace GemLibrary\Database\Query;
 
-use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\QueryBuilderInterface;
-use GemLibrary\Database\QueryBuilder;
+use GemLibrary\Database\PdoQuery;
 
-class Delete  extends QueryBuilder implements QueryBuilderInterface
+
+class Delete  implements QueryBuilderInterface
 {
     use WhereTrait;
 
@@ -52,8 +52,8 @@ class Delete  extends QueryBuilder implements QueryBuilderInterface
 
     public function run(): self
     {
-        $pdoQ = new PdoQuery();
-        $this->result = $pdoQ->deleteQuery($this->_query, $this->arrayBindValues);
+        $pdoQuery = new PdoQuery();
+        $this->result = $pdoQuery->deleteQuery($this->_query, $this->arrayBindValues);
 
         return $this;
     }

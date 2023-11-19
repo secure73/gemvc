@@ -12,11 +12,10 @@ declare(strict_types=1);
 
  namespace GemLibrary\Database\Query;
 
-use GemLibrary\Database\QueryBuilderInterface;
-use GemLibrary\Database\QueryBuilder;
 use GemLibrary\Database\PdoQuery;
+use GemLibrary\Database\QueryBuilderInterface;
 
-class Insert extends QueryBuilder implements QueryBuilderInterface
+class Insert implements QueryBuilderInterface
 {
     /**
      * @var null|int
@@ -87,8 +86,8 @@ class Insert extends QueryBuilder implements QueryBuilderInterface
 
     public function run(): self
     {
-        $pdoQ= new PdoQuery();
-        $this->result = $pdoQ->insertQuery($this->_query, $this->keyValue);
+        $pdoQuery = new PdoQuery();
+        $this->result = $pdoQuery->insertQuery($this->_query, $this->keyValue);
 
         return $this;
     }

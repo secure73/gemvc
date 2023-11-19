@@ -13,11 +13,9 @@ declare(strict_types=1);
 namespace GemLibrary\Database\Query;
 
 use GemLibrary\Database\PdoQuery;
-use GemLibrary\Database\QueryBuilder;
-
 use GemLibrary\Database\QueryBuilderInterface;
 
-class Update  extends QueryBuilder implements QueryBuilderInterface
+class Update  implements QueryBuilderInterface
 {
     use WhereTrait;
 
@@ -71,8 +69,8 @@ class Update  extends QueryBuilder implements QueryBuilderInterface
 
     public function run(): self
     {
-        $pdoQ = new PdoQuery();
-        $this->result = $pdoQ->updateQuery($this->_query, $this->arrayBindValues);
+        $pdoQuery = new PdoQuery();
+        $this->result =  $pdoQuery->updateQuery($this->_query, $this->arrayBindValues);
         return $this;
     }
 }
