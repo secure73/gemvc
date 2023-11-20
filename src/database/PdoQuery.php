@@ -6,6 +6,11 @@ use GemLibrary\Database\PdoConnection;
 
 class PdoQuery extends PdoConnection
 {
+    private ?int $limit;
+    private ?int $offset;
+    private ?string $orderBy;
+    private bool $DESC = true;
+ 
     /**
      * @if null , use default connection in config.php
      * pass $connection name to parent and create PDO Connection to Execute Query
@@ -14,6 +19,27 @@ class PdoQuery extends PdoConnection
     {
         parent::__construct();
     }
+
+    /**
+     * @param string $orderBy
+     * @param bool $DESC
+     */
+    public function setOrderBy(string $orderBy, bool $DESC = true):void
+    {
+        $this->orderBy = $orderBy;
+        $this->DESC = $DESC;
+    }
+
+    /**
+     * @param int $limit
+     * @param int $offset
+     */
+    public function setLimit(int $limit, int $offset = 0):void
+    {
+        $this->limit = $limit;
+        $this->offset = $offset;
+    }
+
 
     /**
      * @param string $insertQuery Sql insert query
@@ -47,9 +73,28 @@ class PdoQuery extends PdoConnection
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
         $result = false;
+        if($this->orderBy){
+            $selectQuery .= " ORDER BY {$this->orderBy} ";
+            if($this->DESC){
+                $selectQuery .= " DESC ";
+            }
+            else{
+                $selectQuery .= " ASC ";
+            }
+        }
+        if($this->limit){
+            $selectQuery .= " LIMIT {$this->limit} ";
+            if($this->offset){
+                $selectQuery .= " OFFSET {$this->offset} ";
+            }
+        }
+
         if ($this->isConnected()) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->fetchAll();
+                if($result !== null ){
+
+                }
             }
         }
         return $result;
@@ -57,7 +102,7 @@ class PdoQuery extends PdoConnection
 
      /**
      * @param array<mixed> $arrayBindKeyValue
-     * @return false|array<object>
+     * @return false|array<mixed>
      *
      * @$query example: 'SELECT * FROM users WHERE email = :email'
      * @arrayBindKeyValue Example [':email' => 'some@me.com']
@@ -67,7 +112,7 @@ class PdoQuery extends PdoConnection
         $result = false;
         if ($this->isConnected()) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
-                $result = $this->fetchAllObjects();
+                return $this->fetchAllObjects();
             }
         }
         return $result;
@@ -100,15 +145,14 @@ class PdoQuery extends PdoConnection
      * arrayBindKeyValue Example [':name' => 'some new name' , ':isActive' => true , :id => 32 ]
      * in success return positive number affected rows and in error false
      */
-    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|false
+    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null|false
     {
-        $result = false;
         if ($this->isConnected()) {
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
-                $result = $this->affectedRows();
+                return $this->affectedRows();
             }
         }
-        return $result;
+        return false;
     }
 
     /**
@@ -120,16 +164,14 @@ class PdoQuery extends PdoConnection
      *
      * @success return positive number affected rows and in error false
      */
-    public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|false
+    public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null|false
     {
-        $result = false;
         if ($this->isConnected()) {
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
-                $result = $this->affectedRows();
+                return $this->affectedRows();
             }
         }
-
-        return $result;
+        return false;
     }
 
     /**
