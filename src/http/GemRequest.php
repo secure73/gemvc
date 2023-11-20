@@ -80,6 +80,23 @@ class GemRequest
         return true;
     }
 
+    public function setPostToObject(object $class):bool
+    {
+        try{
+            foreach ($this->post as $key => $value) {
+                if (property_exists($class, $key)) {
+                    $class->$key = $value;
+                }
+        }
+        return true;
+        }
+        catch(\Exception $e)
+        {
+            $this->error = $e->getMessage();
+        }
+        return false;
+    }
+
     private function isRequired(string $post_key): bool
     {
         if ($post_key[0] !== '?') // it is required
