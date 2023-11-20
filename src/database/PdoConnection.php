@@ -1,198 +1,233 @@
 <?php
-
 namespace GemLibrary\Database;
 
-use GemLibrary\Database\PdoConnection;
+use PDO;
 
-class PdoQuery extends PdoConnection
+/**
+ * To connect Database and provide basic PDO function.
+ *
+ * @param bool $isConnected
+ */
+class PdoConnection
 {
-    private ?int $limit;
-    private ?int $offset;
-    private ?string $orderBy;
-    private bool $DESC = true;
- 
-    /**
-     * @if null , use default connection in config.php
-     * pass $connection name to parent and create PDO Connection to Execute Query
-     */
+    private bool $isConnected;
+    private ?string $error;
+    private ?int $affectedRows;
+    private string|false $lastInsertedId;
+    private ?\PDOStatement $stsment;
+    private ?\PDO $db;
+    private float $startExecutionTime;
+    private float $endExecutionTime;
+    private ?string $_query;
+
     public function __construct()
     {
-        parent::__construct();
+        $this->startExecutionTime = microtime(true);
+        $this->error = 'before initialize connect function';
+        $this->affectedRows = null;
+        $this->lastInsertedId = false;
+        $this->isConnected = false;
+        $this->db = null;
+        $this->stsment = null;
+        $this->_query = null;
+        $this->connect();
+    }
+
+    public function __destruct()
+    {
+        $this->secure();
+    }
+
+    public function isConnected(): bool
+    {
+        return $this->isConnected;
     }
 
     /**
-     * @param string $orderBy
-     * @param bool $DESC
+     * @return null|string
+     * if SQL Query executed Successfully , this method return null
+     * otherwise return relevant Error string Message
      */
-    public function setOrderBy(string $orderBy, bool $DESC = true):void
+    public function getError(): null|string
     {
-        $this->orderBy = $orderBy;
-        $this->DESC = $DESC;
+        return $this->error;
     }
 
-    /**
-     * @param int $limit
-     * @param int $offset
-     */
-    public function setLimit(int $limit, int $offset = 0):void
+    public function connect(): bool
     {
-        $this->limit = $limit;
-        $this->offset = $offset;
-    }
-
-
-    /**
-     * @param string $insertQuery Sql insert query
-     * @param array<string,mixed> $arrayBindKeyValue
-     *
-     * @return false|int
-     * $query example: 'INSERT INTO users (name,email,password) VALUES (:name,:email,:password)'
-     * arrayBindKeyValue Example [':name' => 'some new name' , ':email' => 'some@me.com , :password =>'si§d8x']
-     * success : return last insertd id
-     * you can call affectedRows() to get how many rows inserted
-     * error: $this->getError();
-     */
-    public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|false
-    {
-        if ($this->isConnected()) {
-            if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
-                return (int) $this->lastInsertId();
-            }
+        //$db_connection_info = DB_CONNECTIONS[$this->connectionName];
+        //$dsn__db = $db_connection_info['type'].':host='.$db_connection_info['host'].';dbname='.$db_connection_info['database_name'].';charset=utf8mb4';
+        $dsn__db = 'mysql:host='.$_ENV['DB_HOST'].';port='.$_ENV['DB_PORT'].';dbname='.$_ENV['DB_NAME'].';charset='.$_ENV['DB_CHARSET'];
+        try {
+            $options__db = [
+                \PDO::ATTR_PERSISTENT => true,
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ];
+            $this->db = new \PDO($dsn__db, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options__db);
+            $this->isConnected = true;
+            $this->error  = null;
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
+            $this->endExecutionTime = microtime(true);
+            return false;
         }
+
+        return $this->isConnected;
+    }
+
+    /**
+     * @return \PDO
+     * Database Connection or null in case of error
+     * in case of null , you can see Error  in created instance : $db->error
+     */
+    public function db(): \PDO|null
+    {
+        return $this->db;
+    }
+
+    public function getQuery(): null|string
+    {
+        return $this->_query;
+    }
+
+    /**
+     * @param string $query
+     * convert sql query to PDO Statement trough PDO::prepare()
+     * if connect to databse is failed, set error
+     */
+    public function query(string $query): void
+    {
+        $this->_query = $query;
+        if ($this->db) {
+            $this->stsment = $this->db->prepare($query);
+        } else {
+            $this->error = 'Database connection is null,please check your connection to Database';
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * this method automatically detect value Type and bind Parameter to value
+     */
+    public function bind(string $param, mixed $value): void
+    {
+        $type = match (true) {
+            \is_int($value) => \PDO::PARAM_INT,
+            null === $value => \PDO::PARAM_NULL,
+            \is_bool($value) => \PDO::PARAM_BOOL,
+            \is_string($value) => \PDO::PARAM_STR,
+            default => \PDO::PARAM_STR,
+        };
+        $this->stsment?->bindValue($param, $value, $type);
+    }
+
+    /**
+     * @set error
+     * @set affectedRows
+     */
+    public function execute(): bool
+    {
+        if ($this->db && $this->stsment) {
+            try {
+                $this->stsment->execute();
+                $this->affectedRows = $this->stsment->rowCount();
+                $this->lastInsertedId = $this->db->lastInsertId();
+                $this->endExecutionTime = microtime(true);
+
+            } catch (\PDOException $e) {
+                $this->endExecutionTime = microtime(true);
+                $this->error = $e->getMessage();
+
+            }
+            if (!isset($this->error)) {
+                $this->endExecutionTime = microtime(true);
+                return true;
+            }
+        } else {
+            $this->error = 'PDO statement is NULL';
+            $this->endExecutionTime = microtime(true);
+        }
+        $this->secure();
         return false;
     }
 
     /**
-     * @param array<mixed> $arrayBindKeyValue
+     * @return null|int Query affected Rows
      *
+     * @IMPORTANT this method return null in case of Execution Error
+     * @IMPORTANT if Select Execution was successfull but no records found, return 0 ,NOT null
+     */
+    public function affectedRows(): int|null
+    {
+        return $this->affectedRows;
+    }
+
+    /**
+     * @return false|string
+     *                      in case of Execution Error , Will return false
+     */
+    public function lastInsertId(): string|false
+    {
+        return $this->lastInsertedId;
+    }
+
+    /**
+     * close Database connection and make resource free.
+     */
+    public function secure(): void
+    {
+        $this->db = null;
+        $this->isConnected = false;
+    }
+
+
+    /**
+     * @Query Execution time in microsecond
+     */
+    public function getExecutionTime(): float
+    {
+        if (isset($this->endExecutionTime)) {
+            return ($this->endExecutionTime - $this->startExecutionTime) * 1000;
+        }
+        $this->error = 'Query never Executed';
+
+        return -1;
+    }
+
+    /**
      * @return false|array<mixed>
-     *
-     * @$query example: 'SELECT * FROM users WHERE email = :email'
-     * @arrayBindKeyValue Example [':email' => 'some@me.com']
      */
-    public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
+    public function fetchAll(): array|false
     {
-        $result = false;
-        if($this->orderBy){
-            $selectQuery .= " ORDER BY {$this->orderBy} ";
-            if($this->DESC){
-                $selectQuery .= " DESC ";
-            }
-            else{
-                $selectQuery .= " ASC ";
-            }
+        if ($this->stsment) {
+            return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
         }
-        if($this->limit){
-            $selectQuery .= " LIMIT {$this->limit} ";
-            if($this->offset){
-                $selectQuery .= " OFFSET {$this->offset} ";
-            }
-        }
-
-        if ($this->isConnected()) {
-            if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
-                $result = $this->fetchAll();
-                if($result !== null ){
-
-                }
-            }
-        }
-        return $result;
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
     }
-
-     /**
-     * @param array<mixed> $arrayBindKeyValue
+    /**
      * @return false|array<mixed>
-     *
-     * @$query example: 'SELECT * FROM users WHERE email = :email'
-     * @arrayBindKeyValue Example [':email' => 'some@me.com']
      */
-    public function selectQueryObjets(string $selectQuery, array $arrayBindKeyValue = []): array|false
+    public function fetchAllObjects(): array|false
     {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
-                return $this->fetchAllObjects();
-            }
-        }
-        return $result;
+        if ($this->stsment) {
+            return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
+        } 
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
     }
 
-    /**
-     * @param array<mixed> $arrayBindKeyValue
-     * @return int|false
-     *
-     * @$query example: 'SELECT count(*) FROM users WHERE name LIKE :name'
-     *
-     * @arrayBindKeyValue Example [':name' => 'someone']
-     */
-    public function countQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
+    public function fetchColumn(): int|false
     {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
-                $result = $this->fetchColumn();
+        if ($this->stsment) {
+            try{
+                return (int)$this->stsment->fetchColumn();
+            }catch(\PDOException $e){
+                $this->error = $e->getMessage();
+                return false;
             }
         }
-        return $result;
-    }
-
-    /**
-     * @param array<string,mixed> $arrayBindKeyValue
-     *
-     * @return false|int
-     * $query example: 'UPDATE users SET name = :name , isActive = :isActive WHERE id = :id'
-     * arrayBindKeyValue Example [':name' => 'some new name' , ':isActive' => true , :id => 32 ]
-     * in success return positive number affected rows and in error false
-     */
-    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|false
-    {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
-                $result = $this->affectedRows();
-            }
-        }
-        return $result;
-    }
-
-    /**
-     * @param array<string,mixed> $arrayBindKeyValue
-     *
-     * @query example: 'DELETE users SET name = :name , isActive = :isActive WHERE id = :id'
-     *
-     * @arrayBindKeyValue example [':id' => 32 ]
-     *
-     * @success return positive number affected rows and in error false
-     */
-    public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|false
-    {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
-                $result = $this->affectedRows();
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param array<mixed> $arrayBind
-     *
-     * @success set this->affectedRows
-     *
-     * @error set this->error and return false
-     */
-    private function executeQuery(string $query, array $arrayBind): bool
-    {
-        if ($this->isConnected()) {
-            $this->query($query);
-            foreach ($arrayBind as $key => $value) {
-                $this->bind($key, $value);
-            }
-            return $this->execute();
-        }
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
         return false;
     }
 }
