@@ -36,6 +36,11 @@ class GemRequest
         $this->time = TypeHelper::timeStamp();
     }
 
+    public function getError():string|null
+    {
+        return this->error;
+    }
+
     public function getId(): string
     {
         return $this->id;
