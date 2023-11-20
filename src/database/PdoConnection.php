@@ -87,10 +87,8 @@ class PdoConnection
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ];
             $this->db = new \PDO($dsn__db, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options__db);
-            if ($this->db) {
-                $this->isConnected = true;
-                $this->error  = null;
-            }
+            $this->isConnected = true;
+            $this->error  = null;
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
             $this->endExecutionTime = microtime(true);
@@ -220,46 +218,39 @@ class PdoConnection
     }
 
     /**
-     * @return null|array<mixed>
+     * @return false|array<mixed>
      */
-    public function fetchAll(): array|null
+    public function fetchAll(): array|false
     {
-        $result = null;
         if ($this->stsment) {
-            $result = $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
-        } else {
-            $this->error = 'PDO Statement is null,please check your connection name or table name';
+            return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
         }
-
-        return $result;
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
     }
     /**
-     * @return null|array<mixed>
+     * @return false|array<mixed>
      */
-    public function fetchAllObjects(): array|null
+    public function fetchAllObjects(): array|false
     {
-        $result = null;
         if ($this->stsment) {
-            $result = $this->stsment->fetchAll(\PDO::FETCH_OBJ);
-        } else {
-            $this->error = 'PDO Statement is null,please check your connection name or table name';
-        }
-
-        return $result;
+            return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
+        } 
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
     }
 
     public function fetchColumn(): int|false
     {
-        $result = false;
         if ($this->stsment) {
-            $result = $this->stsment->fetchColumn();
-            if (false !== $result) {
-                $result = (int) $result;
+            try{
+                return (int)$this->stsment->fetchColumn();
+            }catch(\PDOException $e){
+                $this->error = $e->getMessage();
+                return false;
             }
-        } else {
-            $this->error = 'PDO Statement is null,please check your connection name or table name';
         }
-
-        return $result;
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
     }
 }
