@@ -38,7 +38,7 @@ class GemRequest
 
     public function getError():string|null
     {
-        return this->error;
+        return $this->error;
     }
 
     public function getId(): string
