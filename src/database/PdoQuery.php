@@ -3,10 +3,6 @@
 namespace GemLibrary\Database;
 class PdoQuery extends QueryExecuter
 {
-    private ?int $limit;
-    private ?int $offset;
-    private ?string $orderBy;
-    private bool $DESC = true;
  
     /**
      * @if null , use default connection in config.php
@@ -15,26 +11,6 @@ class PdoQuery extends QueryExecuter
     public function __construct()
     {
         parent::__construct();
-    }
-
-    /**
-     * @param string $orderBy
-     * @param bool $DESC
-     */
-    public function setOrderBy(string $orderBy, bool $DESC = true):void
-    {
-        $this->orderBy = $orderBy;
-        $this->DESC = $DESC;
-    }
-
-    /**
-     * @param int $limit
-     * @param int $offset
-     */
-    public function setLimit(int $limit, int $offset = 0):void
-    {
-        $this->limit = $limit;
-        $this->offset = $offset;
     }
 
 
@@ -70,22 +46,6 @@ class PdoQuery extends QueryExecuter
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
         $result = false;
-        if($this->orderBy){
-            $selectQuery .= " ORDER BY {$this->orderBy} ";
-            if($this->DESC){
-                $selectQuery .= " DESC ";
-            }
-            else{
-                $selectQuery .= " ASC ";
-            }
-        }
-        if($this->limit){
-            $selectQuery .= " LIMIT {$this->limit} ";
-            if($this->offset){
-                $selectQuery .= " OFFSET {$this->offset} ";
-            }
-        }
-
         if ($this->isConnected()) {
             if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
                 $result = $this->fetchAll();
