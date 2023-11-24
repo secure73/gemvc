@@ -1,10 +1,7 @@
 <?php
 
 namespace GemLibrary\Database;
-
-use GemLibrary\Database\PdoConnection;
-
-class PdoQuery extends PdoConnection
+class PdoQuery extends QueryExecuter
 {
     private ?int $limit;
     private ?int $offset;
