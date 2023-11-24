@@ -11,7 +11,7 @@ class QueryExecuter {
     private float $startExecutionTime;
     private float $endExecutionTime;
     private ?string $_query;
-    private PDO|false $db;
+    private PDO|false|null $db;
     private bool $isConnected = false;
     public function __construct()
     {
