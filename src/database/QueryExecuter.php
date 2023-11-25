@@ -11,7 +11,7 @@ class QueryExecuter {
     private float $startExecutionTime;
     private float $endExecutionTime;
     private ?string $_query;
-    private PDO|false|null $db;
+    private PDO|null $db;
     private bool $isConnected = false;
     public function __construct()
     {
@@ -19,6 +19,7 @@ class QueryExecuter {
         $this->db = $connection->connect();
         $this->error = $connection->getError();
         $this->isConnected = $connection->isConnected();
+        $this->startExecutionTime = microtime(true);
     }
 
     public function getQuery(): null|string
@@ -39,7 +40,7 @@ class QueryExecuter {
     public function query(string $query): void
     {
         $this->_query = $query;
-        if ($this->isConnected) {
+        if ($this->isConnected && $this->db) {
             $this->stsment = $this->db->prepare($query);
         } else {
             $this->error = 'Database connection is null,please check your connection to Database';
@@ -152,6 +153,7 @@ class QueryExecuter {
     }
     /**
      * @return false|array<mixed>
+     * return stdClass object
      */
     public function fetchAllObjects(): array|false
     {
@@ -162,11 +164,29 @@ class QueryExecuter {
         return false;
     }
 
-    public function fetchColumn(): int|false
+    /**
+     * @return false|array<object>
+     * @param string $targetClassName class name to convert result into it
+     */
+    public function fetchAllClass(string $targetClassName): array|false
     {
         if ($this->stsment) {
             try{
-                return (int)$this->stsment->fetchColumn();
+                return $this->stsment->fetchAll(\PDO::FETCH_CLASS,$targetClassName);
+            }catch(\PDOException $e){
+                $this->error = $e->getMessage();
+                return false;
+            }
+        } 
+        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        return false;
+    }
+
+    public function fetchColumn(): mixed
+    {
+        if ($this->stsment) {
+            try{
+                return $this->stsment->fetchColumn();
             }catch(\PDOException $e){
                 $this->error = $e->getMessage();
                 return false;
