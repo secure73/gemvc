@@ -12,11 +12,8 @@ class GemToken
     public int      $exp;
     public bool     $isTokenValid;
     public string   $type;
-    /**
-     * @var array<mixed>
-     */
-    public array    $payload;
-    public ?int     $userId;
+    public array    $payload;/** @phpstan-ignore-line */
+    public int      $user_id;
     public ?string  $error;
     public ?string  $userMachine;
     public ?string  $ip;
@@ -24,7 +21,7 @@ class GemToken
     public function __construct()
     {
         $this->tokenId = 'Not Initialized';
-        $this->userId = null;
+        $this->user_id = 0;
         $this->iss = '';
         $this->exp = 0;
         $this->isTokenValid = false;
@@ -68,13 +65,14 @@ class GemToken
             $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret, $ip, $userMachine), 'HS256'));
             if (isset($decodedToken->userId)) {
                 $this->tokenId = $decodedToken->tokenId;
-                $this->userId = $decodedToken->userId;
+                $this->user_id = (int)$decodedToken->user_id;
                 $this->exp = $decodedToken->exp;
                 $this->iss = $decodedToken->iss;
                 $this->payload = $decodedToken->payload;
                 $this->isTokenValid = true;
                 $this->ip = $ip;
                 $this->userMachine = $userMachine;
+                $this->type = $decodedToken->type;
                 $this->error = null;
                 return true;
             }
@@ -86,8 +84,8 @@ class GemToken
 
     public function renew(string $token, string $secret, int $extensionTime_sec): false|string
     {
-        if ($this->validate($token, $secret, $this->ip, $this->userMachine) && $this->userId) {
-            return $this->create($this->type ,$secret, $this->userId, $extensionTime_sec, $this->payload, $this->iss ,$this->ip, $this->userMachine);
+        if ($this->validate($token, $secret, $this->ip, $this->userMachine)) {
+            return $this->create($this->type ,$secret, $this->user_id, $extensionTime_sec, $this->payload, $this->iss ,$this->ip, $this->userMachine);
         }
         return false;
     }
