@@ -7,7 +7,7 @@ use GemLibrary\Helper\TypeHelper;
 
 class GemToken
 {
-    public string   $tokenId;
+    public string   $token_id;
     public string   $iss;
     public int      $exp;
     public bool     $isTokenValid;
@@ -20,7 +20,7 @@ class GemToken
 
     public function __construct()
     {
-        $this->tokenId = 'Not Initialized';
+        $this->token_id = 'Not Initialized';
         $this->user_id = 0;
         $this->iss = '';
         $this->exp = 0;
@@ -45,8 +45,8 @@ class GemToken
     public function create(string $type ,string $secret, int $userId, int $timeToLiveSecond, array $payload, string $issuer = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
-            'tokenId' => TypeHelper::guid(),
-            'userId' => $userId,
+            'token_id' => TypeHelper::guid(),
+            'user_id' => $userId,
             'iss' => $issuer,
             'exp' => (time() + $timeToLiveSecond),
             'type' => $type,
@@ -64,7 +64,7 @@ class GemToken
         try {
             $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret, $ip, $userMachine), 'HS256'));
             if (isset($decodedToken->userId)) {
-                $this->tokenId = $decodedToken->tokenId;
+                $this->token_id = $decodedToken->tokenId;
                 $this->user_id = (int)$decodedToken->user_id;
                 $this->exp = $decodedToken->exp;
                 $this->iss = $decodedToken->iss;
