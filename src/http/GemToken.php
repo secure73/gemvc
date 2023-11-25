@@ -63,8 +63,8 @@ class GemToken
     {
         try {
             $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret, $ip, $userMachine), 'HS256'));
-            if (isset($decodedToken->userId)) {
-                $this->token_id = $decodedToken->tokenId;
+            if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
+                $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
                 $this->exp = $decodedToken->exp;
                 $this->iss = $decodedToken->iss;
