@@ -1,15 +1,4 @@
 <?php
-
-declare(strict_types=1);
-
-/*
- * This file is part of PHP CS Fixer.
- * (c) Fabien Potencier <fabien@symfony.com>
- * Dariusz Rumiński <dariusz.ruminski@gmail.com>
- * This source file is subject to the MIT license that is bundled
- * with this source code in the file LICENSE.
- */
-
 namespace GemLibrary\Http;
 
 use Firebase\JWT\JWT;
@@ -23,6 +12,9 @@ class GemToken
     public int      $exp;
     public bool     $isTokenValid;
     public string   $type;
+    /**
+     * @var array<mixed>
+     */
     public array    $payload;
     public ?int     $userId;
     public ?string  $error;
@@ -44,16 +36,16 @@ class GemToken
 
     /**
      * @param string $secret
-     * @param int|string $userId
+     * @param int $userId
      * @param int $timeToLiveSecond
      * @param array<mixed> $payload
-     * @param null|string $type
+     * @param string $type
      * @param null|string $issuer
      * @param null|string $ipAddressTobeSensitive
-     * @param null|string $userMachinTobeSensetive 
+     * @param null|string $userMachinToBeSensetive 
      * @return string
      */
-    public static function create(string $type ,string $secret, int|string $userId, int $timeToLiveSecond, array $payload, string $issuer = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
+    public function create(string $type ,string $secret, int $userId, int $timeToLiveSecond, array $payload, string $issuer = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
             'tokenId' => TypeHelper::guid(),
@@ -94,7 +86,7 @@ class GemToken
 
     public function renew(string $token, string $secret, int $extensionTime_sec): false|string
     {
-        if ($this->validate($token, $secret, $this->ip, $this->userMachine)) {
+        if ($this->validate($token, $secret, $this->ip, $this->userMachine) && $this->userId) {
             return $this->create($this->type ,$secret, $this->userId, $extensionTime_sec, $this->payload, $this->iss ,$this->ip, $this->userMachine);
         }
         return false;
@@ -116,8 +108,9 @@ class GemToken
         $payload = json_decode(base64_decode($payloadBase64), true);
 
         // Access the "type" property from the payload
-        if (isset($payload['type'])) {
-          return $payload['type'];
+        if (isset($payload['type'])) /** @phpstan-ignore-line */
+        {
+            return $payload['type'];/** @phpstan-ignore-line */
         } 
         else return null;
     }
