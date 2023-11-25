@@ -37,10 +37,10 @@ class PdoConnection
     }
 
     /**
-     * @return PDO|false
+     * @return PDO|null
      * in case of failure return false and you can get connection error by getError();
      */
-    public function connect(): \Pdo|false
+    public function connect(): \Pdo|null
     {
         $dsn__db = 'mysql:host='.$_ENV['DB_HOST'].';port='.$_ENV['DB_PORT'].';dbname='.$_ENV['DB_NAME'].';charset='.$_ENV['DB_CHARSET'];
         try {
@@ -55,7 +55,7 @@ class PdoConnection
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();   
         }
-        return false;;
+        return null;
     }
 
     /**
