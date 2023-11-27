@@ -8,7 +8,7 @@ use GemLibrary\Helper\TypeHelper;
 class GemToken
 {
     public string   $token_id;
-    public string   $iss;
+    public ?string   $iss;
     public int      $exp;
     public bool     $isTokenValid;
     public string   $type;
@@ -17,17 +17,22 @@ class GemToken
     public ?string  $error;
     public ?string  $userMachine;
     public ?string  $ip;
+    private string  $_secret;
 
-    public function __construct()
+    public function __construct(string $secret , string $issuer = null)
     {
         $this->token_id = 'Not Initialized';
         $this->user_id = 0;
-        $this->iss = '';
+        if($issuer)
+        {
+            $this->iss = $issuer;
+        }
         $this->exp = 0;
         $this->isTokenValid = false;
         $this->error = 'Not Initialized';
         $this->payload = [];
         $this->type = 'not defined';
+        $this->_secret = $secret;
     }
 
 
@@ -42,27 +47,27 @@ class GemToken
      * @param null|string $userMachinToBeSensetive 
      * @return string
      */
-    public function create(string $type ,string $secret, int $userId, int $timeToLiveSecond, array $payload, string $issuer = null, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
+    public function create(string $type , int $userId, int $timeToLiveSecond, array $payload, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
             'token_id' => TypeHelper::guid(),
             'user_id' => $userId,
-            'iss' => $issuer,
+            'iss' => $this->iss,
             'exp' => (time() + $timeToLiveSecond),
             'type' => $type,
             'payload' => $payload
         ];
-        return JWT::encode($payloadArray, self::_generate_key($secret, $ipAddressTobeSensitive, $userMachinToBeSensetive), 'HS256');
+        return JWT::encode($payloadArray, $this->_generate_key($ipAddressTobeSensitive, $userMachinToBeSensetive), 'HS256');
     }
 
     /**
      * @param string $token
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function validate(string $token, string $secret, string $ip = null, string $userMachine = null): bool
+    public function validate(string $token,string $ip = null, string $userMachine = null): bool
     {
         try {
-            $decodedToken = JWT::decode($token, new Key(self::_generate_key($secret, $ip, $userMachine), 'HS256'));
+            $decodedToken = JWT::decode($token, new Key($this->_generate_key($ip, $userMachine), 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
@@ -82,10 +87,10 @@ class GemToken
         return false;
     }
 
-    public function renew(string $token, string $secret, int $extensionTime_sec): false|string
+    public function renew(string $token, int $extensionTime_sec): false|string
     {
-        if ($this->validate($token, $secret, $this->ip, $this->userMachine)) {
-            return $this->create($this->type ,$secret, $this->user_id, $extensionTime_sec, $this->payload, $this->iss ,$this->ip, $this->userMachine);
+        if ($this->validate($token, $this->ip, $this->userMachine)) {
+            return $this->create($this->type , $this->user_id, $extensionTime_sec, $this->payload ,$this->ip, $this->userMachine);
         }
         return false;
     }
@@ -116,20 +121,12 @@ class GemToken
     
 
     /**
-     * @param string $secret
      * @param string $ip
      * @param string $machin
      * @return string
      */
-    private static function _generate_key(string $secret, string $ip = null, string $machin = null): string
+    private function _generate_key(string $ip = null, string $machin = null): string
     {
-        $miniSecret = 'it is mini secret that use to add to md5!';
-        if ($ip) {
-            $ip = md5($ip . $miniSecret);
-        }
-        if ($machin) {
-            $machin = md5($machin . $miniSecret);
-        }
-        return $secret . $ip . $machin;
+        return $this->_secret . $ip . $machin;
     }
 }
