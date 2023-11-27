@@ -37,12 +37,10 @@ class GemToken
 
 
     /**
-     * @param string $secret
+     * @param string $type
      * @param int $userId
      * @param int $timeToLiveSecond
      * @param array<mixed> $payload
-     * @param string $type
-     * @param null|string $issuer
      * @param null|string $ipAddressTobeSensitive
      * @param null|string $userMachinToBeSensetive 
      * @return string
