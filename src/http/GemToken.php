@@ -3,6 +3,7 @@ namespace GemLibrary\Http;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use GemLibrary\Helper\StringHelper;
 use GemLibrary\Helper\TypeHelper;
 
 class GemToken
@@ -48,7 +49,7 @@ class GemToken
     public function create(string $type , int $userId, int $timeToLiveSecond, array $payload, string $ipAddressTobeSensitive = null, string $userMachinToBeSensetive = null): string
     {
         $payloadArray = [
-            'token_id' => TypeHelper::guid(),
+            'token_id' => microtime(true),
             'user_id' => $userId,
             'iss' => $this->iss,
             'exp' => (time() + $timeToLiveSecond),
