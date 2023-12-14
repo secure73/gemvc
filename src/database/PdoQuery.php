@@ -45,22 +45,38 @@ class PdoQuery extends QueryExecuter
      */
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
-                $result = $this->fetchAll();
-                if($result !== null ){
+        if(!$this->isConnected()){
+            return false;
+        }
+        if ($this->executeQuery($selectQuery, $arrayBindKeyValue)) {
+            return $this->fetchAll(); 
+        }
+        return false;
+    }
 
-                }
+    /**
+     * @param array<mixed> $arrayBindKeyValue
+     * @return int|false
+     * @$query example: 'SELECT COUNT(*) FROM users WHERE name LIKE :name'
+     * @arrayBindKeyValue Example [':name' => 'someone']
+     */
+    public function selectCountQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
+    {
+        if(!$this->isConnected()){
+            return false;
+        }
+        if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
+            $result = $this->fetchColumn();
+            if ($result !== false) {
+                return (int) $result['COUNT(*)'];
             }
         }
-        return $result;
+        return false;
     }
 
      /**
      * @param array<mixed> $arrayBindKeyValue
      * @return false|array<mixed>
-     *
      * @$query example: 'SELECT * FROM users WHERE email = :email'
      * @arrayBindKeyValue Example [':email' => 'some@me.com']
      */
@@ -74,29 +90,9 @@ class PdoQuery extends QueryExecuter
         }
         return $result;
     }
-
-    /**
-     * @param array<mixed> $arrayBindKeyValue
-     * @return int|false
-     *
-     * @$query example: 'SELECT count(*) FROM users WHERE name LIKE :name'
-     *
-     * @arrayBindKeyValue Example [':name' => 'someone']
-     */
-    public function countQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
-    {
-        $result = false;
-        if ($this->isConnected()) {
-            if ($this->executeQuery($selectCountQuery, $arrayBindKeyValue)) {
-                $result = $this->fetchColumn();
-            }
-        }
-        return $result;
-    }
-
+    
     /**
      * @param array<string,mixed> $arrayBindKeyValue
-     *
      * @return false|int
      * $query example: 'UPDATE users SET name = :name , isActive = :isActive WHERE id = :id'
      * arrayBindKeyValue Example [':name' => 'some new name' , ':isActive' => true , :id => 32 ]
