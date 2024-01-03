@@ -113,12 +113,17 @@ class GemRequest
 
     private function checkPostKeyValue(string $key, string $validationString): bool
     {
-
+        if($validationString == 'string')
+        {
+            $this->post[$key] = trim($this->post[$key]);/*@phpstan-ignore-line*/
+            if(strlen($this->post[$key]) == 0)
+            {
+                $this->post[$key] = null;
+            }
+        }
         if (!$this->checkValidationTypes($validationString)) {
             return false;
         }
-
-
         $result = match ($validationString) {
             'string' => is_string($this->post[$key]),
             'int' => is_numeric($this->post[$key]),
