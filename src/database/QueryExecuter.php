@@ -47,6 +47,11 @@ class QueryExecuter {
         }
     }
 
+    public function setError(string $error): void
+    {
+        $this->error = $error;
+    }
+
     /**
      * @param mixed $value
      * this method automatically detect value Type and bind Parameter to value
