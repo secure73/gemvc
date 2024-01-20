@@ -38,12 +38,8 @@ class GemToken
 
 
     /**
-     * @param string $type
      * @param int $userId
      * @param int $timeToLiveSecond
-     * @param array<mixed> $payload
-     * @param null|string $ipAddressTobeSensitive
-     * @param null|string $userMachinToBeSensetive 
      * @return string
      */
     public function create(int $userId, int $timeToLiveSecond): string
@@ -121,11 +117,8 @@ class GemToken
         else return null;
     }
 
-    
 
     /**
-     * @param string $ip
-     * @param string $machin
      * @return string
      */
     private function _generate_key(): string
