@@ -80,8 +80,14 @@ class GemToken
                 $this->isTokenValid = true;
                 $this->type = $decodedToken->type;
                 $this->role = $decodedToken->role;
-                $this->company_id = $decodedToken->company_id;
-                $this->employee_id = $decodedToken->employee_id;
+                if(isset($decodedToken->company_id))
+                {
+                    $this->company_id = $decodedToken->company_id;
+                }
+                if(isset($decodedToken->employee_id))
+                {
+                    $this->employee_id = $decodedToken->employee_id;
+                }
                 $this->error = null;
                 return true;
             }
