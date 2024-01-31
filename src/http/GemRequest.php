@@ -106,6 +106,11 @@ class GemRequest
     {
         $jsonResponse = new JsonResponse();
         $ch = curl_init($remoteApiUrl);
+        if($ch === false)
+        {
+            $jsonResponse->create(500, [], 0, "remote api $remoteApiUrl is not responding");
+            return $jsonResponse;
+        }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
@@ -122,13 +127,18 @@ class GemRequest
         }
         $response = curl_exec($ch);
         curl_close($ch);
-        if(!$response)
+        if(!$response || !is_string($response))
         {
             $jsonResponse->create(500, [], 0, 'remote api is not responding');
             return $jsonResponse;
-        } 
+        }
+        if(!JsonHelper::validateJson($response))
+        {
+            $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
+            return $jsonResponse;
+        }
         $response = json_decode($response);
-        //var_dump($response);
+        /**@phpstan-ignore-next-line */
         $jsonResponse->create($response->http_response_code, $response->data, $response->count, $response->service_message);
         return $jsonResponse;
     }
