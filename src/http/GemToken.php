@@ -9,7 +9,7 @@ class GemToken
     public int       $exp;
     public bool      $isTokenValid;
     public int       $user_id;
-    public string    $type;
+    public string    $type;//access or refresh
     public array     $payload;/** @phpstan-ignore-line */
     public ?string   $token_id;
     public ?string   $iss;
@@ -38,12 +38,8 @@ class GemToken
 
 
     /**
-     * @param string $type
      * @param int $userId
      * @param int $timeToLiveSecond
-     * @param array<mixed> $payload
-     * @param null|string $ipAddressTobeSensitive
-     * @param null|string $userMachinToBeSensetive 
      * @return string
      */
     public function create(int $userId, int $timeToLiveSecond): string
@@ -55,13 +51,18 @@ class GemToken
             'exp' => (time() + $timeToLiveSecond),
             'type' => $this->type,
             'payload' => $this->payload,
-            'role' => $this->role,
-            'company_id' => $this->company_id,
-            'employee_id' => $this->employee_id
+            'role' => $this->role
         ];
+        if(isset($this->company_id))
+        {
+            $payloadArray['company_id'] = $this->company_id;
+        }
+        if(isset($this->employee_id))
+        {
+            $payloadArray['employee_id'] = $this->employee_id;
+        }
         return JWT::encode($payloadArray, $this->_generate_key(), 'HS256');
     }
-
     /**
      * @param string $token
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
@@ -79,8 +80,14 @@ class GemToken
                 $this->isTokenValid = true;
                 $this->type = $decodedToken->type;
                 $this->role = $decodedToken->role;
-                $this->company_id = $decodedToken->company_id;
-                $this->employee_id = $decodedToken->employee_id;
+                if(isset($decodedToken->company_id))
+                {
+                    $this->company_id = $decodedToken->company_id;
+                }
+                if(isset($decodedToken->employee_id))
+                {
+                    $this->employee_id = $decodedToken->employee_id;
+                }
                 $this->error = null;
                 return true;
             }
@@ -121,11 +128,8 @@ class GemToken
         else return null;
     }
 
-    
 
     /**
-     * @param string $ip
-     * @param string $machin
      * @return string
      */
     private function _generate_key(): string
