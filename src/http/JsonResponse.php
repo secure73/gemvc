@@ -21,7 +21,7 @@ class JsonResponse
         $this->data = array();
     }
 
-    public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):bool
+    public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
         if(is_array($data))
         {
@@ -41,73 +41,83 @@ class JsonResponse
         $this->json_response = json_encode($this, JSON_PRETTY_PRINT);
         if($this->json_response)
         {
-            return true;
+            return $this;
         }
-        return false;
+        $this->http_response_code = 500;
+        $this->http_message = 'internal error';
+        $this->count = 0;
+        $this->service_message = 'failure in creating json response in Gemvc/JsonResponse .please check data payload';
+        $this->data =[];
+        $this->json_response = json_encode($this);
+        return $this;
     }
 
-    public function success(mixed $data ,int $count = null , string $service_message = null):bool
+    public function success(mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
         return $this->create(200, $data, $count, $service_message);
     }
 
     
-    public function created(mixed $data ,int $count = null,string $service_message = null):bool
+    public function created(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
         return $this->create(201, $data, $count, $service_message);
     }
 
-    public function successButNoContentToShow(mixed $data ,int $count = null,string $service_message= null):bool
+    public function successButNoContentToShow(mixed $data ,int $count = null,string $service_message= null):JsonResponse
     {
         return $this->create(204, $data, $count, $service_message);
     }
     
-    public function updated(mixed $data ,int $count = null,string $service_message = null):bool
+    public function updated(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
         return $this->create(209, $data, $count, $service_message);
     }
-    public function deleted(mixed $data ,int $count = null,string $service_message = null):bool
+    public function deleted(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
         return $this->create(210, $data, $count, $service_message);
     }
-    public function unautorized(string $service_message = null):bool
+    public function unautorized(string $service_message = null):JsonResponse
     {
         return $this->create(401, null, null, $service_message);
     }
-    public function forbidden(string $service_message = null):bool
+    public function forbidden(string $service_message = null):JsonResponse
     {
         return $this->create(403,null, null, $service_message);
     }
-    public function notFound(string $service_message = null):bool
+    public function notFound(string $service_message = null):JsonResponse
     {
         return $this->create(404, null , null, $service_message);
     }
-    public function internalError(string $service_message = null ):bool
+    public function internalError(string $service_message = null ):JsonResponse
     {
         return $this->create(500, null, null, $service_message);
     }
-    public function unknownError(string $service_message = null, mixed $data):bool
+    public function unknownError(string $service_message = null, mixed $data):JsonResponse
     {
         return $this->create(0, $data, null, $service_message);
     }
 
-    public function notAcceptable(string $service_message = null):bool{
+    public function notAcceptable(string $service_message = null):JsonResponse
+    {
         return $this->create(406, null, null, $service_message);
     }
 
-    public function conflict(string $service_message = null):bool{
+    public function conflict(string $service_message = null):JsonResponse
+    {
         return $this->create(409, null, null, $service_message);
     }
 
-    public function unsupportedMediaType(string $service_message = null):bool{
+    public function unsupportedMediaType(string $service_message = null):JsonResponse
+    {
         return $this->create(415, null, null, $service_message);
     }
 
-    public function unprocessableEntity(string $service_message = null):bool{
+    public function unprocessableEntity(string $service_message = null):JsonResponse
+    {
         return $this->create(422, null, null, $service_message);
     }
     
-    public function badRequest(string $service_message = null):bool
+    public function badRequest(string $service_message = null):JsonResponse
     {
         return $this->create(400, null, null, $service_message);
     }
