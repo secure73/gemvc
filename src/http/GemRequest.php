@@ -10,7 +10,10 @@ class GemRequest
     public    string       $requestedUrl;
     public    ?string      $queryString;
     public    ?string      $error;
-    public    ?string      $authorizationHeader;
+    /**
+     * @var null|string|array<string>
+     */
+    public    null|string|array      $authorizationHeader;
     public    ?string      $remoteAddress;
     /**
      * @var array<mixed>
@@ -20,7 +23,13 @@ class GemRequest
      * @var array<mixed>
      */
     public    array        $post;
-    public    mixed        $get;
+    /**
+     * @var array<mixed>
+     */
+
+    public null|array      $put;
+    public null|array      $patch;
+    public    array        $get;
     public    string       $userMachine;
     public    ?string      $requestMethod;
     private   string       $id;
