@@ -76,7 +76,7 @@ class JsonResponse
     {
         return $this->create(210, $data, $count, $service_message);
     }
-    public function unautorized(string $service_message = null):JsonResponse
+    public function unauthorized(string $service_message = null):JsonResponse
     {
         return $this->create(401, null, null, $service_message);
     }
