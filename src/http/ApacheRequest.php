@@ -2,7 +2,6 @@
 
 namespace GemLibrary\Http;
 
-use GemLibrary\Helper\StringHelper;
 use GemLibrary\Http\GemRequest;
 
 class ApacheRequest
@@ -175,6 +174,11 @@ class ApacheRequest
         return '';
     }
 
+    /**
+     * @param mixed $input
+     * @return mixed
+     * @help  hhiiiii
+     */
     private function sanitizeInput(mixed $input):mixed {
         if(!is_string($input))
         {

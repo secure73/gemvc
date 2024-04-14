@@ -14,8 +14,6 @@ namespace GemLibrary\Database\Query;
 
 use GemLibrary\Database\PdoQuery;
 use GemLibrary\Database\QueryBuilderInterface;
-use GemLibrary\Database\QueryProvider;
-use stdClass;
 
 class Select implements QueryBuilderInterface
 {
@@ -151,10 +149,6 @@ class Select implements QueryBuilderInterface
         return $pdoQuery->selectQuery($query, $this->arrayBindValues);
     }
 
-    public function count(PdoQuery $pdoQuery): int|false
-    {
-        return  $pdoQuery->countQuery($this->query, $this->arrayBindValues);
-    }
 
     public function json(PdoQuery $pdoQuery): string|false
     {
