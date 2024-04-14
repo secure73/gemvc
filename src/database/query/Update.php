@@ -70,6 +70,11 @@ class Update  implements QueryBuilderInterface
     public function run(PdoQuery $pdoQuery): int|false
     {
         $query = $this->__toString();
-        return  $pdoQuery->updateQuery($query, $this->arrayBindValues);
+        $result = $pdoQuery->updateQuery($query, $this->arrayBindValues);
+        if(!$result)
+        {
+            return false;
+        }
+        return $result;
     }
 }

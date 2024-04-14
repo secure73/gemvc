@@ -11,7 +11,7 @@ class SwooleRequest
     private  object  $incommingRequestObject;
        
     /**
-     * @param object $incommingRequestObject
+     * @param object $swooleRquest
      */
     public function __construct(object $swooleRquest)
     {
@@ -23,7 +23,10 @@ class SwooleRequest
             $this->request->requestedUrl = $swooleRquest->server['request_uri'];
             isset($swooleRquest->server['query_string']) ? $this->request->queryString = $swooleRquest->server['query_string'] : $this->request->queryString = null;
             $this->request->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
-            $this->request->userMachine = StringHelper::sanitizedString($swooleRquest->header['user-agent']);
+            if(isset($swooleRquest->header['user-agent']))
+            {
+                $this->request->userMachine = $swooleRquest->header['user-agent'];
+            }
             $this->setData();
         }
         else
@@ -37,7 +40,7 @@ class SwooleRequest
         return $this->incommingRequestObject;
     }
 
-    private function setData()
+    private function setData():void
     {
         $this->setAuthorizationToken();
         $this->setPost();
@@ -46,7 +49,7 @@ class SwooleRequest
     }
 
 
-    private function setPost()
+    private function setPost():void
     {
         if(isset($this->incommingRequestObject->post))
         {

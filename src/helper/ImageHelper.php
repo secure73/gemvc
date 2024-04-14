@@ -10,9 +10,9 @@ class ImageHelper extends FileHelper
      * @param string $sourceFile The image path
      * @param string $outputFile The output image path, if null will be the same as $sourceFile
      */
-    public function __construct(string $sourceFile, ?string $outputFile = null, ?bool $notIncludeRoot = null)
+    public function __construct(string $sourceFile, ?string $outputFile = null)
     {
-        parent::__construct($sourceFile, $outputFile, $notIncludeRoot);
+        parent::__construct($sourceFile, $outputFile);
     }
 
     /**

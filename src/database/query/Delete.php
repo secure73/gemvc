@@ -53,6 +53,11 @@ class Delete  implements QueryBuilderInterface
     public function run(PdoQuery $pdoQuery): int|false
     {
         $query = $this->__toString();
-        return $pdoQuery->deleteQuery($query, $this->arrayBindValues);
+        $result = $pdoQuery->deleteQuery($query, $this->arrayBindValues);
+        if(!$result)
+        {
+            return false;
+        }
+        return $result;
     }
 }

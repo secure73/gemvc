@@ -23,13 +23,21 @@ class GemRequest
      * @var array<mixed>
      */
     public    array        $post;
+
     /**
      * @var array<mixed>
      */
-
     public null|array      $put;
+
+    /**
+     * @var array<mixed>
+     */
     public null|array      $patch;
-    public    array        $get;
+
+    /**
+    * @var string|array<mixed>
+    */
+    public    string|array        $get;
     public    string       $userMachine;
     public    ?string      $requestMethod;
     private   string       $id;
@@ -123,7 +131,10 @@ class GemRequest
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
+        if(is_string($this->authorizationHeader))
+        {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
+        }
         curl_setopt($ch, CURLOPT_USERAGENT, 'gemserver');
 
         if(isset($this->files))

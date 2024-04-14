@@ -24,7 +24,6 @@ class GemSMTP
     /**
      * Constructor
      * @param int $smtpDebugLevel
-     * @param string $language 
      * this class is wrapper from PHPMailer
      * smtp debug level between 0 to 4 and it is tls enabled
      */
@@ -38,8 +37,8 @@ class GemSMTP
         $this->phpMailer->Host = $host;
         $this->phpMailer->Username = $username;
         $this->phpMailer->Password = $password;
-        $this->phpMailer->Port = $port;
-        $this->phpMailer->SMTPDebug = $smtpDebugLevel;
+        $this->phpMailer->Port = (int)$port;
+        $this->phpMailer->SMTPDebug = (int)$smtpDebugLevel;
         $this->phpMailer->SMTPSecure = 'tls';
 
 
@@ -61,9 +60,9 @@ class GemSMTP
     public function createMail(string $senderEmail, string $senderName, string $reciverEmail, string $reciverName, string $subject, string $emailContent, string $contentLanguage): bool
     {
         if ($this->phpMailer->setLanguage($contentLanguage)) {
-            if (WebHelper::isValidEmail($senderEmail)) {
+            if (filter_var($senderEmail,FILTER_VALIDATE_EMAIL)) {
                 if ($this->phpMailer->setFrom($senderEmail, $senderName)) {
-                    if (WebHelper::isValidEmail($reciverEmail)) {
+                    if (filter_var($reciverEmail,FILTER_VALIDATE_EMAIL)) {
                         if ($this->addReciver($reciverEmail, $reciverName)) {
                             $this->phpMailer->Subject = $subject;
                             $this->phpMailer->Body = $emailContent;
@@ -86,7 +85,7 @@ class GemSMTP
     public function addReciver(string $email, string $reciverName = null): bool
     {
         $reciverName = ($reciverName) ?: $email;
-        if (WebHelper::isValidEmail($email)) {
+        if (filter_var($email,FILTER_VALIDATE_EMAIL)) {
             $this->phpMailer->addAddress($email, $reciverName);
 
             return true;
@@ -99,7 +98,7 @@ class GemSMTP
     public function addCC(string $email, string $reciverName = null): bool
     {
         $reciverName = ($reciverName) ?: $email;
-        if (WebHelper::isValidEmail($email)) {
+        if (filter_var($email,FILTER_VALIDATE_EMAIL)) {
             $this->phpMailer->addCC($email, $reciverName);
 
             return true;
@@ -112,7 +111,7 @@ class GemSMTP
     public function addBCC(string $email, string $reciverName = null): bool
     {
         $reciverName = ($reciverName) ?: $email;
-        if (WebHelper::isValidEmail($email)) {
+        if (filter_var($email,FILTER_VALIDATE_EMAIL)) {
             $this->phpMailer->addBCC($email, $reciverName);
 
             return true;

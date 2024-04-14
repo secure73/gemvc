@@ -52,11 +52,7 @@ class ApacheRequest
     }
 
     private function sanitizeAllHTTPPostRequest():void
-    {
-        if (!isset($_POST) || !is_array($_POST)) {
-            return;
-        }
-    
+    {   
         foreach ($_POST as $key => $value) {
             if(is_string($value))
             {
@@ -76,11 +72,17 @@ class ApacheRequest
         }
     }
 
+    /**
+     * @return array<mixed>|null
+     */
     private function sanitizeAllHTTPPatchRequest(): null|array
     {
         // Read the raw input stream from the request
         $input = file_get_contents('php://input');
-        
+        if(!$input)
+        {
+            $input = '';
+        }
         // Parse the raw input data
         parse_str($input, $_PATCH);
         
@@ -98,9 +100,7 @@ class ApacheRequest
             // If the value is an array, you may choose to sanitize its elements as well
             elseif (is_array($value)) {
                 foreach ($value as $subKey => $subValue) {
-                    if (is_string($subValue)) {
-                        $_PATCH[$key][$subKey] = $this->sanitizeInput($subValue);
-                    }
+                        $_PATCH[$key][$subKey] = $this->sanitizeInput($subValue); /*@phpstan-ignore-line*/
                 }
             }
         }
@@ -124,11 +124,17 @@ class ApacheRequest
         }
     }
 
+    /**
+     * @return array<mixed>|null
+     */
     private function sanitizeAllHTTPPutRequest(): null|array
     {
         // Read the raw input stream from the request
         $input = file_get_contents('php://input');
-        
+        if(!$input)
+        {
+            $input = '';
+        }
         // Parse the raw input data
         parse_str($input, $_PUT);
         
@@ -147,7 +153,7 @@ class ApacheRequest
             elseif (is_array($value)) {
                 foreach ($value as $subKey => $subValue) {
                     if (is_string($subValue)) {
-                        $_PUT[$key][$subKey] = $this->sanitizeInput($subValue);
+                        $_PUT[$key][$subKey] = $this->sanitizeInput($subValue);/*@phpstan-ignore-line*/
                     }
                 }
             }
@@ -156,7 +162,7 @@ class ApacheRequest
     }
 
 
-    private function sanitizeQueryString() {
+    private function sanitizeQueryString():void {
         if(isset($_SERVER['QUERY_STRING']))
         {
             $_SERVER['QUERY_STRING'] = trim($_SERVER['QUERY_STRING']);
@@ -165,10 +171,13 @@ class ApacheRequest
     }
 
     private function sanitizeRequestURI():string {
-        if(isset($_SERVER['REQUEST_URI']))
+        if(isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']))
         {
-            $sanitizedURI = filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_URL);
-            $sanitizedURI = trim($sanitizedURI);
+            $sanitizedURI = trim($_SERVER['REQUEST_URI']);
+            if(!filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_URL))
+            {
+                return '';
+            }
             return $sanitizedURI;
         }
         return '';
@@ -177,7 +186,6 @@ class ApacheRequest
     /**
      * @param mixed $input
      * @return mixed
-     * @help  hhiiiii
      */
     private function sanitizeInput(mixed $input):mixed {
         if(!is_string($input))
@@ -219,6 +227,7 @@ class ApacheRequest
                 return ''; // Invalid request method
             }
         }
+        return '';
     }
 
     private function getAuthHeader():void
@@ -226,7 +235,11 @@ class ApacheRequest
         $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : null;
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
         if (!$this->request->authorizationHeader && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-            $this->request->authorizationHeader = $this->sanitizeInput($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+                $res = $this->sanitizeInput($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+                if(is_string($res))
+                {
+                    $this->request->authorizationHeader = $res;
+                }
         }
     }
 }

@@ -66,11 +66,8 @@ class Select implements QueryBuilderInterface
      */
     private array $leftJoin = [];
 
-
-    private ?int $limit = null;/** @phpstan-ignore-line */
-
-
-    private ?int $offset = null;/** @phpstan-ignore-line */
+    private ?int $limit = null;
+    private ?int $offset = null;
 
     /**
      * @param array<mixed> $select
