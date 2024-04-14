@@ -180,8 +180,7 @@ class ApacheRequest
         {
             return $input;
         }
-        $input = trim($input);
-        return filter_var($input, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        return filter_var(trim($input), FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     }
 
     private function getUserAgent():string {
