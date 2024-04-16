@@ -30,11 +30,15 @@ class JsonHelper
 
     /**
      * @return string|false
-     * @param string $jsonStringToValidate
+     * @param mixed $jsonStringToValidate
      * return json string if given string is valid json format, false otherwise
      */
-    public static function validateJson(string $jsonStringToValidate): string|false
+    public static function validateJson(mixed $jsonStringToValidate): string|false
     {
+        if(!is_string($jsonStringToValidate))
+        {
+            return false;
+        }
         $jsonStringToValidate = trim($jsonStringToValidate);
         $result = json_decode($jsonStringToValidate);
         if(0 ===  json_last_error())

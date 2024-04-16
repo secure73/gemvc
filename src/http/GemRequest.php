@@ -35,8 +35,8 @@ class GemRequest
     public null|array      $patch;
 
     /**
-    * @var string|array<mixed>
-    */
+     * @var string|array<mixed>
+     */
     public    string|array        $get;
     public    string       $userMachine;
     public    ?string      $requestMethod;
@@ -53,7 +53,7 @@ class GemRequest
         $this->time = TypeHelper::timeStamp();
     }
 
-    public function getError():string|null
+    public function getError(): string|null
     {
         return $this->error;
     }
@@ -74,46 +74,52 @@ class GemRequest
 
 
     /**
-     * @param array<string> $toValidatePost
+     * @param array<string> $toValidatePost  Define Post Schema to validation
      * @return bool
+     * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
+     * @help : ?name means it is optional
+     * @in case of false $this->error will be setted
      */
     public function definePostSchema(array $toValidatePost): bool
     {
-        foreach ($toValidatePost as $key => $validationString) {
-            $isRequired = $this->isRequired($key);
-            if ($isRequired) {
-                if (!isset($this->post[$key]) || empty($this->post[$key])) {
-                    $this->error = "post $key is required";
-                    return false;
-                } else {
-                    if (!$this->checkPostKeyValue($key, $validationString)) {
-                        return false;
-                    }
-                }
-            } else {
-                $key = substr($key, 1);
-                if (isset($this->post[$key]) && !empty($this->post[$key])) {
-                    if (!$this->checkPostKeyValue($key, $validationString)) {
-                        return false;
-                    }
-                }
-            }
+      $errors = []; // Initialize an empty array to store errors
+    
+      foreach ($toValidatePost as $validation_key => $validationString) {
+        $isRequired = (substr($validation_key, 0, 1) === '?') ? false : true; // Use ternary operator
+        $validation_key = ltrim($validation_key, '?'); // Remove optional prefix
+    
+        if ($isRequired && (!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
+          $errors[] = "Missing required field: $validation_key";
+          continue; // Skip to the next iteration
         }
-        return true;
+    
+        if (isset($this->post[$validation_key]) && !empty($this->post[$validation_key])) {
+          $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
+          if (!$validationResult) {
+            $errors[] = "Invalid value for field: $validation_key";
+          }
+        }
+      }
+      if (count($errors) > 0) {
+        foreach($errors as $error)
+        {
+            $this->error .= $error.', '; // Combine errors into a single string
+        }
+        return false;
+      }
+      return true;
     }
 
-    public function setPostToObject(object $class):bool
+    public function setPostToObject(object $class): bool
     {
-        try{
+        try {
             foreach ($this->post as $key => $value) {
                 if (property_exists($class, $key)) {
                     $class->$key = $value;
                 }
-        }
-        return true;
-        }
-        catch(\Exception $e)
-        {
+            }
+            return true;
+        } catch (\Exception $e) {
             $this->error = $e->getMessage();
         }
         return false;
@@ -123,37 +129,31 @@ class GemRequest
     {
         $jsonResponse = new JsonResponse();
         $ch = curl_init($remoteApiUrl);
-        if($ch === false)
-        {
+        if ($ch === false) {
             $jsonResponse->create(500, [], 0, "remote api $remoteApiUrl is not responding");
             return $jsonResponse;
         }
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        if(is_string($this->authorizationHeader))
-        {
+        if (is_string($this->authorizationHeader)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
         }
         curl_setopt($ch, CURLOPT_USERAGENT, 'gemserver');
 
-        if(isset($this->files))
-        {
+        if (isset($this->files)) {
 
-            foreach($this->files as $key => $value)
-            {
+            foreach ($this->files as $key => $value) {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $value);
             }
         }
         $response = curl_exec($ch);
         curl_close($ch);
-        if(!$response || !is_string($response))
-        {
+        if (!$response || !is_string($response)) {
             $jsonResponse->create(500, [], 0, 'remote api is not responding');
             return $jsonResponse;
         }
-        if(!JsonHelper::validateJson($response))
-        {
+        if (!JsonHelper::validateJson($response)) {
             $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
             return $jsonResponse;
         }
@@ -163,47 +163,35 @@ class GemRequest
         return $jsonResponse;
     }
 
-    private function isRequired(string $post_key): bool
-    {
-        if ($post_key[0] !== '?') // it is required
-        {
-            return true;
-        }
+    private function checkPostKeyValue(string $key, string $validation): bool
+    { 
+      // General validation (assumed in checkValidationTypes)
+      if (!$this->checkValidationTypes($validation)) {
         return false;
+      }
+    
+      // Specific data type validation (using a dictionary for readability)
+      $validationMap = [
+        'string' => is_string($this->post[$key]),
+        'int' => is_numeric($this->post[$key]),
+        'float' => is_float($this->post[$key]),
+        'bool' => is_bool($this->post[$key]),
+        'array' => is_array($this->post[$key]),
+        'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
+        'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
+      ];
+    
+      // Validate data type based on validationMap
+      $result = isset($validationMap[$validation]) ? $validationMap[$validation] : false;
+    
+      if (!$result) {
+        $this->error = "The field '$key' must be of type '$validation'"; // More specific error message
+      }
+    
+      return $result;
     }
 
-    private function checkPostKeyValue(string $key, string $validationString): bool
-    {
-        if($validationString == 'string')
-        {
-            $this->post[$key] = trim($this->post[$key]);/*@phpstan-ignore-line*/
-            if(strlen($this->post[$key]) == 0)
-            {
-                $this->post[$key] = null;
-            }
-        }
-        if (!$this->checkValidationTypes($validationString)) {
-            return false;
-        }
-        $result = match ($validationString) {
-            'string' => is_string($this->post[$key]),
-            'int' => is_numeric($this->post[$key]),
-            'float' => is_float($this->post[$key]),
-            'bool' => is_bool($this->post[$key]),
-            'array' => is_array($this->post[$key]),
-            /** @phpstan-ignore-next-line */
-            'json' => JsonHelper::validateJson($this->post[$key]) ? true : false,
-            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL),
-            default => false
-        };
-        if ($result == false) {
-            $this->error = "the $key must be $validationString";
-        }
-
-        return true;
-    }
-
-    private function checkValidationTypes(string $validationString):bool
+    private function checkValidationTypes(string $validationString): bool
     {
         $validation = [
             'string',
