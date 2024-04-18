@@ -4,6 +4,13 @@ namespace GemLibrary\Http;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
+/**
+ * @public function setToken(string $token):void
+ * @function create(int $userId, int $timeToLiveSecond): string
+ * @function verify(): bool
+ * @function renew(int $extensionTime_sec): false|string
+ * @function GetType():string|null
+ */
 class GemToken
 {
     public int       $exp;
@@ -20,6 +27,7 @@ class GemToken
     public ?string   $userAgent;
     public ?string   $ip;
     private string   $_secret;
+    private ?string  $_token;  
 
     public function __construct(string $secret , string $issuer = null)
     {
@@ -34,6 +42,15 @@ class GemToken
         $this->payload = [];
         $this->type = 'not defined';
         $this->_secret = $secret;
+    }
+
+    /**
+     * @param string $token
+     * @return void
+     */
+    public function setToken(string $token):void
+    {
+        $this->_token = $token;
     }
 
 
@@ -63,14 +80,20 @@ class GemToken
         }
         return JWT::encode($payloadArray, $this->_generate_key(), 'HS256');
     }
+
     /**
-     * @param string $token
+     * @return bool
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function verify(string $token): bool
+    public function verify(): bool
     {
+        if(!$this->_token)
+        {
+            $this->error = 'please set token first with setToken(string $token)';
+            return false;
+        }
         try {
-            $decodedToken = JWT::decode($token, new Key($this->_generate_key(), 'HS256'));
+            $decodedToken = JWT::decode($this->_token, new Key($this->_generate_key(), 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
@@ -97,22 +120,30 @@ class GemToken
         return false;
     }
 
-    public function renew(string $token, int $extensionTime_sec): false|string
+    /**
+     * @param int $extensionTime_sec
+     * @return false|string
+     */
+    public function renew(int $extensionTime_sec): false|string
     {
-        if ($this->verify($token)) {
+        if ($this->verify()) {
             return $this->create($this->user_id, $extensionTime_sec);
         }
         return false;
     }
 
     /**
-     * @param string $token
      * @return string|null
      * @description Returns type without validation token
      */
-    public function GetType(string $token):string|null
+    public function GetType():string|null
     {
-        $tokenParts = explode('.', $token);
+        if(!$this->_token)
+        {
+            $this->error = 'please set token first with setToken(string $token)';
+            return null;
+        }
+        $tokenParts = explode('.', $this->_token);
 
         // The payload is the second part of the token
         $payloadBase64 = $tokenParts[1];
