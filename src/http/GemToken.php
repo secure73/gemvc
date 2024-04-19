@@ -31,6 +31,9 @@ class GemToken
 
     public function __construct(string $secret , string $issuer = null)
     {
+        $this->_token = null;
+        $this->error = null;
+        $this->type = 'not defined';
         $this->user_id = 0;
         if($issuer)
         {
@@ -38,9 +41,7 @@ class GemToken
         }
         $this->exp = 0;
         $this->isTokenValid = false;
-        $this->error = 'Not Initialized';
         $this->payload = [];
-        $this->type = 'not defined';
         $this->_secret = $secret;
     }
 

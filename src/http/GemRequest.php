@@ -53,6 +53,16 @@ class GemRequest
         $this->time = TypeHelper::timeStamp();
     }
 
+    public function __set(string $key , mixed $value):void
+    {
+        $this->$key = $value;
+    }
+
+    public function __get(string $name):mixed
+    {
+        return $this->$name;
+    }
+
     public function getError(): string|null
     {
         return $this->error;
