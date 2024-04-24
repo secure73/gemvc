@@ -31,6 +31,7 @@ class GemToken
     {
         $this->_token = null;
         $this->error = null;
+        $this->iss = null;
         $this->type = 'not defined';
         $this->user_id = 0;
         if($issuer)
@@ -87,7 +88,7 @@ class GemToken
     public function verify(string $jwt_token): false|GemToken
     {
         try {
-            $decodedToken = JWT::decode($this->_token, new Key($this->_secret, 'HS256'));
+            $decodedToken = JWT::decode($jwt_token, new Key($this->_secret, 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
@@ -171,7 +172,7 @@ class GemToken
     public static function isJWT(string $string):false|array
     {
         $tokenParts = explode('.',$string);
-        if(!$tokenParts || count($tokenParts) !== 3)
+        if(!$tokenParts || count($tokenParts) !== 3)/**@phpstan-ignore-line */
         {
             return false;
         }
