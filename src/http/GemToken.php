@@ -143,20 +143,13 @@ class GemToken
             $this->error = 'please set token first directly in function GetType or with setToken(string $token)';
             return null;
         }
-        
-        $tokenParts = $this->isJWT($this->_token);
-        if(!$tokenParts)
+        if(!$this->isJWT($this->_token))
         {
             return null;
         }
-
-        // The payload is the second part of the token
+        $tokenParts = explode('.',$this->_token);
         $payloadBase64 = $tokenParts[1];
-
-        // Decode the payload from base64
         $payload = json_decode(base64_decode($payloadBase64), true);
-
-        // Access the "type" property from the payload
         if (isset($payload['type'])) /** @phpstan-ignore-line */
         {
             return $payload['type'];/** @phpstan-ignore-line */
@@ -166,24 +159,15 @@ class GemToken
 
     /**
      * @param string $string
-     * @return false|array<string>
-     * @success: return array of each parts for future use if needed
+     * @return bool
      */
-    public static function isJWT(string $string):false|array
+    public static function isJWT(string $string):bool
     {
         $tokenParts = explode('.',$string);
-        if(!$tokenParts || count($tokenParts) !== 3)/**@phpstan-ignore-line */
+        if (count($tokenParts) !== 3)
         {
             return false;
         }
-        foreach($tokenParts as $part)
-        {
-            if(!strlen($part))
-            {
-                return false;
-            }
-        }
-        // The payload is the second part of the token
-       return $tokenParts;
+        return true;
     }
 }
