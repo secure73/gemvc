@@ -87,7 +87,7 @@ class GemToken
     public function verify(string $jwt_token): false|GemToken
     {
         try {
-            $decodedToken = JWT::decode($this->_token, new Key($this->_generate_key(), 'HS256'));
+            $decodedToken = JWT::decode($this->_token, new Key($this->_secret, 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
