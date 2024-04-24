@@ -24,8 +24,6 @@ class GemToken
     public ?int      $company_id;
     public ?int      $employee_id;
     public ?string   $error;
-    public ?string   $userAgent;
-    public ?string   $ip;
     private string   $_secret;
     private ?string  $_token;  
 
@@ -79,20 +77,15 @@ class GemToken
         {
             $payloadArray['employee_id'] = $this->employee_id;
         }
-        return JWT::encode($payloadArray, $this->_generate_key(), 'HS256');
+        return JWT::encode($payloadArray, $this->_secret, 'HS256');
     }
 
     /**
-     * @return bool
+     * @return false|GemToken
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function verify(): bool
+    public function verify(string $jwt_token): false|GemToken
     {
-        if(!$this->_token)
-        {
-            $this->error = 'please set token first with setToken(string $token)';
-            return false;
-        }
         try {
             $decodedToken = JWT::decode($this->_token, new Key($this->_generate_key(), 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
@@ -113,7 +106,7 @@ class GemToken
                     $this->employee_id = $decodedToken->employee_id;
                 }
                 $this->error = null;
-                return true;
+                return $this;
             }
         } catch (\Exception $e) {
             $this->error = $e->getMessage();
@@ -125,9 +118,9 @@ class GemToken
      * @param int $extensionTime_sec
      * @return false|string
      */
-    public function renew(int $extensionTime_sec): false|string
+    public function renew(string $token , int $extensionTime_sec): false|string
     {
-        if ($this->verify()) {
+        if ($this->verify($token)) {
             return $this->create($this->user_id, $extensionTime_sec);
         }
         return false;
@@ -137,14 +130,24 @@ class GemToken
      * @return string|null
      * @description Returns type without validation token
      */
-    public function GetType():string|null
+    public function GetType(string $token = null):string|null
     {
+        if($token)
+        {
+            $this->_token = $token;
+        }
+
         if(!$this->_token)
         {
-            $this->error = 'please set token first with setToken(string $token)';
+            $this->error = 'please set token first directly in function GetType or with setToken(string $token)';
             return null;
         }
-        $tokenParts = explode('.', $this->_token);
+        
+        $tokenParts = $this->isJWT($this->_token);
+        if(!$tokenParts)
+        {
+            return null;
+        }
 
         // The payload is the second part of the token
         $payloadBase64 = $tokenParts[1];
@@ -160,12 +163,26 @@ class GemToken
         else return null;
     }
 
-
     /**
-     * @return string
+     * @param string $string
+     * @return false|array<string>
+     * @success: return array of each parts for future use if needed
      */
-    private function _generate_key(): string
+    public static function isJWT(string $string):false|array
     {
-        return $this->_secret . $this->ip . $this->userAgent;
+        $tokenParts = explode('.',$string);
+        if(!$tokenParts || count($tokenParts) !== 3)
+        {
+            return false;
+        }
+        foreach($tokenParts as $part)
+        {
+            if(!strlen($part))
+            {
+                return false;
+            }
+        }
+        // The payload is the second part of the token
+       return $tokenParts;
     }
 }
