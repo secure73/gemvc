@@ -13,6 +13,7 @@ class ApiCall
      * @var null|string|array<string> $authorizationHeader
      */
     public null|string|array $authorizationHeader;
+    public null|string $responseBody;
     /**
      * @var array<mixed> $files
      */
@@ -24,13 +25,11 @@ class ApiCall
         $this->post = [];
         $this->authorizationHeader = null;
         $this->files = [];
-        
+        $this->responseBody = null;
     }
 
-    /**
-     * @return object of type CurlHandle
-     */
-    public function call(string $remoteApiUrl): object|false
+
+    public function call(string $remoteApiUrl): string|false
     {
         $ch = curl_init($remoteApiUrl);
         if ($ch === false) {
@@ -52,15 +51,11 @@ class ApiCall
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $value);
             }
         }
-        $response = curl_exec($ch);
+        $this->responseBody = curl_exec($ch);
+        $this->http_response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $this->error = curl_error($ch);
+
         curl_close($ch);
-        if (!$response || !is_string($response)) {
-            $this->error = 'remote api is not responding';
-            $this->http_response_code = 500;
-            return false;
-        }
-        $object = json_decode($response);
-        $this->http_response_code = $object->http_response_code;
-        return $object;
+       return $this->responseBody;
     }
 }
