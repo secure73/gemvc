@@ -270,6 +270,7 @@ class Request
             return;
         }
         $this->jwtTokenStringInHeader = $pureToken;
+        $this->jwtToken->setToken($pureToken);
     }
     
 
