@@ -2,8 +2,9 @@
 
 namespace GemLibrary\Helper;
 
-use GemLibrary\Http\JsonResponse;
 
+use GemLibrary\Http\JsonResponse;
+use GemLibrary\Http\ApiCall;
 class ChatGptClient
 {
     private string $baseURL = 'https://api.openai.com/v1/';

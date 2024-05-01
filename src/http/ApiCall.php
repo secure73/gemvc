@@ -1,10 +1,10 @@
 <?php
-namespace GemLibrary\Helper;
+namespace GemLibrary\Http;
 
 class ApiCall
 {
     public ?string $error;
-    public ?int $http_response_code;
+    public int $http_response_code;
     /**
      * @var array<mixed> $post
      */
@@ -13,7 +13,7 @@ class ApiCall
      * @var null|string|array<string> $authorizationHeader
      */
     public null|string|array $authorizationHeader;
-    public null|string $responseBody;
+    public bool|string $responseBody;
     /**
      * @var array<mixed> $files
      */
@@ -25,7 +25,7 @@ class ApiCall
         $this->post = [];
         $this->authorizationHeader = null;
         $this->files = [];
-        $this->responseBody = null;
+        $this->responseBody = false;
     }
 
 
@@ -56,6 +56,10 @@ class ApiCall
         $this->error = curl_error($ch);
 
         curl_close($ch);
+        if(!is_string($this->responseBody))
+        {
+            return false;
+        }
        return $this->responseBody;
     }
 }

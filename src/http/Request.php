@@ -2,7 +2,6 @@
 
 namespace GemLibrary\Http;
 
-use GemLibrary\Helper\ApiCall;
 use GemLibrary\Helper\JsonHelper;
 use GemLibrary\Helper\TypeHelper;
 use GemLibrary\Helper\WebHelper;
@@ -243,13 +242,12 @@ class Request
         $caller->authorizationHeader = $this->authorizationHeader;
 
         $response = $caller->call($remoteApiUrl);
-        if (!$response || !JsonHelper::validateJson($response)) {
-            $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
+        if (!$response) {
+            $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
             return $jsonResponse;
         }
         $response = json_decode($response);
-        /**@phpstan-ignore-next-line */
-        $jsonResponse->create($response->http_response_code, $response->data, $response->count, $response->service_message);
+        $jsonResponse->create($caller->http_response_code, $response);
         return $jsonResponse;
     }
 
