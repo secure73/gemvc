@@ -17,6 +17,7 @@ class JWTToken
     public bool      $isTokenValid;
     public int       $user_id;
     public string    $type;//access or refresh
+    private string   $_secret;
     /**
      * @var array<mixed> $payload
      */
@@ -27,7 +28,6 @@ class JWTToken
     public ?int      $company_id;
     public ?int      $employee_id;
     public ?string   $error;
-    public string    $secret;
     private ?string  $_token;  
 
     public function __construct()
@@ -49,6 +49,11 @@ class JWTToken
     public function setToken(string $token):void
     {
         $this->_token = $token;
+    }
+
+    public function setSecret(string $secret):void
+    {
+        $this->_secret = $secret;
     }
 
 
@@ -74,17 +79,17 @@ class JWTToken
         if(isset($this->employee_id)) {
             $payloadArray['employee_id'] = $this->employee_id;
         }
-        return JWT::encode($payloadArray, $this->secret, 'HS256');
+        return JWT::encode($payloadArray, $this->_secret, 'HS256');
     }
 
     /**
      * @return      false|JWTToken
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function verify(string $jwt_token): false|JWTToken
+    public function verify(): false|JWTToken
     {
         try {
-            $decodedToken = JWT::decode($jwt_token, new Key($this->secret, 'HS256'));
+            $decodedToken = JWT::decode($this->_token, new Key($this->_secret, 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
@@ -113,9 +118,9 @@ class JWTToken
      * @param  int $extensionTime_sec
      * @return false|string
      */
-    public function renew(string $token , int $extensionTime_sec): false|string
+    public function renew(int $extensionTime_sec): false|string
     {
-        if ($this->verify($token)) {
+        if ($this->verify($this->_token)) {
             return $this->create($this->user_id, $extensionTime_sec);
         }
         return false;
