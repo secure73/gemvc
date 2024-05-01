@@ -4,7 +4,7 @@ namespace GemLibrary\Helper;
 class ApiCall
 {
     public ?string $error;
-    public ?int $http_response;
+    public ?int $http_response_code;
     /**
      * @var array<mixed> $post
      */
@@ -20,18 +20,21 @@ class ApiCall
     public function __construct()
     {
         $this->error = 'call not initialized';
-        $this->http_response = 0;
+        $this->http_response_code = 0;
         $this->post = [];
         $this->authorizationHeader = null;
         $this->files = [];
         
     }
 
-    public function call(string $remoteApiUrl): string|false
+    /**
+     * @return object of type CurlHandle
+     */
+    public function call(string $remoteApiUrl): object|false
     {
         $ch = curl_init($remoteApiUrl);
         if ($ch === false) {
-            $this->http_response = 500;
+            $this->http_response_code = 500;
             $this->error = "remote api $remoteApiUrl is not responding";
             return false;
         }
@@ -53,9 +56,11 @@ class ApiCall
         curl_close($ch);
         if (!$response || !is_string($response)) {
             $this->error = 'remote api is not responding';
-            $this->http_response = 500;
+            $this->http_response_code = 500;
             return false;
         }
-        return $response;
+        $object = json_decode($response);
+        $this->http_response_code = $object->http_response_code;
+        return $object;
     }
 }
