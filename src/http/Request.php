@@ -2,6 +2,7 @@
 
 namespace GemLibrary\Http;
 
+use GemLibrary\Helper\ApiCall;
 use GemLibrary\Helper\JsonHelper;
 use GemLibrary\Helper\TypeHelper;
 use GemLibrary\Helper\WebHelper;
@@ -234,33 +235,15 @@ class Request
 
     public function forwardToRemoteApi(string $remoteApiUrl): JsonResponse
     {
+
         $jsonResponse = new JsonResponse();
-        $ch = curl_init($remoteApiUrl);
-        if ($ch === false) {
-            $jsonResponse->create(500, [], 0, "remote api $remoteApiUrl is not responding");
-            return $jsonResponse;
-        }
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        if (is_string($this->authorizationHeader)) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
-        }
-        curl_setopt($ch, CURLOPT_USERAGENT, 'gemserver');
+        $caller = new ApiCall();
+        $caller->post = $this->post;
+        $caller->files = $this->files;
+        $caller->authorizationHeader = $this->authorizationHeader;
 
-        if (isset($this->files)) {
-
-            foreach ($this->files as $key => $value) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $value);
-            }
-        }
-        $response = curl_exec($ch);
-        curl_close($ch);
-        if (!$response || !is_string($response)) {
-            $jsonResponse->create(500, [], 0, 'remote api is not responding');
-            return $jsonResponse;
-        }
-        if (!JsonHelper::validateJson($response)) {
+        $response = $caller->call($remoteApiUrl);
+        if (!$response || !JsonHelper::validateJson($response)) {
             $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
             return $jsonResponse;
         }
