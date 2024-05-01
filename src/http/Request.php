@@ -4,9 +4,12 @@ namespace GemLibrary\Http;
 
 use GemLibrary\Helper\JsonHelper;
 use GemLibrary\Helper\TypeHelper;
+use GemLibrary\Helper\WebHelper;
 
-class GemRequest
+class Request
 {
+    public    JWTToken        $jwtToken;
+    public    ?string   $jwtTokenStringInHeader;
     public    string       $requestedUrl;
     public    ?string      $queryString;
     public    ?string      $error;
@@ -48,9 +51,13 @@ class GemRequest
     public function __construct()
     {
         $this->error = "";
+        $this->jwtTokenStringInHeader = null;
+        $this->requestMethod = null;
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
+        $this->jwtToken = new JWTToken();
+        $this->extractPureJWTTokenFromHeader();
     }
 
     public function __set(string $key , mixed $value):void
@@ -224,6 +231,113 @@ class GemRequest
         return true;
     }
 
+
+    public function forwardToRemoteApi(string $remoteApiUrl): JsonResponse
+    {
+        $jsonResponse = new JsonResponse();
+        $ch = curl_init($remoteApiUrl);
+        if ($ch === false) {
+            $jsonResponse->create(500, [], 0, "remote api $remoteApiUrl is not responding");
+            return $jsonResponse;
+        }
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+        if (is_string($this->authorizationHeader)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
+        }
+        curl_setopt($ch, CURLOPT_USERAGENT, 'gemserver');
+
+        if (isset($this->files)) {
+
+            foreach ($this->files as $key => $value) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $value);
+            }
+        }
+        $response = curl_exec($ch);
+        curl_close($ch);
+        if (!$response || !is_string($response)) {
+            $jsonResponse->create(500, [], 0, 'remote api is not responding');
+            return $jsonResponse;
+        }
+        if (!JsonHelper::validateJson($response)) {
+            $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
+            return $jsonResponse;
+        }
+        $response = json_decode($response);
+        /**@phpstan-ignore-next-line */
+        $jsonResponse->create($response->http_response_code, $response->data, $response->count, $response->service_message);
+        return $jsonResponse;
+    }
+
+    
+    //----------------------------PRIVATE FUNCTIONS---------------------------------------
+
+    private function extractPureJWTTokenFromHeader():void
+    {
+        if (!isset($this->request->authorizationHeader) || $this->request->authorizationHeader == '') {
+            $this->error = 'no token found';
+            return;
+        }
+        if (!is_string($this->request->authorizationHeader)) {
+            $this->error = 'jwt token shall be type of string';
+            return;
+        }
+        $pureToken = WebHelper::BearerTokenPurify($this->request->authorizationHeader);
+        if (!$pureToken) {
+            $this->error = 'given token is not confirmed with jwt schema';
+            return;
+        }
+        $this->jwtTokenStringInHeader = $pureToken;
+    }
+    
+
+    private function checkPostKeyValue(string $key, string $validation): bool
+    {
+        // General validation (assumed in checkValidationTypes)
+        if (!$this->checkValidationTypes($validation)) {
+            return false;
+        }
+
+        // Specific data type validation (using a dictionary for readability)
+        $validationMap = [
+            'string' => is_string($this->post[$key]),
+            'int' => is_numeric($this->post[$key]),
+            'float' => is_float($this->post[$key]),
+            'bool' => is_bool($this->post[$key]),
+            'array' => is_array($this->post[$key]),
+            'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
+            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
+        ];
+
+        // Validate data type based on validationMap
+        $result = isset($validationMap[$validation]) ? $validationMap[$validation] : false;
+
+        if (!$result) {
+            $this->error = "The field '$key' must be of type '$validation'"; // More specific error message
+        }
+
+        return $result;
+    }
+
+    private function checkValidationTypes(string $validationString): bool
+    {
+        $validation = [
+            'string',
+            'int',
+            'float',
+            'bool',
+            'array',
+            'json',
+            'email'
+        ];
+        if (!in_array($validationString, $validation)) {
+            $this->error = "unvalid type of validation for $validationString";
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Validates if a value matches the expected type for a property.
      *
@@ -301,89 +415,5 @@ class GemRequest
         }
 
         throw new \InvalidArgumentException("Could not convert value to target type: '$targetType'");
-    }
-
-    public function forwardToRemoteApi(string $remoteApiUrl): JsonResponse
-    {
-        $jsonResponse = new JsonResponse();
-        $ch = curl_init($remoteApiUrl);
-        if ($ch === false) {
-            $jsonResponse->create(500, [], 0, "remote api $remoteApiUrl is not responding");
-            return $jsonResponse;
-        }
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->post);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
-        if (is_string($this->authorizationHeader)) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
-        }
-        curl_setopt($ch, CURLOPT_USERAGENT, 'gemserver');
-
-        if (isset($this->files)) {
-
-            foreach ($this->files as $key => $value) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $value);
-            }
-        }
-        $response = curl_exec($ch);
-        curl_close($ch);
-        if (!$response || !is_string($response)) {
-            $jsonResponse->create(500, [], 0, 'remote api is not responding');
-            return $jsonResponse;
-        }
-        if (!JsonHelper::validateJson($response)) {
-            $jsonResponse->create(500, [], 0, 'remote api is not responding with valid json');
-            return $jsonResponse;
-        }
-        $response = json_decode($response);
-        /**@phpstan-ignore-next-line */
-        $jsonResponse->create($response->http_response_code, $response->data, $response->count, $response->service_message);
-        return $jsonResponse;
-    }
-
-    private function checkPostKeyValue(string $key, string $validation): bool
-    {
-        // General validation (assumed in checkValidationTypes)
-        if (!$this->checkValidationTypes($validation)) {
-            return false;
-        }
-
-        // Specific data type validation (using a dictionary for readability)
-        $validationMap = [
-            'string' => is_string($this->post[$key]),
-            'int' => is_numeric($this->post[$key]),
-            'float' => is_float($this->post[$key]),
-            'bool' => is_bool($this->post[$key]),
-            'array' => is_array($this->post[$key]),
-            'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
-            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
-        ];
-
-        // Validate data type based on validationMap
-        $result = isset($validationMap[$validation]) ? $validationMap[$validation] : false;
-
-        if (!$result) {
-            $this->error = "The field '$key' must be of type '$validation'"; // More specific error message
-        }
-
-        return $result;
-    }
-
-    private function checkValidationTypes(string $validationString): bool
-    {
-        $validation = [
-            'string',
-            'int',
-            'float',
-            'bool',
-            'array',
-            'json',
-            'email'
-        ];
-        if (!in_array($validationString, $validation)) {
-            $this->error = "unvalid type of validation for $validationString";
-            return false;
-        }
-        return true;
     }
 }

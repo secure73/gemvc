@@ -3,11 +3,11 @@
 namespace GemLibrary\Http;
 
 use GemLibrary\Helper\StringHelper;
-use GemLibrary\Http\GemRequest;
+use GemLibrary\Http\Request;
 
 class SwooleRequest
 {
-    public   GemRequest $request; 
+    public   Request $request; 
     private  object  $incommingRequestObject;
        
     /**
@@ -15,16 +15,14 @@ class SwooleRequest
      */
     public function __construct(object $swooleRquest)
     {
-        $this->request = new GemRequest();
+        $this->request = new Request();
         $this->incommingRequestObject = $swooleRquest;
-        if(isset($swooleRquest->server['request_uri']))
-        {
+        if(isset($swooleRquest->server['request_uri'])) {
             $this->request->requestMethod = $swooleRquest->server['request_method'];
             $this->request->requestedUrl = $swooleRquest->server['request_uri'];
             isset($swooleRquest->server['query_string']) ? $this->request->queryString = $swooleRquest->server['query_string'] : $this->request->queryString = null;
             $this->request->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
-            if(isset($swooleRquest->header['user-agent']))
-            {
+            if(isset($swooleRquest->header['user-agent'])) {
                 $this->request->userMachine = $swooleRquest->header['user-agent'];
             }
             $this->setData();
@@ -51,8 +49,7 @@ class SwooleRequest
 
     private function setPost():void
     {
-        if(isset($this->incommingRequestObject->post))
-        {
+        if(isset($this->incommingRequestObject->post)) {
             $this->request->post = $this->incommingRequestObject->post;
         }
     }
@@ -60,24 +57,21 @@ class SwooleRequest
 
     private function setAuthorizationToken():void
     {
-        if(isset($this->incommingRequestObject->header['authorization']))
-        {
+        if(isset($this->incommingRequestObject->header['authorization'])) {
             $this->request->authorizationHeader = $this->incommingRequestObject->header['authorization'];
         }
     }
 
     private function setFiles():void
     {
-        if(isset($this->incommingRequestObject->files))
-        {
+        if(isset($this->incommingRequestObject->files)) {
             $this->request->files = $this->incommingRequestObject->files;
         }
     }
 
     private function setGet():void
     {
-        if(isset($this->incommingRequestObject->get))
-        {
+        if(isset($this->incommingRequestObject->get)) {
             $this->request->get = $this->incommingRequestObject->get;
         }
     }

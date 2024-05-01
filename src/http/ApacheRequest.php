@@ -2,11 +2,11 @@
 
 namespace GemLibrary\Http;
 
-use GemLibrary\Http\GemRequest;
+use GemLibrary\Http\Request;
 
 class ApacheRequest
 {
-    public  GemRequest $request; 
+    public  Request $request; 
 
     public function __construct()
     {
@@ -16,7 +16,7 @@ class ApacheRequest
         $put = $this->sanitizeAllHTTPPutRequest();
         $patch = $this->sanitizeAllHTTPPatchRequest();
         $this->sanitizeQueryString();
-        $this->request = new GemRequest();
+        $this->request = new Request();
         $this->request->requestedUrl = $this->sanitizeRequestURI();
         $this->request->requestMethod = $this->getRequestMethod();
         $this->request->userMachine = $this->getUserAgent();
@@ -28,20 +28,19 @@ class ApacheRequest
         $this->request->patch = $patch;
 
         if (isset($_FILES['file'])) {
-           $this->request->files = $_FILES['file'];
+            $this->request->files = $_FILES['file'];
         }
         $this->getAuthHeader();
     }
 
-    private function sanitizeAllServerHttpRequestHeaders():void {
+    private function sanitizeAllServerHttpRequestHeaders():void
+    {
         foreach ($_SERVER as $key => $value) {
             if (strpos($key, 'HTTP_') === 0) {
-                if(is_string($_SERVER[$key]))
-                {
+                if(is_string($_SERVER[$key])) {
                     $_SERVER[$key] = $this->sanitizeInput($value);
                 }
-                if(is_array($_SERVER[$key]))
-                {
+                if(is_array($_SERVER[$key])) {
                     foreach($_SERVER[$key] as $subKey=>$subValue)
                     {
                         $_SERVER[$key][$subKey] = $this->sanitizeInput($subValue);
@@ -54,16 +53,13 @@ class ApacheRequest
     private function sanitizeAllHTTPPostRequest():void
     {   
         foreach ($_POST as $key => $value) {
-            if(is_string($value))
-            {
+            if(is_string($value)) {
                 $_POST[$key] = $this->sanitizeInput($value);
             }
-            if(is_array($_POST[$key]))
-            {
+            if(is_array($_POST[$key])) {
                 foreach($_POST[$key] as $subKey => $subValue)
                 {
-                    if(is_string($subValue))
-                    {
+                    if(is_string($subValue)) {
                         $_POST[$key][$subKey] = $this->sanitizeInput($value);
                     }
                 }
@@ -79,8 +75,7 @@ class ApacheRequest
     {
         // Read the raw input stream from the request
         $input = file_get_contents('php://input');
-        if(!$input)
-        {
+        if(!$input) {
             $input = '';
         }
         // Parse the raw input data
@@ -131,8 +126,7 @@ class ApacheRequest
     {
         // Read the raw input stream from the request
         $input = file_get_contents('php://input');
-        if(!$input)
-        {
+        if(!$input) {
             $input = '';
         }
         // Parse the raw input data
@@ -162,20 +156,19 @@ class ApacheRequest
     }
 
 
-    private function sanitizeQueryString():void {
-        if(isset($_SERVER['QUERY_STRING']))
-        {
+    private function sanitizeQueryString():void
+    {
+        if(isset($_SERVER['QUERY_STRING'])) {
             $_SERVER['QUERY_STRING'] = trim($_SERVER['QUERY_STRING']);
             $_SERVER['QUERY_STRING'] = filter_var($_SERVER['QUERY_STRING'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         }
     }
 
-    private function sanitizeRequestURI():string {
-        if(isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']))
-        {
+    private function sanitizeRequestURI():string
+    {
+        if(isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])) {
             $sanitizedURI = trim($_SERVER['REQUEST_URI']);
-            if(!filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_URL))
-            {
+            if(!filter_var($_SERVER['REQUEST_URI'], FILTER_SANITIZE_URL)) {
                 return '';
             }
             return $sanitizedURI;
@@ -184,28 +177,28 @@ class ApacheRequest
     }
 
     /**
-     * @param mixed $input
+     * @param  mixed $input
      * @return mixed
      */
-    private function sanitizeInput(mixed $input):mixed {
-        if(!is_string($input))
-        {
+    private function sanitizeInput(mixed $input):mixed
+    {
+        if(!is_string($input)) {
             return $input;
         }
         return filter_var(trim($input), FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     }
 
-    private function getUserAgent():string {
-        if(isset($_SERVER['HTTP_USER_AGENT']))
-        {
+    private function getUserAgent():string
+    {
+        if(isset($_SERVER['HTTP_USER_AGENT'])) {
             return $_SERVER['HTTP_USER_AGENT'];
         }
         return '';
     }
 
-    private function getRemoteAddress():string {
-        if(isset($_SERVER['REMOTE_ADDR']))
-        {
+    private function getRemoteAddress():string
+    {
+        if(isset($_SERVER['REMOTE_ADDR'])) {
             if (filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP)) {
                 return $_SERVER['REMOTE_ADDR'];
             } else {
@@ -215,9 +208,9 @@ class ApacheRequest
         return 'unsetted_remote_address';
     }
 
-    private function getRequestMethod():string {
-        if(isset($_SERVER['REQUEST_METHOD']))
-        {
+    private function getRequestMethod():string
+    {
+        if(isset($_SERVER['REQUEST_METHOD'])) {
             $_SERVER['REQUEST_METHOD'] = trim($_SERVER['REQUEST_METHOD']);
             $_SERVER['REQUEST_METHOD'] = strtoupper($_SERVER['REQUEST_METHOD']);
             $allowedMethods = array('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD');
@@ -236,10 +229,9 @@ class ApacheRequest
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
         if (!$this->request->authorizationHeader && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
                 $res = $this->sanitizeInput($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
-                if(is_string($res))
-                {
-                    $this->request->authorizationHeader = $res;
-                }
+            if(is_string($res)) {
+                $this->request->authorizationHeader = $res;
+            }
         }
     }
 }

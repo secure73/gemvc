@@ -1,22 +1,25 @@
 <?php
 namespace GemLibrary\Helper;
-class WebHelper {
+class WebHelper
+{
 
     /**
-     * @param string $url
+     * @param  string $url
      * @return bool
      * if given string is has valid url format return true
      */
-    public static function isValidUrl(string $url):bool {
+    public static function isValidUrl(string $url):bool
+    {
         return filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
 
     /**
-     * @param string $email
+     * @param  string $email
      * @return bool
      * if given string is has valid email format return true
      */
-    public static function isValidEmail(string $email) {
+    public static function isValidEmail(string $email)
+    {
         // Use filter_var with FILTER_VALIDATE_EMAIL
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
@@ -52,8 +55,8 @@ class WebHelper {
 
     
     /**
-     * @param string $tokenStringInHttpHeader
-     * @return string|null
+     * @param       string $tokenStringInHttpHeader
+     * @return      string|null
      * @description BearerToken in header is like Brearer ey... this function remove Bearer and space return pure token to be used in JWT
      */
     public static function BearerTokenPurify(string $tokenStringInHttpHeader): null|string
@@ -72,7 +75,7 @@ class WebHelper {
             return 'Apache';
         } elseif (strpos($serverSoftware, 'swoole') !== false) {
             return 'swoole';
-        } elseif(strpos($serverSoftware, 'nginx') !== false){
+        } elseif(strpos($serverSoftware, 'nginx') !== false) {
             return "nginx";
         }
         return false;

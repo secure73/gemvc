@@ -137,7 +137,7 @@ class Select implements QueryBuilderInterface
     }
 
     /**
-     * @param PdoQuery $pdoQuery
+     * @param  PdoQuery $pdoQuery
      * @return array<mixed>|false
      */
     public function run(PdoQuery $pdoQuery): array|false
@@ -164,7 +164,7 @@ class Select implements QueryBuilderInterface
     }
 
     /**
-     * @param PdoQuery $classTable
+     * @param  PdoQuery $classTable
      * @return array<mixed>
      */
     public function object(PdoQuery $classTable): array

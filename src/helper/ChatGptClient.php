@@ -17,16 +17,18 @@ class ChatGptClient
     public function __construct(string $apiKey = null)
     {
         $this->apiKey = $apiKey ?: $this->apiKey;
-        $this->client = new GuzzleHttp\Client([
+        $this->client = new GuzzleHttp\Client(
+            [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json'
             ]
-        ]);
+            ]
+        );
     }
 
     /**
-     * @param string $endpoint 'chat/completion'
+     * @param string $endpoint     'chat/completion'
      * @param string $sysMessage
      * @param string $userQuestion
      */
@@ -40,9 +42,11 @@ class ChatGptClient
         ];
         $data = json_encode($data);
         try {
-            $response = $this->client->request('POST', $this->baseURL . $endpoint, [
+            $response = $this->client->request(
+                'POST', $this->baseURL . $endpoint, [
                 'body' => $data
-            ]);
+                ]
+            );
             return $response->getBody()->getContents();
         } catch (RequestException $e) {
             // Handle request exception

@@ -60,11 +60,12 @@ class TypeHelper
 
 
     /**
-     * @param object|stdClass $object
+     * @param  object|stdClass $object
      * @return array<string>
      * id is not in the non null!
      */
-    public static function getNonNullableProperties(object $object):array {
+    public static function getNonNullableProperties(object $object):array
+    {
         $reflection = new \ReflectionClass($object);
         $properties = $reflection->getProperties();
         $nonNullableProperties = [];

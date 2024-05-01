@@ -3,7 +3,8 @@ namespace GemLibrary\Database;
 use GemLibrary\Database\PdoConnection;
 use PDO;
 
-class QueryExecuter {
+class QueryExecuter
+{
     private ?string $error;
     private ?int $affectedRows;
     private string|false $lastInsertedId;
@@ -171,13 +172,13 @@ class QueryExecuter {
 
     /**
      * @return false|array<object>
-     * @param string $targetClassName class name to convert result into it
+     * @param  string $targetClassName class name to convert result into it
      */
     public function fetchAllClass(string $targetClassName): array|false
     {
         if ($this->stsment) {
             try{
-                return $this->stsment->fetchAll(\PDO::FETCH_CLASS,$targetClassName);
+                return $this->stsment->fetchAll(\PDO::FETCH_CLASS, $targetClassName);
             }catch(\PDOException $e){
                 $this->error = $e->getMessage();
                 return false;

@@ -71,8 +71,7 @@ class Update  implements QueryBuilderInterface
     {
         $query = $this->__toString();
         $result = $pdoQuery->updateQuery($query, $this->arrayBindValues);
-        if(!$result)
-        {
+        if(!$result) {
             return false;
         }
         return $result;

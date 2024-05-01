@@ -50,7 +50,7 @@ class FileHelper
     public function delete(): bool
     {
         if ($this->error) {
-        return false;
+            return false;
         }
         if (shell_exec("rm $this->sourceFile")) {
             return true;

@@ -23,8 +23,7 @@ class JsonResponse
 
     public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
-        if(is_array($data))
-        {
+        if(is_array($data)) {
             foreach($data as $item)
             {
                 $this->data[] = $item;
@@ -39,8 +38,7 @@ class JsonResponse
         $this->count = $count ? $count :  count($this->data);
         $this->service_message = $service_message;
         $this->json_response = json_encode($this, JSON_PRETTY_PRINT);
-        if($this->json_response)
-        {
+        if($this->json_response) {
             return $this;
         }
         $this->http_response_code = 500;
@@ -82,11 +80,11 @@ class JsonResponse
     }
     public function forbidden(string $service_message = null):JsonResponse
     {
-        return $this->create(403,null, null, $service_message);
+        return $this->create(403, null, null, $service_message);
     }
     public function notFound(string $service_message = null):JsonResponse
     {
-        return $this->create(404, null , null, $service_message);
+        return $this->create(404, null, null, $service_message);
     }
     public function internalError(string $service_message = null ):JsonResponse
     {
@@ -144,22 +142,38 @@ class JsonResponse
     {
         switch($httpCode)
         {
-            case 200: return 'OK';
-            case 201: return 'created';
-            case 204: return 'no-content';
-            case 209: return 'updated';
-            case 210: return 'deleted';
-            case 400: return 'bad request';
-            case 401: return 'unauthorized';
-            case 403: return 'forbidden';
-            case 404: return 'not found';
-            case 406: return 'not acceptable';
-            case 409: return 'conflict';
-            case 415: return 'unsupported media type';
-            case 415: return 'unsupported media type';
-            case 422: return 'unprocessable entity';
-            case 500: return 'internal error';
-            default:  return 'unknown error';
+        case 200: 
+            return 'OK';
+        case 201: 
+            return 'created';
+        case 204: 
+            return 'no-content';
+        case 209: 
+            return 'updated';
+        case 210: 
+            return 'deleted';
+        case 400: 
+            return 'bad request';
+        case 401: 
+            return 'unauthorized';
+        case 403: 
+            return 'forbidden';
+        case 404: 
+            return 'not found';
+        case 406: 
+            return 'not acceptable';
+        case 409: 
+            return 'conflict';
+        case 415: 
+            return 'unsupported media type';
+        case 415: 
+            return 'unsupported media type';
+        case 422: 
+            return 'unprocessable entity';
+        case 500: 
+            return 'internal error';
+        default:  
+            return 'unknown error';
         }
     }
 

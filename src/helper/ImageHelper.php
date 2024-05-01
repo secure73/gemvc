@@ -16,7 +16,7 @@ class ImageHelper extends FileHelper
     }
 
     /**
-     * @param ?int $width The new width of the image, if null will be calculated based on height
+     * @param ?int $width  The new width of the image, if null will be calculated based on height
      * @param ?int $height The new height of the image, if null will be calculated based on width
      */
     public function toJPEG(?int $width = null, ?int $height = null): bool
@@ -34,7 +34,7 @@ class ImageHelper extends FileHelper
     }
 
     /**
-     * @param ?int $width The new width of the image, if null will be calculated based on height
+     * @param ?int $width  The new width of the image, if null will be calculated based on height
      * @param ?int $height The new height of the image, if null will be calculated based on width
      */
     public function ToPNG(int $width = null, int $height = null): bool

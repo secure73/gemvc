@@ -31,8 +31,10 @@ class QueryBuilder
     }
 
     /**
-     * @param string $table     
-     * Delete from table
+     * @param string $table 
+     *                      Delete
+     *                      from
+     *                      table
      */
     public static function delete(string $table): Delete
     {
