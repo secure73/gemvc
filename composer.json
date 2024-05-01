@@ -4,7 +4,8 @@
     "type": "library",
     "require": {
         "firebase/php-jwt": "^6.8",
-        "phpmailer/phpmailer": "^6.8"
+        "phpmailer/phpmailer": "^6.8",
+        "symfony/dotenv": "^7.0"
     },
     "license": "MIT",
     "autoload": {
