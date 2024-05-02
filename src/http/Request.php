@@ -8,8 +8,7 @@ use GemLibrary\Helper\WebHelper;
 
 class Request
 {
-    public    JWTToken        $jwtToken;
-    public    ?string   $jwtTokenStringInHeader;
+    public    ?string      $jwtTokenStringInHeader;
     public    string       $requestedUrl;
     public    ?string      $queryString;
     public    ?string      $error;
@@ -56,7 +55,6 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->jwtToken = new JWTToken();
         $this->extractPureJWTTokenFromHeader();
     }
 
@@ -256,8 +254,8 @@ class Request
 
     private function extractPureJWTTokenFromHeader():void
     {
-        if (!isset($this->authorizationHeader) || $this->authorizationHeader == '') {
-            $this->error = 'no token found';
+        if (!$this->authorizationHeader) {
+            $this->error = 'no token found in header';
             return;
         }
         if (!is_string($this->authorizationHeader)) {
@@ -270,7 +268,6 @@ class Request
             return;
         }
         $this->jwtTokenStringInHeader = $pureToken;
-        $this->jwtToken->setToken($pureToken);
     }
     
 
