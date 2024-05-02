@@ -256,15 +256,15 @@ class Request
 
     private function extractPureJWTTokenFromHeader():void
     {
-        if (!isset($this->request->authorizationHeader) || $this->request->authorizationHeader == '') {
+        if (!isset($this->authorizationHeader) || $this->authorizationHeader == '') {
             $this->error = 'no token found';
             return;
         }
-        if (!is_string($this->request->authorizationHeader)) {
+        if (!is_string($this->authorizationHeader)) {
             $this->error = 'jwt token shall be type of string';
             return;
         }
-        $pureToken = WebHelper::BearerTokenPurify($this->request->authorizationHeader);
+        $pureToken = WebHelper::BearerTokenPurify($this->authorizationHeader);
         if (!$pureToken) {
             $this->error = 'given token is not confirmed with jwt schema';
             return;
