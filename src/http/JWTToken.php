@@ -34,12 +34,13 @@ class JWTToken
     {
         $this->_token = null;
         $this->error = null;
-        $this->iss = null;
+        $this->iss = $_ENV['TOKEN_ISSUER'];
         $this->type = 'not defined';
         $this->user_id = 0;
         $this->exp = 0;
         $this->isTokenValid = false;
         $this->payload = [];
+        $this->_secret = $_ENV['TOKEN_SECRET'];
     }
 
     /**
@@ -51,9 +52,14 @@ class JWTToken
         $this->_token = $token;
     }
 
-    public function setSecret(string $secret):void
+    public function createAccessToken(int $user_id):string
     {
-        $this->_secret = $secret;
+        return $this->create($user_id, $_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS']);
+    }
+
+    public function createRefreshToken(int $user_id):string
+    {
+        return $this->create($user_id, $_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']);
     }
 
 
@@ -86,8 +92,12 @@ class JWTToken
      * @return      false|JWTToken
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function verify(): false|JWTToken
+    public function verify(string $token = null): false|JWTToken
     {
+        if($token)
+        {
+            $this->_token = $token;
+        }
         if(!$this->_token)
         {
             $this->error = "no token string setted in JWTToken to verify";
@@ -123,8 +133,12 @@ class JWTToken
      * @param  int $extensionTime_sec
      * @return false|string
      */
-    public function renew(int $extensionTime_sec): false|string
+    public function renew(int $extensionTime_sec , string $token= null): false|string
     {
+        if($token)
+        {
+            $this->_token = $token;
+        }
         if ($this->verify($this->_token)) {
             return $this->create($this->user_id, $extensionTime_sec);
         }
