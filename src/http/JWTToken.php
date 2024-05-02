@@ -88,6 +88,11 @@ class JWTToken
      */
     public function verify(): false|JWTToken
     {
+        if(!$this->_token)
+        {
+            $this->error = "no token string setted in JWTToken to verify";
+            return false;
+        }
         try {
             $decodedToken = JWT::decode($this->_token, new Key($this->_secret, 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
