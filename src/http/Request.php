@@ -50,6 +50,7 @@ class Request
     public function __construct()
     {
         $this->error = "";
+        $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
         $this->requestMethod = null;
         $this->start_exec = microtime(true);
@@ -250,9 +251,7 @@ class Request
     }
 
     
-    //----------------------------PRIVATE FUNCTIONS---------------------------------------
-
-    private function extractPureJWTTokenFromHeader():void
+    public function extractPureJWTTokenFromHeader():void
     {
         if (!$this->authorizationHeader) {
             $this->error = 'no token found in header';
@@ -269,6 +268,8 @@ class Request
         }
         $this->jwtTokenStringInHeader = $pureToken;
     }
+    //----------------------------PRIVATE FUNCTIONS---------------------------------------
+
     
 
     private function checkPostKeyValue(string $key, string $validation): bool
