@@ -54,11 +54,13 @@ class JWTToken
 
     public function createAccessToken(int $user_id):string
     {
+        $this->type = 'access';
         return $this->create($user_id, $_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS']);
     }
 
     public function createRefreshToken(int $user_id):string
     {
+        $this->type = 'refresh';
         return $this->create($user_id, $_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']);
     }
 
