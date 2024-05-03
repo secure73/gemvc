@@ -5,47 +5,32 @@ namespace GemLibrary\Http;
 class JsonResponse
 {
     public string|false $json_response;
-    public int $http_response_code;
-    public string $http_message;
-    public int $count;
+    public int $response_code;
+    public string $message;
+    public ?int $count;
     public ?string $service_message;
-    public float $cost = 0;
-
-    /**
-     * @var array<mixed> $data
-     */
-    public array $data;
+    public mixed $data;
 
     public function __construct()
     {
-        $this->data = array();
+       $this->data = null;
     }
 
     public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
-        if(is_array($data)) {
-            foreach($data as $item)
-            {
-                $this->data[] = $item;
-            }
-        }
-        else
-        {
-            $this->data[] = $data;
-        }
-        $this->http_response_code = $responseCode;
-        $this->http_message = $this->setHttpMessage($responseCode);
-        $this->count = $count ? $count :  count($this->data);
+        $this->response_code = $responseCode;
+        $this->message = $this->setHttpMessage($responseCode);
+        $this->count = $count;
         $this->service_message = $service_message;
+        $this->data = $data;
         $this->json_response = json_encode($this, JSON_PRETTY_PRINT);
         if($this->json_response) {
             return $this;
         }
-        $this->http_response_code = 500;
-        $this->http_message = 'internal error';
+        $this->response_code = 500;
+        $this->message = 'internal error';
         $this->count = 0;
         $this->service_message = 'failure in creating json response in Gemvc/JsonResponse .please check data payload';
-        $this->data =[];
         $this->json_response = json_encode($this);
         return $this;
     }
@@ -121,7 +106,6 @@ class JsonResponse
     }
     public function show():void
     {
-        http_response_code($this->http_response_code);
         echo $this->json_response;
     }
 
