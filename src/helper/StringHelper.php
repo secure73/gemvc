@@ -34,8 +34,7 @@ class StringHelper
 
     public static function sanitizedString(string $incomming_string):string|null
     {
-        $pattern = '/^[a-zA-Z0-9_\-\/\(\);,. ]{1,255}$/';
-
+        $pattern = '/^[a-zA-Z0-9_\-\/\(\);,.,äÄöÖüÜß  ]{1,255}$/';
         // Check if the User-Agent matches the pattern.
         if (preg_match($pattern, $incomming_string)) {
             // The User-Agent is safe.
