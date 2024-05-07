@@ -99,20 +99,51 @@ class Request
     public function definePostSchema(array $toValidatePost): bool
     {
         $errors = []; // Initialize an empty array to store errors
+        $requires = [];
+        $optionals = [];
 
         foreach ($toValidatePost as $validation_key => $validationString) {
-            $isRequired = (substr($validation_key, 0, 1) === '?') ? false : true; // Use ternary operator
-            $validation_key = ltrim($validation_key, '?'); // Remove optional prefix
+            (substr($validation_key, 0, 1) === '?') ? $requires[$validation_key] = $validationString : $optionals[ltrim($validation_key, '?')] = $validationString; // Use ternary operator
+        }
+        foreach($this->post as $postName => $postValue) { //if there is any post other than defined schma, instanlty breake the process and return false.
+            if(!array_key_exists($postName ,$requires) || !array_key_exists($postName,$optionals)) {
+                $errors[$postName] = "unwanted post $postName";
+                unset($this->post[$postName]);
+            }
+            return false;
+        }
 
-            if ($isRequired && (!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
+        foreach($requires as $validation_key => $validation_value) {      //now only check existance of requires post 
+            if ((!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
                 $errors[] = "Missing required field: $validation_key";
                 continue; // Skip to the next iteration
             }
-
-            if (isset($this->post[$validation_key]) && !empty($this->post[$validation_key])) {
-                $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
+        }
+        if (count($errors) > 0) { //if requires not exists , stop process and return false
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
+            return false;
+        }
+        foreach($requires as $validation_key => $validationString) { //now validate requires post Schema
+            $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
                 if (!$validationResult) {
                     $errors[] = "Invalid value for field: $validation_key";
+            }
+        }
+        if (count($errors) > 0) {
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
+            return false;
+        }
+
+        foreach($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
+        
+            if (isset($this->post[$optionals_key]) && !empty($this->post[$optionals_key])) {
+                $validationResult = $this->checkPostKeyValue($optionals_key, $optionals_value);
+                if (!$validationResult) {
+                    $errors[] = "Invalid value for field: $optionals_key";
                 }
             }
         }
