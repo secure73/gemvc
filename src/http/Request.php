@@ -98,15 +98,18 @@ class Request
      */
     public function definePostSchema(array $toValidatePost): bool
     {
+        //TODO: brake this function into smaller functions
         $errors = []; // Initialize an empty array to store errors
         $requires = [];
         $optionals = [];
+        $all = [];
 
         foreach ($toValidatePost as $validation_key => $validationString) {
-            (substr($validation_key, 0, 1) === '?') ? $requires[$validation_key] = $validationString : $optionals[ltrim($validation_key, '?')] = $validationString; // Use ternary operator
+            (!substr($validation_key, 0, 1) === '?') ? $requires[$validation_key] = $validationString : $optionals[ltrim($validation_key, '?')] = $validationString; // Use ternary operator
+            $all[$validation_key] = $validationString;
         }
         foreach($this->post as $postName => $postValue) { //if there is any post other than defined schma, instanlty breake the process and return false.
-            if(!array_key_exists($postName ,$requires) || !array_key_exists($postName,$optionals)) {
+            if(!array_key_exists($postName ,$all)) {
                 $errors[$postName] = "unwanted post $postName";
                 unset($this->post[$postName]);
             }
@@ -116,7 +119,6 @@ class Request
         foreach($requires as $validation_key => $validation_value) {      //now only check existance of requires post 
             if ((!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
                 $errors[] = "Missing required field: $validation_key";
-                continue; // Skip to the next iteration
             }
         }
         if (count($errors) > 0) { //if requires not exists , stop process and return false
@@ -125,6 +127,7 @@ class Request
             }
             return false;
         }
+
         foreach($requires as $validation_key => $validationString) { //now validate requires post Schema
             $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
                 if (!$validationResult) {
