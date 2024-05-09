@@ -102,18 +102,23 @@ class Request
         $errors = []; // Initialize an empty array to store errors
         $requires = [];
         $optionals = [];
-        $all = [];
-
+        $all=[];
         foreach ($toValidatePost as $validation_key => $validationString) {
-            (!substr($validation_key, 0, 1) === '?') ? $requires[$validation_key] = $validationString : $optionals[ltrim($validation_key, '?')] = $validationString; // Use ternary operator
+            if(substr($validation_key, 0, 1) === '?'){
+                $validation_key = ltrim($validation_key, '?');
+                $optionals[$validation_key] = $validationString;
+            }
+            else
+            {
+                $requires[$validation_key] = $validationString;
+            }
             $all[$validation_key] = $validationString;
         }
-
-         foreach($this->post as $postName => $postValue) { //if there is any post other than defined schma, instanlty breake the process and return false.
-            if(!array_key_exists($postName ,$all)) {  
+         foreach($this->post as $postName => $postValue) { 
+            if(!array_key_exists($postName ,$all)  ) {  
                 $errors[$postName] = "unwanted post $postName";
-                unset($this->post[$postName]);
-            }   
+                $this->post = []; 
+            }
         }
         if (count($errors) > 0) { //if unwanted post exists , stop process and return false
             foreach ($errors as $error) {
