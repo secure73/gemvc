@@ -332,7 +332,9 @@ class Request
             'bool' => is_bool($this->post[$key]),
             'array' => is_array($this->post[$key]),
             'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
-            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
+            'email' => (filter_var($this->post[$key], FILTER_SANITIZE_EMAIL) ? true:  false), // Explicit false check for email
+            'url' => (filter_var($this->post[$key],FILTER_VALIDATE_URL) ? true : false),
+            'ip' => (filter_var($this->post[$key],FILTER_VALIDATE_IP) ? true : false)
         ];
 
         // Validate data type based on validationMap
