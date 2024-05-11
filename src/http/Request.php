@@ -90,11 +90,11 @@ class Request
 
 
     /**
-     * @param array<string> $toValidatePost  Define Post Schema to validation
+     * @param  array<string> $toValidatePost Define Post Schema to validation
      * @return bool
      * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
-     * @help : ?name means it is optional
-     * @in case of false $this->error will be setted
+     * @help   : ?name means it is optional
+     * @in     case of false $this->error will be setted
      */
     public function definePostSchema(array $toValidatePost): bool
     {
@@ -104,7 +104,7 @@ class Request
         $optionals = [];
         $all=[];
         foreach ($toValidatePost as $validation_key => $validationString) {
-            if(substr($validation_key, 0, 1) === '?'){
+            if(substr($validation_key, 0, 1) === '?') {
                 $validation_key = ltrim($validation_key, '?');
                 $optionals[$validation_key] = $validationString;
             }
@@ -114,8 +114,8 @@ class Request
             }
             $all[$validation_key] = $validationString;
         }
-         foreach($this->post as $postName => $postValue) { 
-            if(!array_key_exists($postName ,$all)  ) {  
+        foreach($this->post as $postName => $postValue) { 
+            if(!array_key_exists($postName, $all)  ) {  
                 $errors[$postName] = "unwanted post $postName";
                 $this->post = []; 
             }
@@ -141,8 +141,8 @@ class Request
 
         foreach($requires as $validation_key => $validationString) { //now validate requires post Schema
             $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
-                if (!$validationResult) {
-                    $errors[] = "Invalid value for field: $validation_key";
+            if (!$validationResult) {
+                $errors[] = "Invalid value for field: $validation_key";
             }
         }
         if (count($errors) > 0) {
@@ -188,7 +188,7 @@ class Request
     /**
      * Validates string lengths in a dictionary against min and max constraints.
      *
-     * @param array<string, string> $stringPosts A dictionary where keys are strings and values are strings in the format "key:min-value|max-value" (optional).
+     * @param  array<string, string> $stringPosts A dictionary where keys are strings and values are strings in the format "key:min-value|max-value" (optional).
      * @return bool True if all strings pass validation, False otherwise.
      */
     public function validateStringPosts(array $stringPosts): bool
@@ -223,7 +223,11 @@ class Request
                 $max = (int)$max[1];
             }
             // Validate string length against min and max constraints (assuming $this->post[$key] is a string)
-            $stringLength = strlen($this->post[$key]);/** @phpstan-ignore-line */
+            $stringLength = strlen($this->post[$key]);/**
+* 
+                                                       *
+ * @phpstan-ignore-line 
+*/
             
             if (!($min <= $stringLength && $stringLength <= $max)) {
                 $this->error = "String length for post '$key' is ({$stringLength}) . it is outside the range ({$min}-{$max})";
@@ -235,8 +239,8 @@ class Request
     }
 
     /**
-     * @param array<string> $postKeys Key-value pairs where key is the POST data key and value is the corresponding object property
-     * @param object $class The object to populate with POST data
+     * @param  array<string> $postKeys Key-value pairs where key is the POST data key and value is the corresponding object property
+     * @param  object        $class    The object to populate with POST data
      * @return bool True on success, false on failure with an error message set in `$this->error`
      */
     public function mapPostToObjectxxx(array $postKeys, object $class): bool
@@ -366,8 +370,8 @@ class Request
     /**
      * Validates if a value matches the expected type for a property.
      *
-     * @param string|null $propertyType The expected type of the property (e.g., "string", "int", "MyClass")
-     * @param mixed $value The value to validate
+     * @param  string|null $propertyType The expected type of the property (e.g., "string", "int", "MyClass")
+     * @param  mixed       $value        The value to validate
      * @return bool True if the value matches the property type, false otherwise
      */
     private function validatePropertyType(?string $propertyType, mixed $value): bool
@@ -378,26 +382,26 @@ class Request
         }
 
         switch ($propertyType) {
-            case 'string':
-                return is_string($value);
-            case 'int':
-                return is_numeric($value) && is_int($value); // Ensure integer type
-            case 'float':
-                return is_float($value);
-            case 'bool':
-                return is_bool($value);
-            case 'array':
-                return is_array($value);
-            default:
-                $this->error = "unsupported type";
-                return false;
+        case 'string':
+            return is_string($value);
+        case 'int':
+            return is_numeric($value) && is_int($value); // Ensure integer type
+        case 'float':
+            return is_float($value);
+        case 'bool':
+            return is_bool($value);
+        case 'array':
+            return is_array($value);
+        default:
+            $this->error = "unsupported type";
+            return false;
         }
     }
 
     /**
      * Attempts to convert a value to the target type, if possible.
      *
-     * @param mixed $value The value to convert
+     * @param  mixed $value The value to convert
      * @return mixed The converted value or the original value if conversion is not possible
      * @throws \InvalidArgumentException If conversion fails due to incompatible types
      */
@@ -410,33 +414,33 @@ class Request
         }
 
         switch ($targetType) {
-            case 'int':
-                if (is_numeric($value)) {
-                    return (int) $value; // Convert to integer
-                }
-                break;
-            case 'float':
-                if (is_numeric($value)) {
-                    return (float) $value; // Convert to float
-                }
-                break;
-            case 'bool':
-                if (is_string($value) && in_array(strtolower($value), ['true', 'false', '1', '0'])) {
-                    return (bool) $value; // Convert to boolean
-                }
-                break;
-            case 'string':
-                // String is the default type, no conversion needed
-                return  $value;
-            default:
-                // Handle custom object types (optional)
-                if (class_exists($targetType)) {
-                    // Implement logic to convert to the custom object type (if possible)
-                    // You might need additional libraries or custom conversion functions here
-                    $this->error = "Conversion to object type '$targetType' not supported";
-                } else {
-                    $this->error = "Unsupported target type: '$targetType'";
-                }
+        case 'int':
+            if (is_numeric($value)) {
+                return (int) $value; // Convert to integer
+            }
+            break;
+        case 'float':
+            if (is_numeric($value)) {
+                return (float) $value; // Convert to float
+            }
+            break;
+        case 'bool':
+            if (is_string($value) && in_array(strtolower($value), ['true', 'false', '1', '0'])) {
+                return (bool) $value; // Convert to boolean
+            }
+            break;
+        case 'string':
+            // String is the default type, no conversion needed
+            return  $value;
+        default:
+            // Handle custom object types (optional)
+            if (class_exists($targetType)) {
+                // Implement logic to convert to the custom object type (if possible)
+                // You might need additional libraries or custom conversion functions here
+                $this->error = "Conversion to object type '$targetType' not supported";
+            } else {
+                $this->error = "Unsupported target type: '$targetType'";
+            }
         }
 
         throw new \InvalidArgumentException("Could not convert value to target type: '$targetType'");

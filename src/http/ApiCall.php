@@ -56,10 +56,9 @@ class ApiCall
         $this->error = curl_error($ch);
 
         curl_close($ch);
-        if(!is_string($this->responseBody))
-        {
+        if(!is_string($this->responseBody)) {
             return false;
         }
-       return $this->responseBody;
+        return $this->responseBody;
     }
 }

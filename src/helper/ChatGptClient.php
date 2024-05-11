@@ -36,8 +36,7 @@ class ChatGptClient
         $this->apiCall->post['body'] = $data;
 
         $result = $this->apiCall->call($this->baseURL.$endpoint);
-        if($result)
-        {
+        if($result) {
             $result = json_decode($result);
             return $response->success($result);
         }

@@ -96,13 +96,11 @@ class JWTToken
      */
     public function verify(string $token = null): false|JWTToken
     {
-        if($token)
-        {
+        if($token) {
             $this->_token = $token;
         }
-        if(!$this->_token)
-        {
-            $this->error = "no token string setted in JWTToken to verify";
+        if(!$this->_token) {
+            $this->error = "no token string is set in JWTToken to verify";
             return false;
         }
         try {
@@ -137,8 +135,7 @@ class JWTToken
      */
     public function renew(int $extensionTime_sec , string $token= null): false|string
     {
-        if($token)
-        {
+        if($token) {
             $this->_token = $token;
         }
         if ($this->verify($this->_token)) {
@@ -167,10 +164,17 @@ class JWTToken
         $tokenParts = explode('.', $this->_token);
         $payloadBase64 = $tokenParts[1];
         $payload = json_decode(base64_decode($payloadBase64), true);
-        /**@phpstan-ignore-next-line */
-        if (isset($payload['type'])) 
-        {
-            /**@phpstan-ignore-next-line */
+        /**
+* 
+         *
+* @phpstan-ignore-next-line 
+*/
+        if (isset($payload['type'])) {
+            /**
+* 
+             *
+* @phpstan-ignore-next-line 
+*/
             return $payload['type'];
         } 
         else { return null;
@@ -189,4 +193,39 @@ class JWTToken
         }
         return true;
     }
+
+    public function extractToken(Request $request):bool
+    {
+        if (!isset($request->authorizationHeader) || empty($request->authorizationHeader)) {
+            $this->error = 'there is no token request header';
+            return false;
+        }
+        if (!is_string($request->authorizationHeader)) {
+            $this->error = 'not well formatted token';
+            return false;
+        }
+          $result = $this->bearerTokenPurify($request->authorizationHeader);
+        if(!$result) {
+            return false;
+        }
+          $this->_token = $result;
+          return true;
+    }
+
+
+    /**
+     * @param       string $tokenStringInHttpHeader
+     * @return      string|null
+     * @description BearerToken in header is like Bearer ey... this function remove Bearer and space return pure token to be used in JWT
+     */
+    private function bearerTokenPurify(string $tokenStringInHttpHeader): null|string
+    {
+        if (preg_match('/Bearer\s(\S+)/', $tokenStringInHttpHeader, $matches)) {
+            $tokenStringInHttpHeader = $matches[1];
+            return $tokenStringInHttpHeader;
+        }
+        return null;
+    }
+
+  
 }

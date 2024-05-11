@@ -13,7 +13,7 @@ class JsonResponse
 
     public function __construct()
     {
-       $this->data = null;
+        $this->data = null;
     }
 
     public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):JsonResponse
