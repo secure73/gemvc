@@ -4,7 +4,6 @@ namespace GemLibrary\Http;
 
 use GemLibrary\Helper\JsonHelper;
 use GemLibrary\Helper\TypeHelper;
-use GemLibrary\Helper\WebHelper;
 
 class Request
 {
@@ -56,7 +55,6 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->extractPureJWTTokenFromHeader();
     }
 
     public function __set(string $key , mixed $value):void
@@ -300,23 +298,7 @@ class Request
     }
 
     
-    public function extractPureJWTTokenFromHeader():void
-    {
-        if (!$this->authorizationHeader) {
-            $this->error = 'no token found in header';
-            return;
-        }
-        if (!is_string($this->authorizationHeader)) {
-            $this->error = 'jwt token shall be type of string';
-            return;
-        }
-        $pureToken = WebHelper::BearerTokenPurify($this->authorizationHeader);
-        if (!$pureToken) {
-            $this->error = 'given token is not confirmed with jwt schema';
-            return;
-        }
-        $this->jwtTokenStringInHeader = $pureToken;
-    }
+
     //----------------------------PRIVATE FUNCTIONS---------------------------------------
 
     
