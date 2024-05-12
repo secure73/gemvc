@@ -24,14 +24,13 @@ class JsonResponse
         $this->service_message = $service_message;
         $this->data = $data;
         $this->json_response = json_encode($this, JSON_PRETTY_PRINT);
-        if($this->json_response) {
-            return $this;
+        if(!$this->json_response) {
+            $this->response_code = 500;
+            $this->message = 'internal error';
+            $this->count = 0;
+            $this->service_message = 'failure in creating json response in Gemvc/JsonResponse .please check data payload';
+            $this->json_response = json_encode($this);
         }
-        $this->response_code = 500;
-        $this->message = 'internal error';
-        $this->count = 0;
-        $this->service_message = 'failure in creating json response in Gemvc/JsonResponse .please check data payload';
-        $this->json_response = json_encode($this);
         return $this;
     }
 
@@ -41,7 +40,12 @@ class JsonResponse
         return $this->create(200, $data, $count, $service_message);
     }
 
-    
+    public function updated(mixed $data ,int $count = null,string $service_message = null):JsonResponse
+    {
+        $service_message = 'updated: '.$service_message;
+        return $this->create(209, $data, $count, $service_message);
+    }
+
     public function created(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
         $service_message = 'created: '.$service_message;
@@ -54,11 +58,7 @@ class JsonResponse
         return $this->create(204, $data, $count, $service_message);
     }
     
-    public function updated(mixed $data ,int $count = null,string $service_message = null):JsonResponse
-    {
-        $service_message = 'updated: '.$service_message;
-        return $this->create(209, $data, $count, $service_message);
-    }
+    
     public function deleted(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
         $service_message = 'deleted: '.$service_message;
@@ -79,11 +79,13 @@ class JsonResponse
         $service_message = 'notFound: '.$service_message;
         return $this->create(404, null, null, $service_message);
     }
+
     public function internalError(string $service_message = null ):JsonResponse
     {
         $service_message = 'internalError: '.$service_message;
         return $this->create(500, null, null, $service_message);
     }
+
     public function unknownError(string $service_message = null, mixed $data):JsonResponse
     {
         $service_message = 'unknownError: '.$service_message;
@@ -121,6 +123,7 @@ class JsonResponse
     }
     public function show():void
     {
+        header('Content-Type: application/json',true,$this->response_code);
         echo $this->json_response;
     }
 
