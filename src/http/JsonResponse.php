@@ -36,89 +36,73 @@ class JsonResponse
 
     public function success(mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
-        $service_message = 'success: '.$service_message;
         return $this->create(200, $data, $count, $service_message);
     }
 
     public function updated(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
-        $service_message = 'updated: '.$service_message;
         return $this->create(209, $data, $count, $service_message);
     }
 
     public function created(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
-        $service_message = 'created: '.$service_message;
         return $this->create(201, $data, $count, $service_message);
     }
 
     public function successButNoContentToShow(mixed $data ,int $count = null,string $service_message= null):JsonResponse
     {
-         $service_message = 'success but no content to show: '.$service_message;
         return $this->create(204, $data, $count, $service_message);
     }
     
-    
     public function deleted(mixed $data ,int $count = null,string $service_message = null):JsonResponse
     {
-        $service_message = 'deleted: '.$service_message;
         return $this->create(210, $data, $count, $service_message);
     }
     public function unauthorized(string $service_message = null):JsonResponse
     {
-        $service_message = 'unauthorized: '.$service_message;
         return $this->create(401, null, null, $service_message);
     }
     public function forbidden(string $service_message = null):JsonResponse
     {
-        $service_message = 'forbidden: '.$service_message;
         return $this->create(403, null, null, $service_message);
     }
     public function notFound(string $service_message = null):JsonResponse
     {
-        $service_message = 'notFound: '.$service_message;
         return $this->create(404, null, null, $service_message);
     }
 
     public function internalError(string $service_message = null ):JsonResponse
     {
-        $service_message = 'internalError: '.$service_message;
         return $this->create(500, null, null, $service_message);
     }
 
     public function unknownError(string $service_message = null, mixed $data):JsonResponse
     {
-        $service_message = 'unknownError: '.$service_message;
         return $this->create(0, $data, null, $service_message);
     }
 
     public function notAcceptable(string $service_message = null):JsonResponse
     {
-        $service_message = 'notAcceptable: '.$service_message;
         return $this->create(406, null, null, $service_message);
     }
 
     public function conflict(string $service_message = null):JsonResponse
     {
-        $service_message = 'conflict: '.$service_message;
         return $this->create(409, null, null, $service_message);
     }
 
     public function unsupportedMediaType(string $service_message = null):JsonResponse
     {
-        $service_message = 'unsupported MediaType: '.$service_message;
         return $this->create(415, null, null, $service_message);
     }
 
     public function unprocessableEntity(string $service_message = null):JsonResponse
     {
-        $service_message = 'Unprocessable Entity: '.$service_message;
         return $this->create(422, null, null, $service_message);
     }
     
     public function badRequest(string $service_message = null):JsonResponse
     {
-        $service_message = 'bad Request: '.$service_message;
         return $this->create(400, null, null, $service_message);
     }
     public function show():void
