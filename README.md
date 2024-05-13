@@ -1,22 +1,21 @@
 # gemvc
-gemvc is super light library that is suitable to create microservice API 
+gemvc is super light library that is suitable to create microservice restfulApi 
 
 Require .env with following data
 
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=database_name
-DB_CHARSET = charsset
+DB_NAME=db_name
+DB_CHARSET=utf8
 DB_USER=root
-DB_PASSWORD=secret
+DB_PASSWORD='databasePassword'
+QUERY_LIMIT=10
 
-please rememmber to load .env as follows :
+TOKEN_SECRET='secret for your token'
+TOKEN_ISSUER='your_api_name'
+REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
+ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
 
-after loading autoloader
-require __DIR__ . '/vendor/autoload.php';
-
-use following code
-
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+SERVICE_IN_URL_SECTION=2
+METHOD_IN_URL_SECTION=3
 
