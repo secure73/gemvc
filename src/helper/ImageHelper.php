@@ -1,5 +1,4 @@
 <?php
-
 namespace Gemvc\Helper;
 
 use GdImage;

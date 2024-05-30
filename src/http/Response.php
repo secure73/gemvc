@@ -1,6 +1,6 @@
 <?php
 namespace Gemvc\Http;
-
+use Gemvc\Http\JsonResponse;
 class Response {
 
     public static function success(mixed $data ,int $count = null , string $service_message = null):JsonResponse

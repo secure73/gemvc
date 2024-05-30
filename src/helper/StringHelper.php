@@ -4,15 +4,15 @@ namespace Gemvc\Helper;
 
 class StringHelper
 {
-    public static function capitalizeAfterSpace(string $string): string 
+    public static function capitalizeAfterSpace(string $string): string
     {
         $words = explode(" ", $string);
         $result = array();
-    
+
         foreach ($words as $word) {
             $result[] = ucfirst($word);
         }
-    
+
         return implode(" ", $result);
     }
 
@@ -32,7 +32,7 @@ class StringHelper
         return $result;
     }
 
-    public static function sanitizedString(string $incoming_string):string|null
+    public static function sanitizedString(string $incoming_string): string|null
     {
         $pattern = '/^[a-zA-Z0-9_\-\/\(\);,.,äÄöÖüÜß  ]{1,255}$/';
         // Check if the User-Agent matches the pattern.
@@ -45,13 +45,13 @@ class StringHelper
         }
     }
 
-    
+
     /**
      * @param  string $url
      * @return bool
      * if given string is has valid url format return true
      */
-    public static function isValidUrl(string $url):bool
+    public static function isValidUrl(string $url): bool
     {
         return filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
