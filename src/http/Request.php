@@ -4,7 +4,10 @@ namespace Gemvc\Http;
 
 use Gemvc\Helper\JsonHelper;
 use Gemvc\Helper\TypeHelper;
-
+/**
+ * Class Request provides a structured way for managing and validating incoming HTTP request data,
+ * handling errors, and forward request to external APIs
+ */
 class Request
 {
     public    ?string      $jwtTokenStringInHeader;

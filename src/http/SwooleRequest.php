@@ -2,7 +2,6 @@
 
 namespace Gemvc\Http;
 
-use Gemvc\Helper\StringHelper;
 use Gemvc\Http\Request;
 
 class SwooleRequest

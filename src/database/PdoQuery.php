@@ -1,14 +1,16 @@
 <?php
 
 namespace Gemvc\Database;
-
+/**
+ * run and execute query strings within its functions
+ * @method int|false insertQuery(string $insertQuery, array $arrayBindKeyValue = []):int|false
+ * @method int|null|false updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null|false
+ * @method int|null|false deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null|false
+ * @method array|false selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
+ * @method array|false selectQueryObjects(string $selectQuery, array $arrayBindKeyValue = []): array|false
+ */
 class PdoQuery extends QueryExecuter
 {
-
-    /**
-     * @if null , use default connection in config.php
-     * pass $connection name to parent and create PDO Connection to Execute Query
-     */
     public function __construct()
     {
         parent::__construct();
@@ -21,7 +23,7 @@ class PdoQuery extends QueryExecuter
      * @return false|int
      * $query example: 'INSERT INTO users (name,email,password) VALUES (:name,:email,:password)'
      * arrayBindKeyValue Example [':name' => 'some new name' , ':email' => 'some@me.com , :password =>'si§d8x']
-     * success : return last insertd id
+     * success : return last inserted id
      * you can call affectedRows() to get how many rows inserted
      * error: $this->getError();
      */
@@ -91,7 +93,7 @@ class PdoQuery extends QueryExecuter
      * @$query            example: 'SELECT * FROM users WHERE email = :email'
      * @arrayBindKeyValue Example [':email' => 'some@me.com']
      */
-    public function selectQueryObjets(string $selectQuery, array $arrayBindKeyValue = []): array|false
+    public function selectQueryObjects(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
         $result = false;
         if ($this->isConnected()) {

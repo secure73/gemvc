@@ -7,6 +7,9 @@ use Gemvc\Database\Query\Insert;
 use Gemvc\Database\Query\Select;
 use Gemvc\Database\Query\Update;
 
+/**
+ * Build and run Sql Queries without writing query-string
+ */
 class QueryBuilder
 {
     public static function select(string ...$select): Select
@@ -15,29 +18,27 @@ class QueryBuilder
     }
 
     /**
-     * @param string $intoTable
+     * @param string $intoTableName
      */
-    public static function insert(string $intoTable): Insert
+    public static function insert(string $intoTableName): Insert
     {
-        return new Insert($intoTable);
+        return new Insert($intoTableName);
     }
 
     /**
-     * @param string $table
+     * @param string $tableName
      */
-    public static function update(string $table): Update
+    public static function update(string $tableName): Update
     {
-        return new Update($table);
+        return new Update($tableName);
     }
 
     /**
-     * @param string $table 
-     *                      Delete
-     *                      from
-     *                      table
+     * @param string $tableName 
+     * Delete from table
      */
-    public static function delete(string $table): Delete
+    public static function delete(string $tableName): Delete
     {
-        return new Delete($table);
+        return new Delete($tableName);
     }
 }

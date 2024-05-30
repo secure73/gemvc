@@ -2,7 +2,9 @@
 namespace Gemvc\Database;
 use Gemvc\Database\PdoConnection;
 use PDO;
-
+/**
+ * execute query string with PDO by using PdoConnection Class
+ */
 class QueryExecuter
 {
     private ?string $error;
@@ -36,7 +38,7 @@ class QueryExecuter
     /**
      * @param string $query
      * convert sql query to PDO Statement trough PDO::prepare()
-     * if connect to databse is failed, set error
+     * if connection to database is failed, set error
      */
     public function query(string $query): void
     {
@@ -141,7 +143,7 @@ class QueryExecuter
         if (isset($this->endExecutionTime)) {
             return ($this->endExecutionTime - $this->startExecutionTime) * 1000;
         }
-        $this->error = 'Query never Executed successfuly,please check your query and try again';
+        $this->error = 'Query never Executed successfully,please check your query and try again';
 
         return -1;
     }

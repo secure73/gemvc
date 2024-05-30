@@ -1,5 +1,9 @@
 <?php
 namespace Gemvc\Http;
+/**
+ * handle cross-origin requests
+ * @method void NoCors()
+ */
 class NoCors
 {
     public function __construct()

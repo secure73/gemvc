@@ -5,7 +5,6 @@ use PDO;
 
 /**
  * To connect Database and provide basic PDO function.
- *
  * @param bool $isConnected
  */
 class PdoConnection

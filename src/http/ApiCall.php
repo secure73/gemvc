@@ -1,6 +1,9 @@
 <?php
 namespace Gemvc\Http;
 
+/**
+ * create request and send it to remote API
+ */
 class ApiCall
 {
     public ?string $error;

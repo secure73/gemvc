@@ -4,6 +4,11 @@ namespace Gemvc\Http;
 
 use Gemvc\Http\Request;
 
+/**
+ * The ApacheRequest class handles incoming HTTP requests in an Apache environment,
+ * sanitizes inputs from various request methods (GET, POST, PUT, PATCH),
+ * and extracts essential request details into a Request object.
+ */
 class ApacheRequest
 {
     public  Request $request; 

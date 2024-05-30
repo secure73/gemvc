@@ -2,6 +2,9 @@
 
 namespace Gemvc\Http;
 
+/**
+ * this class is responsible for creating consistently formatted structured JSON responses to use in API
+ */
 class JsonResponse
 {
     public string|false $json_response;
