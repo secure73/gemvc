@@ -1,6 +1,6 @@
 <?php
 
-namespace GemLibrary\Helper;
+namespace Gemvc\Helper;
 
 class FileHelper
 {

@@ -1,5 +1,5 @@
 <?php
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
 class ApiCall
 {

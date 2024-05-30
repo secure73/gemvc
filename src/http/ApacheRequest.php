@@ -1,8 +1,8 @@
 <?php
 
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
-use GemLibrary\Http\Request;
+use Gemvc\Http\Request;
 
 class ApacheRequest
 {

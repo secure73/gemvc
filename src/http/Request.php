@@ -1,9 +1,9 @@
 <?php
 
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
-use GemLibrary\Helper\JsonHelper;
-use GemLibrary\Helper\TypeHelper;
+use Gemvc\Helper\JsonHelper;
+use Gemvc\Helper\TypeHelper;
 
 class Request
 {
@@ -92,7 +92,7 @@ class Request
      * @return bool
      * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
      * @help   : ?name means it is optional
-     * @in     case of false $this->error will be setted
+     * @in     case of false $this->error will be set
      */
     public function definePostSchema(array $toValidatePost): bool
     {
@@ -125,7 +125,7 @@ class Request
             return false;
         }
 
-        foreach($requires as $validation_key => $validation_value) {      //now only check existance of requires post 
+        foreach($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
             if ((!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
                 $errors[] = "Missing required field: $validation_key";
             }
@@ -185,7 +185,6 @@ class Request
 
     /**
      * Validates string lengths in a dictionary against min and max constraints.
-     *
      * @param  array<string, string> $stringPosts A dictionary where keys are strings and values are strings in the format "key:min-value|max-value" (optional).
      * @return bool True if all strings pass validation, False otherwise.
      */
@@ -201,7 +200,7 @@ class Request
             $constraints = explode('|', $value);
             // Ensure constraints are in the expected format (key:min-value|max-value)
             if (count($constraints) !== 2) {
-                $this->error = "Invalid format for key $key: expected 'key:min-value|max-value'";
+                $this->error = "Invalid format for key $key: expected 'min-value|max-value'";
                 return false;
             }
             $min_condition = $constraints[0];
@@ -221,11 +220,8 @@ class Request
                 $max = (int)$max[1];
             }
             // Validate string length against min and max constraints (assuming $this->post[$key] is a string)
-            $stringLength = strlen($this->post[$key]);/**
-* 
-                                                       *
- * @phpstan-ignore-line 
-*/
+            /**@phpstan-ignore-next-line */
+            $stringLength = strlen($this->post[$key]);
             
             if (!($min <= $stringLength && $stringLength <= $max)) {
                 $this->error = "String length for post '$key' is ({$stringLength}) . it is outside the range ({$min}-{$max})";
@@ -235,48 +231,6 @@ class Request
 
         return true;
     }
-
-    /**
-     * @param  array<string> $postKeys Key-value pairs where key is the POST data key and value is the corresponding object property
-     * @param  object        $class    The object to populate with POST data
-     * @return bool True on success, false on failure with an error message set in `$this->error`
-     */
-    public function mapPostToObjectxxx(array $postKeys, object $class): bool
-    {
-        foreach ($postKeys as $postKey => $classProperty) {
-            if (!isset($this->post[$postKey])) {
-                $this->error = "POST key '$postKey' is not found in request";
-                return false;
-            }
-
-            if (!property_exists($class, $classProperty)) {
-                $this->error = "Target Class has no '$classProperty' as property";
-                return false;
-            }
-
-            $propertyValue = $this->post[$postKey];
-
-            // Validate property type
-            $isValidType = $this->validatePropertyType($classProperty, $propertyValue);
-            if (!$isValidType) {
-                $this->error = "Invalid value type for property '$classProperty'";
-                return false;
-            }
-
-            // Convert value to target type if needed
-            $convertedValue = $this->convertToTargetType($propertyValue, $classProperty);
-
-            try {
-                $class->$classProperty = $convertedValue;
-            } catch (\Exception $e) {
-                $this->error = "Error setting property '$classProperty': " . $e->getMessage();
-                return false;
-            }
-        }
-
-        return true;
-    }
-
 
     public function forwardToRemoteApi(string $remoteApiUrl): JsonResponse
     {
@@ -297,11 +251,7 @@ class Request
         return $jsonResponse;
     }
 
-    
-
     //----------------------------PRIVATE FUNCTIONS---------------------------------------
-
-    
 
     private function checkPostKeyValue(string $key, string $validation): bool
     {
@@ -343,88 +293,9 @@ class Request
             'email'
         ];
         if (!in_array($validationString, $validation)) {
-            $this->error = "unvalid type of validation for $validationString";
+            $this->error = "invalid type of validation for $validationString";
             return false;
         }
         return true;
-    }
-
-    /**
-     * Validates if a value matches the expected type for a property.
-     *
-     * @param  string|null $propertyType The expected type of the property (e.g., "string", "int", "MyClass")
-     * @param  mixed       $value        The value to validate
-     * @return bool True if the value matches the property type, false otherwise
-     */
-    private function validatePropertyType(?string $propertyType, mixed $value): bool
-    {
-        if ($propertyType === null) {
-            // Allow any type if property type is not specified
-            return true;
-        }
-
-        switch ($propertyType) {
-        case 'string':
-            return is_string($value);
-        case 'int':
-            return is_numeric($value) && is_int($value); // Ensure integer type
-        case 'float':
-            return is_float($value);
-        case 'bool':
-            return is_bool($value);
-        case 'array':
-            return is_array($value);
-        default:
-            $this->error = "unsupported type";
-            return false;
-        }
-    }
-
-    /**
-     * Attempts to convert a value to the target type, if possible.
-     *
-     * @param  mixed $value The value to convert
-     * @return mixed The converted value or the original value if conversion is not possible
-     * @throws \InvalidArgumentException If conversion fails due to incompatible types
-     */
-    private function convertToTargetType(mixed $value, string|null $targetType): mixed
-    {
-
-        if (is_null($targetType)) {
-            // Allow any type if no target type specified
-            return $value;
-        }
-
-        switch ($targetType) {
-        case 'int':
-            if (is_numeric($value)) {
-                return (int) $value; // Convert to integer
-            }
-            break;
-        case 'float':
-            if (is_numeric($value)) {
-                return (float) $value; // Convert to float
-            }
-            break;
-        case 'bool':
-            if (is_string($value) && in_array(strtolower($value), ['true', 'false', '1', '0'])) {
-                return (bool) $value; // Convert to boolean
-            }
-            break;
-        case 'string':
-            // String is the default type, no conversion needed
-            return  $value;
-        default:
-            // Handle custom object types (optional)
-            if (class_exists($targetType)) {
-                // Implement logic to convert to the custom object type (if possible)
-                // You might need additional libraries or custom conversion functions here
-                $this->error = "Conversion to object type '$targetType' not supported";
-            } else {
-                $this->error = "Unsupported target type: '$targetType'";
-            }
-        }
-
-        throw new \InvalidArgumentException("Could not convert value to target type: '$targetType'");
     }
 }

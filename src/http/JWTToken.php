@@ -1,5 +1,5 @@
 <?php
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;

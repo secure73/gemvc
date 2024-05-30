@@ -1,6 +1,6 @@
 <?php
 
-namespace GemLibrary\Database;
+namespace Gemvc\Database;
 
 class PdoQuery extends QueryExecuter
 {

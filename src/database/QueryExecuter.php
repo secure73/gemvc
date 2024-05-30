@@ -1,6 +1,6 @@
 <?php
-namespace GemLibrary\Database;
-use GemLibrary\Database\PdoConnection;
+namespace Gemvc\Database;
+use Gemvc\Database\PdoConnection;
 use PDO;
 
 class QueryExecuter

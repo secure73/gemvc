@@ -1,6 +1,6 @@
 <?php
 
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
 class JsonResponse
 {
@@ -150,8 +150,6 @@ class JsonResponse
             return 'not acceptable';
         case 409: 
             return 'conflict';
-        case 415: 
-            return 'unsupported media type';
         case 415: 
             return 'unsupported media type';
         case 422: 

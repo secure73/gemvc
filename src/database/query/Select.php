@@ -10,10 +10,10 @@ declare(strict_types=1);
  * with this source code in the file LICENSE.
  */
 
-namespace GemLibrary\Database\Query;
+namespace Gemvc\Database\Query;
 
-use GemLibrary\Database\PdoQuery;
-use GemLibrary\Database\QueryBuilderInterface;
+use Gemvc\Database\PdoQuery;
+use Gemvc\Database\QueryBuilderInterface;
 
 class Select implements QueryBuilderInterface
 {

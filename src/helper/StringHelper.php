@@ -1,6 +1,6 @@
 <?php
 
-namespace GemLibrary\Helper;
+namespace Gemvc\Helper;
 
 class StringHelper
 {
@@ -71,7 +71,7 @@ class StringHelper
      * @param string $url_string
      * check if given string is valid URL
      *
-     * @return given string in case of valid and null if string is not valid url format.
+     * @return null|string given string in case of valid and null if string is not valid url format.
      */
     public static function safeURL(string $url_string): null|string
     {

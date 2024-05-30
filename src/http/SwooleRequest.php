@@ -1,9 +1,9 @@
 <?php
 
-namespace GemLibrary\Http;
+namespace Gemvc\Http;
 
-use GemLibrary\Helper\StringHelper;
-use GemLibrary\Http\Request;
+use Gemvc\Helper\StringHelper;
+use Gemvc\Http\Request;
 
 class SwooleRequest
 {

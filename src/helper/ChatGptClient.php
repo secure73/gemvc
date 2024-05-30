@@ -1,10 +1,10 @@
 <?php
 
-namespace GemLibrary\Helper;
+namespace Gemvc\Helper;
 
 
-use GemLibrary\Http\JsonResponse;
-use GemLibrary\Http\ApiCall;
+use Gemvc\Http\JsonResponse;
+use Gemvc\Http\ApiCall;
 class ChatGptClient
 {
     private string $baseURL = 'https://api.openai.com/v1/';

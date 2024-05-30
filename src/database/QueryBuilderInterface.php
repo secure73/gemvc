@@ -1,5 +1,5 @@
 <?php
-namespace GemLibrary\Database;
+namespace Gemvc\Database;
 
 interface QueryBuilderInterface
 {

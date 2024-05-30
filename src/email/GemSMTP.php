@@ -1,6 +1,6 @@
 <?php
 
-namespace GemLibrary\Email;
+namespace Gemvc\Email;
 
 use PHPMailer\PHPMailer\PHPMailer;
 

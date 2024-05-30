@@ -1,11 +1,11 @@
 <?php
 
-namespace GemLibrary\Database;
+namespace Gemvc\Database;
 
-use GemLibrary\Database\Query\Delete;
-use GemLibrary\Database\Query\Insert;
-use GemLibrary\Database\Query\Select;
-use GemLibrary\Database\Query\Update;
+use Gemvc\Database\Query\Delete;
+use Gemvc\Database\Query\Insert;
+use Gemvc\Database\Query\Select;
+use Gemvc\Database\Query\Update;
 
 class QueryBuilder
 {
