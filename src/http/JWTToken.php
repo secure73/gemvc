@@ -17,7 +17,6 @@ class JWTToken
     public bool      $isTokenValid;
     public int       $user_id;
     public string    $type;//access or refresh
-    private string   $_secret;
     /**
      * @var array<mixed> $payload
      */
@@ -40,7 +39,6 @@ class JWTToken
         $this->exp = 0;
         $this->isTokenValid = false;
         $this->payload = [];
-        $this->_secret = $_ENV['TOKEN_SECRET'];
     }
 
     /**
@@ -87,7 +85,7 @@ class JWTToken
         if(isset($this->employee_id)) {
             $payloadArray['employee_id'] = $this->employee_id;
         }
-        return JWT::encode($payloadArray, $this->_secret, 'HS256');
+        return JWT::encode($payloadArray,$_ENV['TOKEN_SECRET'], 'HS256');
     }
 
     /**
@@ -104,7 +102,7 @@ class JWTToken
             return false;
         }
         try {
-            $decodedToken = JWT::decode($this->_token, new Key($this->_secret, 'HS256'));
+            $decodedToken = JWT::decode($this->_token, new Key($_ENV['TOKEN_SECRET'], 'HS256'));
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;
