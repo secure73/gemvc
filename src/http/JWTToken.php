@@ -36,6 +36,9 @@ class JWTToken
         $this->iss = $_ENV['TOKEN_ISSUER'];
         $this->type = 'not defined';
         $this->user_id = 0;
+        $this->employee_id = null;
+        $this->company_id = null;
+        $this->role = null;
         $this->exp = 0;
         $this->isTokenValid = false;
         $this->payload = [];
@@ -62,6 +65,11 @@ class JWTToken
         return $this->create($user_id, $_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']);
     }
 
+    public function createLoginToken(int $user_id):string
+    {
+        $this->type = 'login';
+        return $this->create($user_id, $_ENV['LOGIN_TOKEN_VALIDATION_IN_SECONDS']);
+    }
 
     /**
      * @param  int $userId
@@ -73,6 +81,8 @@ class JWTToken
         $payloadArray = [
             'token_id' => microtime(true),
             'user_id' => $userId,
+            'company_id' => $this->company_id,
+            'employee_id'=>$this->employee_id,
             'iss' => $this->iss,
             'exp' => (time() + $timeToLiveSecond),
             'type' => $this->type,
@@ -128,7 +138,8 @@ class JWTToken
     }
 
     /**
-     * @param  int $extensionTime_sec
+     * @param int $extensionTime_sec
+     * @param string|null $token
      * @return false|string
      */
     public function renew(int $extensionTime_sec , string $token= null): false|string
@@ -143,7 +154,7 @@ class JWTToken
     }
 
     /**
-     * @return      string|null
+     * @return  string|null
      * @description Returns type without validation token
      */
     public function GetType(string $token = null):string|null
@@ -162,17 +173,9 @@ class JWTToken
         $tokenParts = explode('.', $this->_token);
         $payloadBase64 = $tokenParts[1];
         $payload = json_decode(base64_decode($payloadBase64), true);
-        /**
-* 
-         *
-* @phpstan-ignore-next-line 
-*/
+        /**@phpstan-ignore-next-line */
         if (isset($payload['type'])) {
-            /**
-* 
-             *
-* @phpstan-ignore-next-line 
-*/
+            /**@phpstan-ignore-next-line */
             return $payload['type'];
         } 
         else { return null;
@@ -210,7 +213,6 @@ class JWTToken
           return true;
     }
 
-
     /**
      * @param       string $tokenStringInHttpHeader
      * @return      string|null
@@ -224,6 +226,4 @@ class JWTToken
         }
         return null;
     }
-
-  
 }
