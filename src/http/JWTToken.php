@@ -99,11 +99,15 @@ class JWTToken
     }
 
     /**
-     * @return      false|JWTToken
+     * @return false|JWTToken
      * @description pure token without Bearer you can use WebHelper::BearerTokenPurify() got get pure token
      */
-    public function verify(): false|JWTToken
+    public function verify(string $token=null): false|JWTToken
     {
+        if($token)
+        {
+            $this->_token = $token;
+        }
         if(!$this->_token) {
             $this->error = "no token string is set in JWTToken to verify";
             return false;
