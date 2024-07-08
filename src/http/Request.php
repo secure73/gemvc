@@ -52,7 +52,7 @@ class Request
 
     public function __construct()
     {
-        $this->jwt = null;
+        $this->token = null;
         $this->error = "";
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
