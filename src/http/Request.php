@@ -14,6 +14,7 @@ class Request
     public    string       $requestedUrl;
     public    ?string      $queryString;
     public    ?string      $error;
+    public    ?JWTToken    $token;
     /**
      * @var null|string|array<string>
      */
@@ -51,6 +52,7 @@ class Request
 
     public function __construct()
     {
+        $this->jwt = null;
         $this->error = "";
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
@@ -58,11 +60,6 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-    }
-
-    public function __set(string $key , mixed $value):void
-    {
-        $this->$key = $value;
     }
 
     public function __get(string $name):mixed
