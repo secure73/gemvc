@@ -74,6 +74,31 @@ class TypeHelper
     
         return $nonNullableProperties;
     }
+    public static function getClassPublicFunctions(string $className,string $exclude=null):array
+    {
+        $reflection = new \ReflectionClass($className);
+        $reflection = $reflection->getMethods();
+        $methods = [];
+        foreach($reflection as $item)
+        {
+            if($exclude)
+            {
+                if($item->isPublic() && $item->name !==$exclude)
+                {
+                    $methods[] = $item->name;
+                }
+            }
+            else
+            {
+                if($item->isPublic())
+                {
+                    $methods[] = $item->name;
+                }
+            }
+            
+        }
+        return $methods;
+    }
 }
 
     
