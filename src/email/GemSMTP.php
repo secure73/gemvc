@@ -57,6 +57,7 @@ class GemSMTP
                             $this->phpMailer->Subject = $subject;
                             $this->phpMailer->Body = $emailContent;
                             $this->readyToSend = true;
+                            $this->error = null;
                             return true;
                         }
                     } else {
