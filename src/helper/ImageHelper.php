@@ -1,155 +1,291 @@
 <?php
+
 namespace Gemvc\Helper;
 
-use GdImage;
-
-class ImageHelper extends FileHelper
+class FileHelper
 {
-    /**
-     * @param string $sourceFile The image path
-     * @param string $outputFile The output image path, if null will be the same as $sourceFile
-     */
-    public function __construct(string $sourceFile, ?string $outputFile = null)
-    {
-        parent::__construct($sourceFile, $outputFile);
-    }
+    public string $sourceFile;
+    public string $outputFile;
+    public ?string $error = null;
+    public ?string $secret;
 
-    /**
-     * @param ?int $width  The new width of the image, if null will be calculated based on height
-     * @param ?int $height The new height of the image, if null will be calculated based on width
-     */
-    public function toJPEG(?int $width = null, ?int $height = null): bool
+    public function __construct(string $sourceFile, string $outputFile = null)
     {
-        $phpImage = $this->toPhphImageObject($width, $height);
-        if ($phpImage) {
-            if (imagejpeg($phpImage, $this->outputFile, 100)) {
-                imagedestroy($phpImage);
-                return true;
-            } else {
-                $this->error = "given file could not be converted to JPEG image";
-            }
+        $this->error = null;
+        $this->sourceFile = $sourceFile;
+        $this->outputFile = $outputFile ?? $sourceFile;
+
+        if (!$this->isDestinationDirectoryExists()) {
+            $this->error = "Destination directory does not exist: " . dirname($this->outputFile);
+        } elseif (!file_exists($this->sourceFile)) {
+            $this->error = "Source file not found: $this->sourceFile";
         }
-        return false;
     }
 
-    /**
-     * @param ?int $width  The new width of the image, if null will be calculated based on height
-     * @param ?int $height The new height of the image, if null will be calculated based on width
-     */
-    public function ToPNG(int $width = null, int $height = null): bool
+    public function copy(): bool
     {
-        $phpImage = $this->toPhphImageObject($width, $height);
-        if ($phpImage) {
-            if (imagepng($phpImage, $this->outputFile, 100)) {
-                imagedestroy($phpImage);
-                return true;
-            } else {
-                $this->error = "given file could not be converted to PNG";
-            }
-        }
-        return false;
+        return $this->executeCommand("copy", "cp");
     }
 
-    public static function isImage(string $filePath): bool
+    public function move(): bool
     {
-        // Get the MIME type and image information
-        $imageInfo = @getimagesize($filePath);
-        if ($imageInfo !== false) {
-            // Check if the MIME type corresponds to an image
-            $imageMimeTypes = array(
-                IMAGETYPE_GIF,
-                IMAGETYPE_JPEG,
-                IMAGETYPE_PNG,
-                IMAGETYPE_BMP,
-                IMAGETYPE_WEBP,
-                IMAGETYPE_ICO,
-                IMAGETYPE_TIFF_II,
-                // TIFF little-endian (Intel byte order)
-                IMAGETYPE_TIFF_MM // TIFF big-endian (Motorola byte order)
-            );
-            if (in_array($imageInfo[2], $imageMimeTypes)) {
-                return true;
-            }
-        }
-        return false;
+        return $this->executeCommand("move", "mv");
     }
 
-    public function getAsBase64String(): string|false
+    public function delete(): bool
     {
-        $content = $this->readFileContents();
-        if ($content) {
-            return base64_encode($content);
-        }
-        return false;
+        return $this->executeCommand("delete", "rm");
     }
 
-
-    protected function toPhphImageObject(int $width = null, int $height = null): GdImage|false
+    private function executeCommand(string $action, string $command): bool
     {
         if ($this->error) {
             return false;
         }
-        $result = $this->readFileContents();
-        if (!$result) {
-            $this->error = "Failed to read file contents";
+
+        $result = shell_exec("$command " . escapeshellarg($this->sourceFile) . " " . escapeshellarg($this->outputFile));
+        if ($result === null) {
+            $this->error = "Could not $action file $this->sourceFile to $this->outputFile";
             return false;
         }
-        $image = imagecreatefromstring($result);
-        if (!$image) {
-            $this->error = "Given file could not be converted to PhphImage";
-            return false;
-        }
-        if ($width or $height) {
-            $image = $this->resize($image, $width, $height);
-        }
-        return $image;
+        return true;
     }
 
-
-    private function resize(GdImage $image, int $width = null, int $height = null): GdImage|false
+    public function moveAndEncrypt(): bool
     {
-        $newWidth = 0;
-        $newHeight = 0;
-        $resizedImage = false;
-        if (!$width && !$height) {
-            $newWidth = imagesx($image);
-            $newHeight = imagesy($image);
-        }
-        if ($width && !$height) {
-            $newWidth = $width;
-            $newHeight = $this->calculateNewImageHeight($image, $width);
-        }
-        if (!$width && $height) {
-            $newHeight = $height;
-            $newWidth = $this->calculateNewImageWidth($image, $height);
-        }
-        if ($width && $height) {
-            $newWidth = $width;
-            $newHeight = $height;
+        if ($this->error) {
+            return false;
         }
 
-        $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+        if (!$this->move()) {
+            return false;
+        }
 
-        if ($resizedImage) {
-            if (imagecopyresampled($resizedImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, imagesx($image), imagesy($image))) {
-                return $resizedImage;
-            } else {
-                $this->error = "could not resize image";
-                imagedestroy($resizedImage);
-                return false;
-            }
+        return $this->encrypt() !== false;
+    }
+
+    public function encrypt(): false|string
+    {
+        return $this->cryptOperation('encrypt');
+    }
+
+    public function decrypt(): false|string
+    {
+        return $this->cryptOperation('decrypt');
+    }
+
+    private function cryptOperation(string $operation): false|string
+    {
+        if ($this->error || !$this->secret) {
+            $this->error = $this->error ?? "Missing secret, secret is not set";
+            return false;
+        }
+
+        $fileContents = $this->readFileContents();
+        if (!$fileContents) {
+            return false;
+        }
+
+        $method = $operation . 'String';
+        $fileContents = CryptHelper::$method($fileContents, $this->secret);
+        if (!$fileContents) {
+            $this->error = "Cannot $operation file contents: " . $this->sourceFile;
+            return false;
+        }
+
+        return $this->writeFileContents($fileContents) ? $this->outputFile : false;
+    }
+
+    public function deleteSourceFile(): bool
+    {
+        return $this->deleteFile($this->sourceFile);
+    }
+
+    public function deleteDestinationFile(): bool
+    {
+        return $this->deleteFile($this->outputFile);
+    }
+
+    private function deleteFile(string $file): bool
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        if (file_exists($file)) {
+            return unlink($file);
         }
         return false;
     }
 
-    private function calculateNewImageHeight(GdImage $image, int $newWidth): int
+    public function isDestinationDirectoryExists(): bool
     {
-        $ratio = $newWidth / imagesx($image);
-        return intval(imagesy($image) * $ratio);
+        return is_dir(dirname($this->outputFile));
     }
-    private function calculateNewImageWidth(GdImage $image, int $newHeight): int
+
+    public function toBase64File(): false|string
     {
-        $ratio = $newHeight / imagesy($image);
-        return intval(imagesx($image) * $ratio);
+        return $this->base64Operation('encode');
+    }
+
+    public function fromBase64ToOrigin(): false|string
+    {
+        return $this->base64Operation('decode');
+    }
+
+    private function base64Operation(string $operation): false|string
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        $fileContents = $this->readFileContents();
+        if (!$fileContents) {
+            return false;
+        }
+
+        $method = 'base64_' . $operation;
+        $fileContents = $method($fileContents);
+
+        return $this->writeFileContents($fileContents) ? $this->outputFile : false;
+    }
+
+    public function getFileSize(string $filePath): string
+    {
+        $size = filesize($filePath);
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $power = $size > 0 ? floor(log($size, 1024)) : 0;
+        return number_format($size / pow(1024, $power), 2, '.', ',') . ' ' . $units[$power];
+    }
+
+    public function readFileContents(): false|string
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        $fileContents = file_get_contents($this->sourceFile);
+        if ($fileContents === false) {
+            $this->error = "Failed to read file $this->sourceFile";
+            return false;
+        }
+        return $fileContents;
+    }
+
+    private function writeFileContents(string $contents): bool
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        if (file_put_contents($this->outputFile, $contents) === false) {
+            $this->error = "Failed to write file to destination $this->outputFile";
+            return false;
+        }
+        return true;
+    }
+
+    public function convertToWebP(int $quality = 80): bool
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        if (!extension_loaded('gd')) {
+            $this->error = "GD extension is not loaded";
+            return false;
+        }
+
+        $info = getimagesize($this->sourceFile);
+        if ($info === false) {
+            $this->error = "Unable to get image info";
+            return false;
+        }
+
+        $image = $this->createImageFromFile($info[2]);
+        if (!$image) {
+            return false;
+        }
+
+        $this->outputFile = $this->changeExtension($this->outputFile, 'webp');
+
+        if (!imagewebp($image, $this->outputFile, $quality)) {
+            $this->error = "Failed to create WebP image";
+            imagedestroy($image);
+            return false;
+        }
+
+        imagedestroy($image);
+        return true;
+    }
+
+    public function setJpegQuality(int $quality = 75): bool
+    {
+        return $this->setImageQuality('jpeg', $quality);
+    }
+
+    public function setPngQuality(int $quality = 9): bool
+    {
+        return $this->setImageQuality('png', $quality);
+    }
+
+    private function setImageQuality(string $type, int $quality): bool
+    {
+        if ($this->error) {
+            return false;
+        }
+
+        if (!extension_loaded('gd')) {
+            $this->error = "GD extension is not loaded";
+            return false;
+        }
+
+        $info = getimagesize($this->sourceFile);
+        if ($info === false) {
+            $this->error = "Unable to get image info";
+            return false;
+        }
+
+        $image = $this->createImageFromFile($info[2]);
+        if (!$image) {
+            return false;
+        }
+
+        $function = "image$type";
+        if (!function_exists($function)) {
+            $this->error = "Function $function does not exist";
+            imagedestroy($image);
+            return false;
+        }
+
+        if (!$function($image, $this->outputFile, $quality)) {
+            $this->error = "Failed to create $type image";
+            imagedestroy($image);
+            return false;
+        }
+
+        imagedestroy($image);
+        return true;
+    }
+
+    private function createImageFromFile(int $type)
+    {
+        switch ($type) {
+            case IMAGETYPE_JPEG:
+                return imagecreatefromjpeg($this->sourceFile);
+            case IMAGETYPE_PNG:
+                return imagecreatefrompng($this->sourceFile);
+            case IMAGETYPE_GIF:
+                return imagecreatefromgif($this->sourceFile);
+            default:
+                $this->error = "Unsupported image type";
+                return false;
+        }
+    }
+
+    private function changeExtension(string $filename, string $newExtension): string
+    {
+        $info = pathinfo($filename);
+        return $info['dirname'] . DIRECTORY_SEPARATOR . $info['filename'] . '.' . $newExtension;
     }
 }
