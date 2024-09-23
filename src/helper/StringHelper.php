@@ -32,6 +32,58 @@ class StringHelper
         return $result;
     }
 
+    /**
+     * $webName = StringHelper::makeWebName("This is a very long string that exceeds the default maximum length", 30);
+     * echo $webName; // return: this-is-a-very-long-string-that
+     */
+    public static function makeWebName($string, $maxLength = 60)
+    {
+        // Konvertiere in Kleinbuchstaben und entferne Leerzeichen am Anfang und Ende
+        $string = mb_strtolower(trim($string), 'UTF-8');
+    
+        // Ersetze Umlaute und andere Sonderzeichen
+        $replacements = [
+            // Umlaute
+            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'ß' => 'ss',
+            // Andere europäische Zeichen
+            'á' => 'a', 'à' => 'a', 'ă' => 'a', 'â' => 'a', 'å' => 'a', 'ą' => 'a',
+            'ć' => 'c', 'č' => 'c', 'ç' => 'c',
+            'ď' => 'd', 'đ' => 'd',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'ě' => 'e', 'ę' => 'e',
+            'ğ' => 'g',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ł' => 'l',
+            'ñ' => 'n', 'ń' => 'n', 'ň' => 'n',
+            'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ø' => 'o',
+            'ř' => 'r',
+            'ś' => 's', 'š' => 's', 'ş' => 's',
+            'ť' => 't', 'ț' => 't',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ů' => 'u',
+            'ý' => 'y', 'ÿ' => 'y',
+            'ź' => 'z', 'ż' => 'z', 'ž' => 'z'
+        ];
+        
+        $string = strtr($string, $replacements);
+    
+        // Ersetze alle nicht-alphanumerischen Zeichen durch Bindestriche
+        $string = preg_replace('/[^a-z0-9]+/', '-', $string);
+    
+        // Entferne Bindestriche am Anfang und Ende
+        $string = trim($string, '-');
+    
+        // Ersetze mehrfache Bindestriche durch einen einzelnen
+        $string = preg_replace('/-+/', '-', $string);
+    
+        // Kürze den String auf die maximale Länge
+        if (mb_strlen($string, 'UTF-8') > $maxLength) {
+            $string = mb_substr($string, 0, $maxLength, 'UTF-8');
+            // Stelle sicher, dass der String nicht mit einem Bindestrich endet
+            $string = rtrim($string, '-');
+        }
+    
+        return $string;
+    }
+
     public static function sanitizedString(string $incoming_string): string|null
     {
         $pattern = '/^[a-zA-Z0-9_\-\/\(\);,.,äÄöÖüÜß  ]{1,255}$/';
