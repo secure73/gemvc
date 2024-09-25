@@ -237,11 +237,10 @@ class Request
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
-        $caller->post = $this->post;
         $caller->files = $this->files;
         $caller->authorizationHeader = $this->authorizationHeader;
 
-        $response = $caller->call($remoteApiUrl);
+        $response = $caller->post($remoteApiUrl,$this->post);
         if (!$response) {
             $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
             return $jsonResponse;
@@ -250,6 +249,31 @@ class Request
         $jsonResponse->create($caller->http_response_code, $response);
         return $jsonResponse;
     }
+
+    /**
+     * @param string $remoteApiUrl
+     * @param string|null $authorizationHeader
+     * @return JsonResponse
+     * this function forward incomming post request as post to remote API and return remote api response as JsonResponse Object
+     */
+    public function forwardPost(string $remoteApiUrl,string $authorizationHeader = null): JsonResponse
+    {
+
+        $jsonResponse = new JsonResponse();
+        $caller = new ApiCall();
+        $caller->files = $this->files;
+        $caller->authorizationHeader =  $authorizationHeader ? $authorizationHeader : $this->authorizationHeader;
+
+        $response = $caller->post($remoteApiUrl,$this->post);
+        if (!$response) {
+            $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
+            return $jsonResponse;
+        }
+        $response = json_decode($response);
+        $jsonResponse->create($caller->http_response_code, $response);
+        return $jsonResponse;
+    }
+
 
     //----------------------------PRIVATE FUNCTIONS---------------------------------------
 
@@ -297,5 +321,16 @@ class Request
             return false;
         }
         return true;
+    }
+
+    private function sanituzeMethods(string $method_name):string
+    {
+        return match($method_name){
+            'post' => "post",
+            'POST' => "post",
+            'get' => 'get',
+            'GET' => 'get',
+            default => 'post',
+        };
     }
 }
