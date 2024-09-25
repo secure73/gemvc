@@ -67,12 +67,12 @@ class Request
         return $this->$name;
     }
 
-    public function getToken():JwtToken|null
+    public function getJwtToken():JwtToken|null
     {
         return $this->token;
     }
 
-    public function setToken(JWTToken $jwtToken)
+    public function setJwtToken(JWTToken $jwtToken)
     {
         $this->token = $jwtToken;
     }
