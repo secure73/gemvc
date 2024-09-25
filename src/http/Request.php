@@ -14,7 +14,7 @@ class Request
     public    string       $requestedUrl;
     public    ?string      $queryString;
     public    ?string      $error;
-    public    ?JWTToken    $token;
+    private    ?JWTToken    $token;
     /**
      * @var null|string|array<string>
      */
@@ -65,6 +65,29 @@ class Request
     public function __get(string $name):mixed
     {
         return $this->$name;
+    }
+
+    public function getToken():JwtToken|null
+    {
+        return $this->token;
+    }
+
+    public function setToken(JWTToken $jwtToken)
+    {
+        $this->token = $jwtToken;
+    }
+
+    /**
+     * @return int|false 
+     * in case of Authenticated user with valid JWT Token return int user_id, otherwise return false 
+     */
+    public function userId():false|int
+    {
+        if(!$this->token || $this->token->isTokenValid)
+        {
+            return false;
+        }
+        return $this->token->user_id;
     }
 
     public function getError(): string|null
@@ -321,16 +344,5 @@ class Request
             return false;
         }
         return true;
-    }
-
-    private function sanituzeMethods(string $method_name):string
-    {
-        return match($method_name){
-            'post' => "post",
-            'POST' => "post",
-            'get' => 'get',
-            'GET' => 'get',
-            default => 'post',
-        };
     }
 }
