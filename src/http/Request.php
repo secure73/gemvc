@@ -72,9 +72,14 @@ class Request
         return $this->token;
     }
 
-    public function setJwtToken(JWTToken $jwtToken)
+    public function setJwtToken(JWTToken $jwtToken):bool
     {
+        if(!$jwtToken->verify())
+        {
+            return false;
+        }
         $this->token = $jwtToken;
+        return true;
     }
 
     /**
