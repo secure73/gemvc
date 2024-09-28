@@ -37,21 +37,59 @@ class PdoQuery extends QueryExecuter
         return false;
     }
 
+   
     /**
-     * @param  array<string,mixed> $arrayBindKeyValue
-     * @return false|int
+     * @param array<string,mixed> $arrayBindKeyValue
+     * @return int|null
      * $query example: 'UPDATE users SET name = :name , isActive = :isActive WHERE id = :id'
      * arrayBindKeyValue Example [':name' => 'some new name' , ':isActive' => true , :id => 32 ]
-     * in success return positive number affected rows and in error false
+     * Returns the number of affected rows, 0 if no changes were made, or null on error
      */
-    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null|false
+    public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): ?int
     {
-        if ($this->isConnected()) {
-            if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
-                return $this->affectedRows();
-            }
+        if (!$this->isConnected()) {
+            $this->setError('Database connection not established');
+            return null;
         }
-        return false;
+
+        try {
+            if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
+                $affectedRows = $this->affectedRows();
+                if ($affectedRows === 0) {
+                    $this->setError('No rows were updated. The data might be unchanged.');
+                }
+                return $affectedRows;
+            }
+        } catch (\PDOException $e) {
+            // Check for specific error codes that might indicate "no changes"
+            if ($e->getCode() == '00000' && strpos($e->getMessage(), 'no affected rows') !== false) {
+                $this->setError('No changes were made. The data might be identical.');
+                return 0;
+            }
+            
+            // For other errors, set the error message
+            $this->setError('Database error: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<mixed> $arrayBind
+     * @return bool
+     * @throws \PDOException
+     */
+    private function executeQuery(string $query, array $arrayBind): bool
+    {
+        if (!$this->isConnected()) {
+            throw new \PDOException('Database connection not established');
+        }
+
+        $this->query($query);
+        foreach ($arrayBind as $key => $value) {
+            $this->bind($key, $value);
+        }
+        return $this->execute();
     }
 
     /**
@@ -70,22 +108,6 @@ class PdoQuery extends QueryExecuter
         return false;
     }
 
-    /**
-     * @param   array<mixed> $arrayBind
-     * @success set this->affectedRows
-     * @error   set this->error and return false
-     */
-    private function executeQuery(string $query, array $arrayBind): bool
-    {
-        if ($this->isConnected()) {
-            $this->query($query);
-            foreach ($arrayBind as $key => $value) {
-                $this->bind($key, $value);
-            }
-            return $this->execute();
-        }
-        return false;
-    }
 
     /**
      * @param             array<mixed> $arrayBindKeyValue
