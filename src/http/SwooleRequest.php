@@ -4,74 +4,116 @@ namespace Gemvc\Http;
 
 use Gemvc\Http\Request;
 
+/**
+ * Class SwooleRequest
+ * Handles the conversion of an OpenSwoole request to a Request object.
+ */
 class SwooleRequest
 {
-    public   Request $request; 
-    private  object  $incommingRequestObject;
-       
+    public Request $request; 
+    private object $incomingRequestObject;
+
     /**
-     * @param object $swooleRquest
+     * SwooleRequest constructor.
+     * @param object $swooleRequest The incoming OpenSwoole request object.
+     * @throws \InvalidArgumentException If the provided request is not valid.
      */
-    public function __construct(object $swooleRquest)
+    public function __construct(object $swooleRequest)
     {
         $this->request = new Request();
-        $this->incommingRequestObject = $swooleRquest;
-        if(isset($swooleRquest->server['request_uri'])) {
-            $this->request->requestMethod = $swooleRquest->server['request_method'];
-            $this->request->requestedUrl = $swooleRquest->server['request_uri'];
-            isset($swooleRquest->server['query_string']) ? $this->request->queryString = $swooleRquest->server['query_string'] : $this->request->queryString = null;
-            $this->request->remoteAddress = $swooleRquest->server['remote_addr'] .':'. $swooleRquest->server['remote_port'];
-            if(isset($swooleRquest->header['user-agent'])) {
-                $this->request->userMachine = $swooleRquest->header['user-agent'];
+        $this->incomingRequestObject = $swooleRequest;
+
+        if (isset($swooleRequest->server['request_uri'])) {
+            $this->request->requestMethod = $swooleRequest->server['request_method'];
+            $this->request->requestedUrl = $swooleRequest->server['request_uri'];
+            $this->request->queryString = $swooleRequest->server['query_string'] ?? null;
+            $this->request->remoteAddress = $swooleRequest->server['remote_addr'] . ':' . $swooleRequest->server['remote_port'];
+
+            if (isset($swooleRequest->header['user-agent'])) {
+                $this->request->userMachine = $swooleRequest->header['user-agent'];
             }
+
             $this->setData();
-        }
-        else
-        {
-            $this->request->error = "incomming request is not openSwoole request";
+        } else {
+            throw new \InvalidArgumentException("Incoming request is not an OpenSwoole request.");
         }
     }
 
-    public function getOriginalSwooleRequest():object
+    /**
+     * Get the original Swoole request object.
+     * @return object The original Swoole request.
+     */
+    public function getOriginalSwooleRequest(): object
     {
-        return $this->incommingRequestObject;
+        return $this->incomingRequestObject;
     }
 
-    private function setData():void
+    /**
+     * Set the request data from the incoming Swoole request.
+     */
+    private function setData(): void
     {
         $this->setAuthorizationToken();
         $this->setPost();
         $this->setFiles();
         $this->setGet();
+        $this->setCookies();
     }
 
-
-    private function setPost():void
+    /**
+     * Set the POST data from the incoming request.
+     */
+    private function setPost(): void
     {
-        if(isset($this->incommingRequestObject->post)) {
-            $this->request->post = $this->incommingRequestObject->post;
+        $this->request->post = $this->incomingRequestObject->post ?? []; // Use null coalescing operator
+    }
+
+    /**
+     * Set the authorization token from the incoming request headers.
+     */
+    private function setAuthorizationToken(): void
+    {
+        if (isset($this->incomingRequestObject->header['authorization'])) {
+            $this->request->authorizationHeader = $this->incomingRequestObject->header['authorization'];
+            // Uncomment if you implement parseAuthorizationToken
+            // $this->request->token = $this->parseAuthorizationToken($this->request->authorizationHeader);
         }
     }
 
-
-    private function setAuthorizationToken():void
+    /**
+     * Set the uploaded files from the incoming request.
+     */
+    private function setFiles(): void
     {
-        if(isset($this->incommingRequestObject->header['authorization'])) {
-            $this->request->authorizationHeader = $this->incommingRequestObject->header['authorization'];
-        }
+        $this->request->files = $this->incomingRequestObject->files ?? []; // Use null coalescing operator
     }
 
-    private function setFiles():void
+    /**
+     * Set the GET data from the incoming request.
+     */
+    private function setGet(): void
     {
-        if(isset($this->incommingRequestObject->files)) {
-            $this->request->files = $this->incommingRequestObject->files;
-        }
+        $this->request->get = $this->incomingRequestObject->get ?? []; // Use null coalescing operator
     }
 
-    private function setGet():void
+    /**
+     * Set the cookies from the incoming request.
+     */
+    private function setCookies(): void
     {
-        if(isset($this->incommingRequestObject->get)) {
-            $this->request->get = $this->incommingRequestObject->get;
+        $this->request->cookies = $this->incomingRequestObject->cookie ?? []; // Use null coalescing operator
+    }
+
+    /**
+     * Parse the authorization token from the header.
+     * @param string $authorizationHeader The full authorization header.
+     * @return string|null The parsed token, if present.
+     */
+    private function parseAuthorizationToken(string $authorizationHeader): ?string
+    {
+        if (preg_match('/Bearer\s(\S+)/', $authorizationHeader, $matches)) {
+            return $matches[1]; // Return the token part
         }
+        return null; // Or handle other types of tokens if necessary
     }
 }
