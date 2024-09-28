@@ -55,7 +55,7 @@ trait WhereTrait
 
     public function whereLessEqual(string $columnName, string $value): self
     {
-        $this->whereConditions[] = $columnName . ' =< ' . ':' . $columnName;
+        $this->whereConditions[] = $columnName . ' <= ' . ':' . $columnName;
         $this->arrayBindValues[':' . $columnName] = $value;
 
         return $this;
