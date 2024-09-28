@@ -3,17 +3,28 @@ namespace Gemvc\Helper;
 
 class WebHelper
 {
-    public static function detectWebServer(): false|string
+    /**
+     * Detect the web server software.
+     *
+     * @return string|null Returns the server name (Apache, Swoole, Nginx) or null if not detected.
+     */
+    public static function detectWebServer(): ?string
     {
-        $serverSoftware = isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : '';
-        if (strpos($serverSoftware, 'Apache') !== false) {
-            return 'Apache';
-        } elseif (strpos($serverSoftware, 'swoole') !== false) {
-            return 'swoole';
-        } elseif (strpos($serverSoftware, 'nginx') !== false) {
-            return "nginx";
-        }
-        return false;
-    }
+        $serverSoftware = $_SERVER['SERVER_SOFTWARE'] ?? '';
 
+        $server = match (true) {
+            str_contains($serverSoftware, 'Apache') => 'Apache',
+            str_contains($serverSoftware, 'swoole') => 'swoole',
+            str_contains($serverSoftware, 'nginx') => 'nginx',
+            default => null,
+        };
+
+        if ($server === null) {
+            // Log the server detection failure (implement logging as needed)
+            error_log('Web server detection failed: ' . $serverSoftware);
+        }
+
+        return $server;
+    }
 }
+
