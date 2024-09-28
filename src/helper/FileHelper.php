@@ -12,7 +12,7 @@ class FileHelper
     {
         $this->error = null;
         $this->sourceFile =  $sourceFile;
-        $outputFile = $outputFile ? $outputFile : $sourceFile;
+        $this->outputFile = $outputFile ? $outputFile : $sourceFile;
         if ($this->isDestinationDirectoryExists()) {
             if (!file_exists($this->sourceFile)) { {
                     $this->error = "Source-file not found $this->sourceFile";
@@ -26,7 +26,7 @@ class FileHelper
         if ($this->error) {
             return false;
         }
-        if (shell_exec("cp $this->sourceFile $this->outputFile")) {
+        if (shell_exec("cp " . escapeshellarg($this->sourceFile) . " " . escapeshellarg($this->outputFile))) {
             return true;
         } else {
             $this->error = "Could not copy file $this->sourceFile to $this->outputFile";
@@ -66,12 +66,12 @@ class FileHelper
             return false;
         }
         if (shell_exec("mv $this->sourceFile $this->outputFile")) {
+            return $this->encrypt() !== false;
+        } else {
             $this->error = "Could not move file $this->sourceFile to $this->outputFile";
             return false;
-        } else {
-            $this->error = "Could not encrypt file $this->outputFile";
-            return true;
         }
+        
     }
 
     /**
@@ -83,7 +83,7 @@ class FileHelper
             return false;
         }
         if (!$this->secret) {
-            $this->error = "Missing secret , secret is not set";
+            $this->error = $this->error ?? "Missing secret, secret is not set";
             return false;
         }
         $fileContents = $this->readFileContents();
