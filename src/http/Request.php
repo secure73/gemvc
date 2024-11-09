@@ -321,6 +321,7 @@ class Request
             'array' => is_array($this->post[$key]),
             'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
             'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
+            'date' => (strtotime($this->post[$key])) ? true : false
         ];
 
         // Validate data type based on validationMap
