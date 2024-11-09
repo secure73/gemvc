@@ -10,44 +10,44 @@ use Gemvc\Helper\TypeHelper;
  */
 class Request
 {
-    public    ?string      $jwtTokenStringInHeader;
-    public    string       $requestedUrl;
-    public    ?string      $queryString;
-    public    ?string      $error;
-    private    ?JWTToken    $token;
+    public ?string $jwtTokenStringInHeader;
+    public string $requestedUrl;
+    public ?string $queryString;
+    public ?string $error;
+    private ?JWTToken $token;
     /**
      * @var null|string|array<string>
      */
-    public    null|string|array      $authorizationHeader;
-    public    ?string      $remoteAddress;
+    public null|string|array $authorizationHeader;
+    public ?string $remoteAddress;
     /**
      * @var array<mixed>
      */
-    public    array        $files;
+    public array $files;
     /**
      * @var array<mixed>
      */
-    public    array        $post;
+    public array $post;
 
     /**
      * @var array<mixed>
      */
-    public null|array      $put;
+    public null|array $put;
 
     /**
      * @var array<mixed>
      */
-    public null|array      $patch;
+    public null|array $patch;
 
     /**
      * @var string|array<mixed>
      */
-    public    string|array        $get;
-    public    string       $userMachine;
-    public    ?string      $requestMethod;
-    private   string       $id;
-    private   string       $time;
-    private   float        $start_exec;
+    public string|array $get;
+    public string $userMachine;
+    public ?string $requestMethod;
+    private string $id;
+    private string $time;
+    private float $start_exec;
 
 
     public function __construct()
@@ -62,20 +62,19 @@ class Request
         $this->time = TypeHelper::timeStamp();
     }
 
-    public function __get(string $name):mixed
+    public function __get(string $name): mixed
     {
         return $this->$name;
     }
 
-    public function getJwtToken():JwtToken|null
+    public function getJwtToken(): JwtToken|null
     {
         return $this->token;
     }
 
-    public function setJwtToken(JWTToken $jwtToken):bool
+    public function setJwtToken(JWTToken $jwtToken): bool
     {
-        if(!$jwtToken->verify())
-        {
+        if (!$jwtToken->verify()) {
             return false;
         }
         $this->token = $jwtToken;
@@ -86,10 +85,9 @@ class Request
      * @return int|false 
      * in case of Authenticated user with valid JWT Token return int user_id, otherwise return false 
      */
-    public function userId():false|int
+    public function userId(): false|int
     {
-        if(!$this->token || $this->token->isTokenValid)
-        {
+        if (!$this->token || $this->token->isTokenValid) {
             return false;
         }
         return $this->token->user_id;
@@ -111,7 +109,7 @@ class Request
 
     public function getStartExecutionTime(): float
     {
-        return  $this->start_exec;
+        return $this->start_exec;
     }
 
 
@@ -128,22 +126,20 @@ class Request
         $errors = []; // Initialize an empty array to store errors
         $requires = [];
         $optionals = [];
-        $all=[];
+        $all = [];
         foreach ($toValidatePost as $validation_key => $validationString) {
-            if(substr($validation_key, 0, 1) === '?') {
+            if (substr($validation_key, 0, 1) === '?') {
                 $validation_key = ltrim($validation_key, '?');
                 $optionals[$validation_key] = $validationString;
-            }
-            else
-            {
+            } else {
                 $requires[$validation_key] = $validationString;
             }
             $all[$validation_key] = $validationString;
         }
-        foreach($this->post as $postName => $postValue) { 
-            if(!array_key_exists($postName, $all)  ) {  
+        foreach ($this->post as $postName => $postValue) {
+            if (!array_key_exists($postName, $all)) {
                 $errors[$postName] = "unwanted post $postName";
-                $this->post = []; 
+                $this->post = [];
             }
         }
         if (count($errors) > 0) { //if unwanted post exists , stop process and return false
@@ -153,7 +149,7 @@ class Request
             return false;
         }
 
-        foreach($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
+        foreach ($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
             if ((!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
                 $errors[] = "Missing required field: $validation_key";
             }
@@ -165,7 +161,7 @@ class Request
             return false;
         }
 
-        foreach($requires as $validation_key => $validationString) { //now validate requires post Schema
+        foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
             $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
             if (!$validationResult) {
                 $errors[] = "Invalid value for field: $validation_key";
@@ -178,8 +174,8 @@ class Request
             return false;
         }
 
-        foreach($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
-        
+        foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
+
             if (isset($this->post[$optionals_key]) && !empty($this->post[$optionals_key])) {
                 $validationResult = $this->checkPostKeyValue($optionals_key, $optionals_value);
                 if (!$validationResult) {
@@ -213,48 +209,52 @@ class Request
 
     /**
      * Validates string lengths in a dictionary against min and max constraints.
-     * @param  array<string, string> $stringPosts A dictionary where keys are strings and values are strings in the format "key:min-value|max-value" (optional).
-     * @return bool True if all strings pass validation, False otherwise.
+     * @param array<string, string> $stringPosts A dictionary where keys are strings and values are strings in the format "min|max" (both min and max are optional).
+     * @example $stringPosts = [
+     *     'username' => '3|15',  // Min length 3, max length 15
+     *     'password' => '8|',    // Min length 8, no max limit
+     *     'nickname' => '|20',   // No min limit, max length 20
+     *     'bio' => '',           // No min or max limit
+     * ];
+     * @return bool Returns true if all validations pass, false otherwise. Sets $this->error on failure.
      */
     public function validateStringPosts(array $stringPosts): bool
     {
-        foreach ($stringPosts as $key => $value) {
+        $errors = [];
+
+        foreach ($stringPosts as $key => $constraint) {
             // Check if POST key exists
             if (!isset($this->post[$key])) {
-                $this->error = "Missing POST key '$key'";
-                return false;
+                $errors[] = "Missing POST key '$key'";
+                continue;  // Skip further checks if key is missing
             }
 
-            $constraints = explode('|', $value);
-            // Ensure constraints are in the expected format (key:min-value|max-value)
-            if (count($constraints) !== 2) {
-                $this->error = "Invalid format for key $key: expected 'min-value|max-value'";
-                return false;
-            }
-            $min_condition = $constraints[0];
-            $max_condition = $constraints[1];
+            // Set default min and max values
+            $min = 0;
+            $max = PHP_INT_MAX;
 
-            $min  = explode('-', $min_condition);
-            if (count($min) !== 2) {
-                $min = 0;
-            } else {
-                $min = (int)$min[1];
+            // Parse the constraint string if provided
+            if (!empty($constraint)) {
+                list($minConstraint, $maxConstraint) = explode('|', $constraint) + [0, null];
+                if (is_numeric($minConstraint)) {
+                    $min = (int) $minConstraint;
+                }
+                if (is_numeric($maxConstraint)) {
+                    $max = (int) $maxConstraint;
+                }
             }
 
-            $max  = explode('-', $max_condition);
-            if (count($max) !== 2) {
-                $max = 9999999999;
-            } else {
-                $max = (int)$max[1];
-            }
-            // Validate string length against min and max constraints (assuming $this->post[$key] is a string)
-            /**@phpstan-ignore-next-line */
+            // Validate string length against min and max constraints
             $stringLength = strlen($this->post[$key]);
-            
-            if (!($min <= $stringLength && $stringLength <= $max)) {
-                $this->error = "String length for post '$key' is ({$stringLength}) . it is outside the range ({$min}-{$max})";
-                return false;
+            if ($stringLength < $min || $stringLength > $max) {
+                $errors[] = "String length for post '$key' is {$stringLength}, which is outside the range ({$min}-{$max})";
             }
+        }
+
+        // If errors were found, set them and return false
+        if (!empty($errors)) {
+            $this->error = implode(', ', $errors);  // Combine all errors into a single string
+            return false;
         }
 
         return true;
@@ -268,7 +268,7 @@ class Request
         $caller->files = $this->files;
         $caller->authorizationHeader = $this->authorizationHeader;
 
-        $response = $caller->post($remoteApiUrl,$this->post);
+        $response = $caller->post($remoteApiUrl, $this->post);
         if (!$response) {
             $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
             return $jsonResponse;
@@ -284,15 +284,15 @@ class Request
      * @return JsonResponse
      * this function forward incomming post request as post to remote API and return remote api response as JsonResponse Object
      */
-    public function forwardPost(string $remoteApiUrl,string $authorizationHeader = null): JsonResponse
+    public function forwardPost(string $remoteApiUrl, string $authorizationHeader = null): JsonResponse
     {
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
         $caller->files = $this->files;
-        $caller->authorizationHeader =  $authorizationHeader ? $authorizationHeader : $this->authorizationHeader;
+        $caller->authorizationHeader = $authorizationHeader ? $authorizationHeader : $this->authorizationHeader;
 
-        $response = $caller->post($remoteApiUrl,$this->post);
+        $response = $caller->post($remoteApiUrl, $this->post);
         if (!$response) {
             $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
             return $jsonResponse;
