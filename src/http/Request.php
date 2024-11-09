@@ -343,7 +343,8 @@ class Request
             'bool',
             'array',
             'json',
-            'email'
+            'email',
+            'date'
         ];
         if (!in_array($validationString, $validation)) {
             $this->error = "invalid type of validation for $validationString";
