@@ -20,7 +20,7 @@ class JWTToken
     /**
      * @var array<mixed> $payload
      */
-    public array     $payload;
+    public \stdClass     $payload;
     public ?string   $token_id;
     public ?string   $iss;
     public ?string   $role;
@@ -41,7 +41,7 @@ class JWTToken
         $this->role = null;
         $this->exp = 0;
         $this->isTokenValid = false;
-        $this->payload = [];
+        $this->payload = new \stdClass();
     }
 
     /**
