@@ -3,12 +3,14 @@
 namespace Gemvc\Email;
 
 use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use Exception;
 
 class GemSMTP
 {
     public ?string $error;
     private bool $readyToSend = false;
-    protected PHPMailer $phpMailer;
+    protected PHPMailer $mail;
 
     /**
      * Constructor
@@ -17,21 +19,36 @@ class GemSMTP
      * this class is wrapper from PHPMailer
      * smtp debug level between 0 to 4 and it is tls enabled
      */
-    public function __construct(string $host, string $username, string $password, string $port, ?int $smtpDebugLevel = 3)
+    public function __construct(string $username, string $password)
     {
-        $this->error = 'before send you shall call function createEmail()';
-        $this->phpMailer = new PHPMailer(true);
-        $this->phpMailer->SMTPAuth = true;
-        $this->phpMailer->isSMTP();
-        $this->phpMailer->isHTML(true);
-        $this->phpMailer->Host = $host;
-        $this->phpMailer->Username = $username;
-        $this->phpMailer->Password = $password;
-        $this->phpMailer->Port = (int)$port;
-        $this->phpMailer->SMTPDebug = (int)$smtpDebugLevel;
-        $this->phpMailer->SMTPSecure = 'tls';
+        $this->mail = new PHPMailer(true);
+        
+        // Enable debugging
+        $this->mail->SMTPDebug = SMTP::DEBUG_SERVER;
+        $this->mail->Debugoutput = 'error_log';
 
-
+        // SMTP configuration
+        $this->mail->isSMTP();
+        $this->mail->Host = $_ENV['SMTP_HOST'];        // mail.elexbo.de
+        $this->mail->SMTPAuth = true;
+        $this->mail->Username = $username;    // noreply
+        $this->mail->Password = $password;
+        $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $this->mail->Port = $_ENV['SMTP_PORT'];        // 465
+        
+        // Add error handling
+        try {
+            $this->mail->smtpConnect([
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ]);
+        } catch (Exception $e) {
+            error_log("SMTP Connection Error: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     /**
@@ -44,18 +61,18 @@ class GemSMTP
      * @param  string $contentLanguage
      * @return bool
      * Tipp: for add Attachment you can use $this->addAttachment();
-     * Tipp: you can use method $content  = $this->phpMailer->$mail->msgHTML(file_get_contents('contents.html'), __DIR__);
+     * Tipp: you can use method $content  = $this->mail->$mail->msgHTML(file_get_contents('contents.html'), __DIR__);
      * and use result in this function $emailContent in case of wish to use  HTML Template file
      */
     public function createMail(string $senderEmail, string $senderName, string $reciverEmail, string $reciverName, string $subject, string $emailContent, string $contentLanguage): bool
     {
-        if ($this->phpMailer->setLanguage($contentLanguage)) {
+        if ($this->mail->setLanguage($contentLanguage)) {
             if (filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-                if ($this->phpMailer->setFrom($senderEmail, $senderName)) {
+                if ($this->mail->setFrom($senderEmail, $senderName)) {
                     if (filter_var($reciverEmail, FILTER_VALIDATE_EMAIL)) {
                         if ($this->addReciver($reciverEmail, $reciverName)) {
-                            $this->phpMailer->Subject = $subject;
-                            $this->phpMailer->Body = $emailContent;
+                            $this->mail->Subject = $subject;
+                            $this->mail->Body = $emailContent;
                             $this->readyToSend = true;
                             $this->error = null;
                             return true;
@@ -77,7 +94,7 @@ class GemSMTP
     {
         $reciverName = ($reciverName) ?: $email;
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->phpMailer->addAddress($email, $reciverName);
+            $this->mail->addAddress($email, $reciverName);
 
             return true;
         }
@@ -90,7 +107,7 @@ class GemSMTP
     {
         $reciverName = ($reciverName) ?: $email;
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->phpMailer->addCC($email, $reciverName);
+            $this->mail->addCC($email, $reciverName);
 
             return true;
         }
@@ -103,7 +120,7 @@ class GemSMTP
     {
         $reciverName = ($reciverName) ?: $email;
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->phpMailer->addBCC($email, $reciverName);
+            $this->mail->addBCC($email, $reciverName);
 
             return true;
         }
@@ -116,7 +133,7 @@ class GemSMTP
     {
         if (file_exists($filePath)) {
             $showName = ($showName) ?: basename($filePath) . PHP_EOL;
-            $this->phpMailer->addAttachment($filePath, $showName);
+            $this->mail->addAttachment($filePath, $showName);
 
             return true;
         }
@@ -128,12 +145,12 @@ class GemSMTP
     public function send(): bool
     {
         if($this->readyToSend) {
-            if($this->phpMailer->Send()) {
+            if($this->mail->Send()) {
                 return true;
             }
             else
             {
-                $this->error = $this->phpMailer->ErrorInfo;
+                $this->error = $this->mail->ErrorInfo;
             }
         }
         return false;
