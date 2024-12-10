@@ -20,19 +20,23 @@ final class GemSMTP
     /**
      * Initialize SMTP mailer with configuration
      *
-     * @param string $username SMTP username/email
+     * @param string $emailAddress SMTP email address (used as username)
      * @param string $password SMTP password
      * @param string $senderName Name to display as sender
      * @param bool $debug Enable debug mode
-     * @throws Exception When SMTP connection fails
+     * @throws Exception When SMTP connection fails or email format is invalid
      */
     public function __construct(
-        string $username,
+        string $emailAddress,
         string $password,
         string $senderName,
         bool $debug = false
     ) {
-        $this->username = $username;
+        if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Invalid email address format for SMTP username");
+        }
+
+        $this->username = $emailAddress;
         $this->password = $password;
         $this->senderName = $senderName;
         
@@ -124,7 +128,7 @@ final class GemSMTP
             $this->mail->setFrom($this->username, $this->senderName);
             $this->mail->addAddress($receiverEmail, $receiverName);
             $this->mail->Subject = $subject;
-            $this->mail->Body = $emailContent;
+            $this->mail->Body = $this->sanitizeHtml($htmlContent);
             
             $this->readyToSend = true;
             return true;
