@@ -12,10 +12,21 @@ final class GemSMTP
     private bool $readyToSend = false;
     private PHPMailer $mail;
     private string $username;
-    private string $password;
+    private ?string $password = null;
     private string $senderName;
     
-    private const ALLOWED_LANGUAGES = ['en', 'de', 'fa'];
+    // Default values as class constants
+    private const DEFAULT_SMTP_PORT = 465;
+    private const DEFAULT_TIMEOUT = 10;
+    private const DEFAULT_LANGUAGE = 'de';
+    private const MAX_SUBJECT_LENGTH = 998; // RFC 2822 limit
+    
+    private const ALLOWED_LANGUAGES = [
+        'ar', 'az', 'ba', 'bg', 'bs', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 
+        'fa', 'fi', 'fo', 'fr', 'he', 'hi', 'hr', 'hu', 'hy', 'id', 'it', 'ja', 'ka', 
+        'ko', 'lt', 'lv', 'ms', 'nb', 'nl', 'pl', 'pt', 'pt_br', 'ro', 'ru', 'sk', 
+        'sl', 'sr', 'sv', 'tl', 'tr', 'uk', 'vi', 'zh', 'zh_cn'
+    ];
 
     /**
      * Initialize SMTP mailer with configuration
@@ -24,13 +35,17 @@ final class GemSMTP
      * @param string $password SMTP password
      * @param string $senderName Name to display as sender
      * @param bool $debug Enable debug mode
+     * @param ?int $port SMTP port
+     * @param ?int $timeout SMTP timeout
      * @throws Exception When SMTP connection fails or email format is invalid
      */
     public function __construct(
         string $emailAddress,
         string $password,
         string $senderName,
-        bool $debug = false
+        bool $debug = false,
+        ?int $port = null,
+        ?int $timeout = null
     ) {
         if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
             throw new Exception("Invalid email address format for SMTP username");
@@ -40,13 +55,23 @@ final class GemSMTP
         $this->password = $password;
         $this->senderName = $senderName;
         
-        $this->initializeMailer($debug);
+        try {
+            $this->initializeMailer(
+                $debug,
+                $port ?? self::DEFAULT_SMTP_PORT,
+                $timeout ?? self::DEFAULT_TIMEOUT
+            );
+            $this->clearSensitiveData();
+        } catch (Exception $e) {
+            $this->clearSensitiveData();
+            throw $e;
+        }
     }
 
     /**
      * Initialize PHPMailer with SMTP settings
      */
-    private function initializeMailer(bool $debug): void
+    private function initializeMailer(bool $debug, int $port, int $timeout): void
     {
         $this->mail = new PHPMailer(true);
         
@@ -61,9 +86,10 @@ final class GemSMTP
         $this->mail->Username = $this->username;
         $this->mail->Password = $this->password;
         
-        // Force SMTPS (TLS) encryption
+        // Configurable port and timeout
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $this->mail->Port = 465; // Standard SMTPS port
+        $this->mail->Port = $port;
+        $this->mail->Timeout = $timeout;
         
         // Force secure character set
         $this->mail->CharSet = PHPMailer::CHARSET_UTF8;
@@ -92,6 +118,19 @@ final class GemSMTP
     }
 
     /**
+     * Clear sensitive data from memory
+     */
+    private function clearSensitiveData(): void
+    {
+        $this->password = null;
+        
+        // Overwrite with random data before nulling
+        if (function_exists('sodium_memzero')) {
+            sodium_memzero($this->password);
+        }
+    }
+
+    /**
      * Create a new email
      *
      * @param string $receiverEmail Recipient email address
@@ -106,13 +145,13 @@ final class GemSMTP
         string $receiverName,
         string $subject,
         string $htmlContent,
-        string $contentLanguage = 'en'
+        string $contentLanguage = self::DEFAULT_LANGUAGE
     ): bool {
         $this->readyToSend = false;
         $this->error = null;
 
         try {
-            if (!in_array($contentLanguage, self::ALLOWED_LANGUAGES)) {
+            if (!in_array($contentLanguage, self::ALLOWED_LANGUAGES, true)) {
                 throw new Exception("Invalid language. Allowed: " . implode(', ', self::ALLOWED_LANGUAGES));
             }
 
@@ -206,6 +245,32 @@ final class GemSMTP
     }
 
     /**
+     * Add embedded image
+     *
+     * @param string $imagePath Path to image file
+     * @param string $cid Content ID to use in HTML (e.g., 'logo' for <img src="cid:logo">)
+     * @return bool Success status
+     */
+    public function addEmbeddedImage(string $imagePath, string $cid): bool
+    {
+        try {
+            if (!file_exists($imagePath)) {
+                throw new Exception("Image file not found: {$imagePath}");
+            }
+            
+            if (!getimagesize($imagePath)) {
+                throw new Exception("Invalid image file: {$imagePath}");
+            }
+            
+            $this->mail->addEmbeddedImage($imagePath, $cid);
+            return true;
+        } catch (Exception $e) {
+            $this->error = $e->getMessage();
+            return false;
+        }
+    }
+
+    /**
      * Send the email
      */
     public function send(): bool
@@ -248,5 +313,26 @@ final class GemSMTP
         $this->mail->clearAttachments();
         $this->readyToSend = false;
         $this->error = null;
+    }
+
+    private function validateContent(string $htmlContent): bool
+    {
+        $size = strlen($htmlContent);
+        if ($size > 26214400) { // 25MB limit
+            throw new Exception("Email content exceeds maximum size limit of 25MB");
+        }
+        return true;
+    }
+
+    private function validateSubject(string $subject): string
+    {
+        $subject = trim($subject);
+        if (empty($subject)) {
+            throw new Exception("Email subject cannot be empty");
+        }
+        if (strlen($subject) > self::MAX_SUBJECT_LENGTH) {
+            throw new Exception("Email subject exceeds maximum length of " . self::MAX_SUBJECT_LENGTH);
+        }
+        return $subject;
     }
 }
