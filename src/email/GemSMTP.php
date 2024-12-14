@@ -4,7 +4,7 @@ namespace Gemvc\Email;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
-use Exception;
+use Gemvc\Http\Response;
 
 final class GemSMTP
 {
@@ -14,12 +14,13 @@ final class GemSMTP
     private string $username;
     private ?string $password = null;
     private string $senderName;
-    
-    // Default values as class constants
-    private const DEFAULT_SMTP_PORT = 465;
-    private const DEFAULT_TIMEOUT = 10;
-    private const DEFAULT_LANGUAGE = 'de';
-    private const MAX_SUBJECT_LENGTH = 998; // RFC 2822 limit
+    private string $defaultLanguage;
+    private int $maxSubjectLength;
+    private string $smtpHost;
+    private const MAX_FILE_SIZE = 10485760; // 10MB in bytes
+    private const MAX_CONTENT_SIZE = 26214400; // 25MB in bytes
+    private const MAX_RETRIES = 3;
+    private const RETRY_DELAY = 2; // seconds
     
     private const ALLOWED_LANGUAGES = [
         'ar', 'az', 'ba', 'bg', 'bs', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 
@@ -28,76 +29,78 @@ final class GemSMTP
         'sl', 'sr', 'sv', 'tl', 'tr', 'uk', 'vi', 'zh', 'zh_cn'
     ];
 
-    /**
-     * Initialize SMTP mailer with configuration
-     *
-     * @param string $emailAddress SMTP email address (used as username)
-     * @param string $password SMTP password
-     * @param string $senderName Name to display as sender
-     * @param bool $debug Enable debug mode
-     * @param ?int $port SMTP port
-     * @param ?int $timeout SMTP timeout
-     * @throws Exception When SMTP connection fails or email format is invalid
-     */
+    private const CONTENT_BLACKLIST = [
+        '<script', 'javascript:', 'vbscript:', 'data:', 'onclick', 'onerror', 'onload',
+        'expression(', 'url(', 'eval(', 'alert('
+    ];
+
     public function __construct(
         string $emailAddress,
         string $password,
         string $senderName,
+        string $smtpHost,
+        int $port,
+        int $timeout = 10,
         bool $debug = false,
-        ?int $port = null,
-        ?int $timeout = null
+        string $defaultLanguage = 'de',
+        int $maxSubjectLength = 998
     ) {
         if (!filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("Invalid email address format for SMTP username");
+            Response::internalError("Invalid email address format for SMTP username")->show();
+            die();
         }
 
         $this->username = $emailAddress;
         $this->password = $password;
         $this->senderName = $senderName;
+        $this->defaultLanguage = $defaultLanguage;
+        $this->maxSubjectLength = $maxSubjectLength;
+        $this->smtpHost = $smtpHost;
         
         try {
             $this->initializeMailer(
                 $debug,
-                $port ?? self::DEFAULT_SMTP_PORT,
-                $timeout ?? self::DEFAULT_TIMEOUT
+                $port,
+                $timeout
             );
             $this->clearSensitiveData();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->clearSensitiveData();
             throw $e;
         }
     }
 
-    /**
-     * Initialize PHPMailer with SMTP settings
-     */
     private function initializeMailer(bool $debug, int $port, int $timeout): void
     {
         $this->mail = new PHPMailer(true);
         
-        // Debug settings
+        // Set debug level using SMTP class constants
         $this->mail->SMTPDebug = $debug ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
-        $this->mail->Debugoutput = 'error_log';
-
-        // SMTP configuration with enforced security
-        $this->mail->isSMTP();
-        $this->mail->Host = $this->getConfigValue('SMTP_HOST', 'localhost');
-        $this->mail->SMTPAuth = true;
-        $this->mail->Username = $this->username;
-        $this->mail->Password = $this->password;
+        $this->mail->Debugoutput = 'error_log';  // Log debug output to error log
         
-        // Configurable port and timeout
-        $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        // Force SMTP with strict settings
+        $this->mail->isSMTP();
+        $this->mail->SMTPAuth = true;
+        
+        // Set encryption based on port
+        if ($port === 465) {
+            $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($port === 587) {
+            $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } else {
+            Response::internalError("Only ports 465 (SMTPS) and 587 (STARTTLS) are supported")->show();
+            die();
+        }
+        
         $this->mail->Port = $port;
         $this->mail->Timeout = $timeout;
         
-        // Force secure character set
-        $this->mail->CharSet = PHPMailer::CHARSET_UTF8;
-        
-        // Force HTML email
+        // Force HTML and UTF-8
         $this->mail->isHTML(true);
+        $this->mail->CharSet = PHPMailer::CHARSET_UTF8;
+        $this->mail->Encoding = PHPMailer::ENCODING_BASE64;
 
-        // Enforce strict SSL/TLS settings
+        // Stricter SSL/TLS options
         $sslOptions = [
             'ssl' => [
                 'verify_peer' => true,
@@ -107,232 +110,256 @@ final class GemSMTP
                 'disable_compression' => true,
                 'SNI_enabled' => true,
                 'verify_depth' => 5,
+                'ciphers' => 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384',
             ]
         ];
 
-        try {
-            $this->mail->smtpConnect($sslOptions);
-        } catch (Exception $e) {
-            throw new Exception("Secure SMTP Connection Error: " . $e->getMessage());
+        // Connection with retries
+        for ($i = 0; $i < self::MAX_RETRIES; $i++) {
+            try {
+                if (!$this->mail->smtpConnect($sslOptions)) {
+                    Response::internalError("SMTP connection failed")->show();
+                    die();
+                }
+                return;
+            } catch (\Exception $e) {
+                if ($i === self::MAX_RETRIES - 1) {
+                    Response::internalError("Secure SMTP Connection Error after " . self::MAX_RETRIES . " attempts: " . $e->getMessage())->show();
+                    die();
+                }
+                sleep(self::RETRY_DELAY);
+            }
         }
     }
 
-    /**
-     * Clear sensitive data from memory
-     */
     private function clearSensitiveData(): void
     {
-        $this->password = null;
-        
-        // Overwrite with random data before nulling
-        if (function_exists('sodium_memzero')) {
-            sodium_memzero($this->password);
+        if (isset($this->mail)) {
+            $this->mail->Password = null;
         }
+        
+        if (function_exists('sodium_memzero')) {
+            if ($this->password !== null) {
+                sodium_memzero($this->password);
+            }
+        }
+        $this->password = null;
     }
 
-    /**
-     * Create a new email
-     *
-     * @param string $receiverEmail Recipient email address
-     * @param string $receiverName Recipient name
-     * @param string $subject Email subject
-     * @param string $htmlContent HTML email content
-     * @param string $contentLanguage Language code (en, de, fa, etc.)
-     * @return bool Success status
-     */
     public function createMail(
         string $receiverEmail,
         string $receiverName,
         string $subject,
         string $htmlContent,
-        string $contentLanguage = self::DEFAULT_LANGUAGE
+        string $contentLanguage = null
     ): bool {
         $this->readyToSend = false;
         $this->error = null;
 
-        try {
-            if (!in_array($contentLanguage, self::ALLOWED_LANGUAGES, true)) {
-                throw new Exception("Invalid language. Allowed: " . implode(', ', self::ALLOWED_LANGUAGES));
-            }
-
-            if (!filter_var($this->username, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("Invalid sender email format");
-            }
-
-            if (!filter_var($receiverEmail, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("Invalid receiver email format");
-            }
-
-            $this->mail->setLanguage($contentLanguage);
-            $this->mail->setFrom($this->username, $this->senderName);
-            $this->mail->addAddress($receiverEmail, $receiverName);
-            $this->mail->Subject = $subject;
-            $this->mail->Body = $this->sanitizeHtml($htmlContent);
-            
-            $this->readyToSend = true;
-            return true;
-
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
+        // Stricter content type validation
+        if (!str_contains($htmlContent, '<html') || !str_contains($htmlContent, '</html>')) {
+            Response::internalError("Content must be valid HTML with <html> tags")->show();
+            die();
         }
+
+        if (!in_array($contentLanguage, self::ALLOWED_LANGUAGES, true)) {
+            Response::internalError("Invalid language. Allowed: " . implode(', ', self::ALLOWED_LANGUAGES))->show();
+            die();
+        }
+
+        if (!filter_var($this->username, FILTER_VALIDATE_EMAIL)) {
+            Response::internalError("Invalid sender email format")->show();
+            die();
+        }
+
+        if (!filter_var($receiverEmail, FILTER_VALIDATE_EMAIL)) {
+            Response::internalError("Invalid receiver email format")->show();
+            die();
+        }
+
+        $this->validateContent($htmlContent);
+        $subject = $this->validateSubject($subject);
+
+        $this->mail->setLanguage($contentLanguage ?? $this->defaultLanguage);
+        $this->mail->setFrom($this->username, $this->senderName);
+        $this->mail->addAddress($receiverEmail, $receiverName);
+        $this->mail->Subject = $subject;
+        $this->mail->Body = $this->sanitizeHtml($htmlContent);
+        $this->mail->AltBody = strip_tags($htmlContent); // Always provide plain text alternative
+        
+        $this->readyToSend = true;
+        return true;
     }
 
-    /**
-     * Sanitize HTML content
-     *
-     * @param string $html HTML content
-     * @return string Sanitized HTML
-     */
     private function sanitizeHtml(string $html): string
     {
-        // Basic XSS protection
-        return htmlspecialchars($html, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
+        if (!mb_check_encoding($html, 'UTF-8')) {
+            Response::internalError("Invalid UTF-8 encoding in content")->show();
+            die();
+        }
+
+        $html = htmlspecialchars($html, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
+        
+        // Additional sanitization
+        $html = preg_replace('/<!--(.|\s)*?-->/', '', $html); // Remove comments
+        return $html;
     }
 
-    /**
-     * Add CC recipient
-     */
-    public function addCC(string $email, ?string $receiverName = null): bool
+    private function validateContent(string $htmlContent): void
     {
-        try {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("Invalid CC email format");
+        $size = strlen($htmlContent);
+        if ($size > self::MAX_CONTENT_SIZE) {
+            Response::internalError("Email content exceeds maximum size limit of 25MB")->show();
+            die();
+        }
+        
+        if (!mb_check_encoding($htmlContent, 'UTF-8')) {
+            Response::internalError("Invalid UTF-8 encoding in content")->show();
+            die();
+        }
+        
+        foreach (self::CONTENT_BLACKLIST as $term) {
+            if (stripos($htmlContent, $term) !== false) {
+                Response::internalError("Potentially unsafe content detected")->show();
+                die();
             }
-            
-            $this->mail->addCC($email, $receiverName ?? $email);
-            return true;
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
         }
     }
 
-    /**
-     * Add BCC recipient
-     */
-    public function addBCC(string $email, ?string $receiverName = null): bool
-    {
-        try {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("Invalid BCC email format");
-            }
-            
-            $this->mail->addBCC($email, $receiverName ?? $email);
-            return true;
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
-        }
-    }
-
-    /**
-     * Add file attachment
-     */
     public function addAttachment(string $filePath, ?string $showName = null): bool
     {
+        if (!file_exists($filePath)) {
+            Response::internalError("Attachment file not found: {$filePath}")->show();
+            die();
+        }
+        
+        // Path traversal protection
+        $realPath = realpath($filePath);
+        if ($realPath === false || !str_starts_with($realPath, realpath(getcwd()))) {
+            Response::internalError("Invalid file path")->show();
+            die();
+        }
+        
+        if (filesize($filePath) > self::MAX_FILE_SIZE) {
+            Response::internalError("File size exceeds maximum allowed size of 10MB")->show();
+            die();
+        }
+
+        $mimeType = mime_content_type($filePath);
+        if ($mimeType === false) {
+            Response::internalError("Could not determine file type")->show();
+            die();
+        }
+
         try {
-            if (!file_exists($filePath)) {
-                throw new Exception("Attachment file not found: {$filePath}");
-            }
-            
             $this->mail->addAttachment($filePath, $showName ?? basename($filePath));
             return true;
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
+        } catch (\Exception $e) {
+            Response::internalError("Failed to add attachment: " . $e->getMessage())->show();
+            die();
         }
     }
 
-    /**
-     * Add embedded image
-     *
-     * @param string $imagePath Path to image file
-     * @param string $cid Content ID to use in HTML (e.g., 'logo' for <img src="cid:logo">)
-     * @return bool Success status
-     */
     public function addEmbeddedImage(string $imagePath, string $cid): bool
     {
+        if (!file_exists($imagePath)) {
+            Response::internalError("Image file not found: {$imagePath}")->show();
+            die();
+        }
+        
+        // Path traversal protection
+        $realPath = realpath($imagePath);
+        if ($realPath === false || !str_starts_with($realPath, realpath(getcwd()))) {
+            Response::internalError("Invalid image path")->show();
+            die();
+        }
+        
+        if (!getimagesize($imagePath)) {
+            Response::internalError("Invalid image file: {$imagePath}")->show();
+            die();
+        }
+        
+        if (filesize($imagePath) > self::MAX_FILE_SIZE) {
+            Response::internalError("Image size exceeds maximum allowed size of 10MB")->show();
+            die();
+        }
+        
         try {
-            if (!file_exists($imagePath)) {
-                throw new Exception("Image file not found: {$imagePath}");
-            }
-            
-            if (!getimagesize($imagePath)) {
-                throw new Exception("Invalid image file: {$imagePath}");
-            }
-            
             $this->mail->addEmbeddedImage($imagePath, $cid);
             return true;
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
+        } catch (\Exception $e) {
+            Response::internalError("Failed to add embedded image: " . $e->getMessage())->show();
+            die();
         }
     }
 
-    /**
-     * Send the email
-     */
+    private function ensureValidConnection(): void
+    {
+        if (!$this->mail->smtpConnect()) {
+            $this->mail->smtpClose();
+            Response::internalError("SMTP connection lost")->show();
+            die();
+        }
+    }
+
     public function send(): bool
     {
         if (!$this->readyToSend) {
-            $this->error = "Email not properly configured. Call createMail() first.";
-            return false;
+            Response::internalError("Email not properly configured. Call createMail() first.")->show();
+            die();
         }
 
         try {
-            return $this->mail->send();
-        } catch (Exception $e) {
-            $this->error = $e->getMessage();
-            return false;
+            $this->ensureValidConnection();
+            $result = $this->mail->send();
+            if (!$result) {
+                Response::internalError("Email sending failed: " . $this->mail->ErrorInfo)->show();
+                die();
+            }
+            return true;
+        } catch (\Exception $e) {
+            Response::internalError("Email sending failed: " . $e->getMessage())->show();
+            die();
         }
     }
 
-    /**
-     * Get the last error message
-     */
     public function getError(): ?string
     {
         return $this->error;
     }
 
-    /**
-     * Get configuration value with fallback
-     */
-    private function getConfigValue(string $key, string $default): string
-    {
-        return $_ENV[$key] ?? $default;
-    }
-
-    /**
-     * Reset the mailer for reuse
-     */
     public function reset(): void
     {
-        $this->mail->clearAllRecipients();
-        $this->mail->clearAttachments();
+        if (isset($this->mail)) {
+            $this->mail->clearAllRecipients();
+            $this->mail->clearAttachments();
+            $this->mail->clearCustomHeaders();
+            $this->mail->clearReplyTos();
+        }
         $this->readyToSend = false;
         $this->error = null;
-    }
-
-    private function validateContent(string $htmlContent): bool
-    {
-        $size = strlen($htmlContent);
-        if ($size > 26214400) { // 25MB limit
-            throw new Exception("Email content exceeds maximum size limit of 25MB");
-        }
-        return true;
     }
 
     private function validateSubject(string $subject): string
     {
         $subject = trim($subject);
         if (empty($subject)) {
-            throw new Exception("Email subject cannot be empty");
+            Response::internalError("Email subject cannot be empty")->show();
+            die();
         }
-        if (strlen($subject) > self::MAX_SUBJECT_LENGTH) {
-            throw new Exception("Email subject exceeds maximum length of " . self::MAX_SUBJECT_LENGTH);
+        if (strlen($subject) > $this->maxSubjectLength) {
+            Response::internalError("Email subject exceeds maximum length of " . $this->maxSubjectLength)->show();
+            die();
         }
         return $subject;
+    }
+
+    public function __destruct()
+    {
+        $this->reset();
+        $this->clearSensitiveData();
+        if (isset($this->mail)) {
+            $this->mail->smtpClose();
+        }
     }
 }
