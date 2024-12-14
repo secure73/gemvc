@@ -34,6 +34,9 @@ final class GemSMTP
         'expression(', 'url(', 'eval(', 'alert('
     ];
 
+    private bool $verifySSL = true;  // Default to strict SSL
+    private array $sslOptions = [];
+
     public function __construct(
         string $emailAddress,
         string $password,
@@ -80,7 +83,10 @@ final class GemSMTP
         
         // Force SMTP with strict settings
         $this->mail->isSMTP();
+        $this->mail->Host = $this->smtpHost;
         $this->mail->SMTPAuth = true;
+        $this->mail->Username = $this->username;
+        $this->mail->Password = $this->password;
         
         // Set encryption based on port
         if ($port === 465) {
@@ -100,8 +106,8 @@ final class GemSMTP
         $this->mail->CharSet = PHPMailer::CHARSET_UTF8;
         $this->mail->Encoding = PHPMailer::ENCODING_BASE64;
 
-        // Stricter SSL/TLS options
-        $sslOptions = [
+        // Use configured SSL options or default to strict if not set
+        $sslOptions = !empty($this->sslOptions) ? $this->sslOptions : [
             'ssl' => [
                 'verify_peer' => true,
                 'verify_peer_name' => true,
@@ -110,7 +116,6 @@ final class GemSMTP
                 'disable_compression' => true,
                 'SNI_enabled' => true,
                 'verify_depth' => 5,
-                'ciphers' => 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384',
             ]
         ];
 
@@ -118,8 +123,12 @@ final class GemSMTP
         for ($i = 0; $i < self::MAX_RETRIES; $i++) {
             try {
                 if (!$this->mail->smtpConnect($sslOptions)) {
-                    Response::internalError("SMTP connection failed")->show();
-                    die();
+                    if ($i === self::MAX_RETRIES - 1) {
+                        Response::internalError("SMTP connection failed after " . self::MAX_RETRIES . " attempts")->show();
+                        die();
+                    }
+                    sleep(self::RETRY_DELAY);
+                    continue;
                 }
                 return;
             } catch (\Exception $e) {
@@ -361,5 +370,31 @@ final class GemSMTP
         if (isset($this->mail)) {
             $this->mail->smtpClose();
         }
+    }
+
+    /**
+     * Set SSL verification options
+     * @param bool $verify Enable/disable SSL verification
+     * @param bool $allowSelfSigned Allow self-signed certificates
+     * @param bool $verifyPeerName Verify peer name
+     * @return void
+     */
+    public function setSSLVerification(
+        bool $verify = true, 
+        bool $allowSelfSigned = false,
+        bool $verifyPeerName = true
+    ): void {
+        $this->verifySSL = $verify;
+        $this->sslOptions = [
+            'ssl' => [
+                'verify_peer' => $verify,
+                'verify_peer_name' => $verify && $verifyPeerName,
+                'allow_self_signed' => !$verify || $allowSelfSigned,
+                'min_tls_version' => 'TLSv1.2',
+                'disable_compression' => true,
+                'SNI_enabled' => true,
+                'verify_depth' => 5,
+            ]
+        ];
     }
 }
