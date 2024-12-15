@@ -111,6 +111,7 @@ class JsonResponse
     public function show():void
     {
         header('Content-Type: application/json',true,$this->response_code);
+        $this->json_response =  html_entity_decode($this->json_response, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         echo $this->json_response;
     }
 
