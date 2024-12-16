@@ -28,7 +28,7 @@ class JWTToken
     public ?int      $company_id;
     public ?int      $employee_id;
     public ?string   $error;
-    public ?int      $ort_id;
+    public ?int      $branch_id;
     private ?string  $_token;
 
 
@@ -43,7 +43,7 @@ class JWTToken
         $this->company_id = null;
         $this->role = null;
         $this->role_id = null;
-        $this->ort_id = null;
+        $this->branch_id = null;
         $this->exp = 0;
         $this->isTokenValid = false;
         $this->payload = new \stdClass();
@@ -94,7 +94,7 @@ class JWTToken
             'payload' => $this->payload,
             'role' => $this->role,
             'role_id' => $this->role_id,
-            'ort_id' => $this->ort_id
+            'branch_id' => $this->branch_id
         ];
         if(isset($this->company_id)) {
             $payloadArray['company_id'] = $this->company_id;
@@ -139,8 +139,8 @@ class JWTToken
                 if(isset($decodedToken->role_id)) {
                     $this->role_id = $decodedToken->role_id;
                 }
-                if(isset($decodedToken->ort_id)) {
-                    $this->ort_id = $decodedToken->ort_id;
+                if(isset($decodedToken->branch_id)) {
+                    $this->branch_id = $decodedToken->branch_id;
                 }
                 $this->error = null;
                 return $this;
