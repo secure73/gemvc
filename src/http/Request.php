@@ -23,7 +23,7 @@ class Request
     /**
      * @var array<mixed>
      */
-    public array $files;
+    public null|array $files;
     /**
      * @var array<mixed>
      */
@@ -53,6 +53,7 @@ class Request
     public function __construct()
     {
         $this->token = null;
+        $this->files = null;
         $this->error = "";
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
