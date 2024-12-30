@@ -113,6 +113,38 @@ class Request
         return $this->start_exec;
     }
 
+    public function intValuePost(string $key): int|false
+    {
+        if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
+            return false;
+        }
+        return (int) $this->post[$key];
+    }
+
+    public function floatValuePost(string $key): float|false
+    {
+        if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
+            return false;
+        }
+        return (float) $this->post[$key];
+    }
+
+    public function intValueGet(string $key): int|false
+    {
+        if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
+            return false;
+        }
+        return (int) $this->get[$key];
+    }
+
+    public function floatValueGet(string $key): float|false
+    {
+        if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
+            return false;
+        }
+        return (float) $this->get[$key];
+    }
+
 
     /**
      * @param  array<string> $toValidatePost Define Post Schema to validation
