@@ -4,6 +4,7 @@ namespace Gemvc\Http;
 
 use Gemvc\Helper\JsonHelper;
 use Gemvc\Helper\TypeHelper;
+
 /**
  * Class Request provides a structured way for managing and validating incoming HTTP request data,
  * handling errors, and forward request to external APIs
@@ -333,6 +334,27 @@ class Request
         $response = json_decode($response);
         $jsonResponse->create($caller->http_response_code, $response);
         return $jsonResponse;
+    }
+
+    public static function mapPost(Request $request , object $object): void
+    {
+        $name = get_class($object);
+        if (!is_array($request->post) || !count($request->post)) {
+            $request->error = 'there is no incoming post detected';
+            Response::badRequest("there is no incoming post detected for mappping to $name")->show();
+            die();
+        }
+        foreach ($request->post as $postName => $value) {
+            try {
+                if (property_exists($object, $postName)) {
+                    $object->$postName = $value;
+                }
+            } catch (\Exception $e) {
+                $request->error = "post $postName cannot be set because " . $e->getMessage();
+                Response::unprocessableEntity("post $postName cannot be set to $name because " . $e->getMessage())->show();
+                die();
+            }
+        }
     }
 
 
