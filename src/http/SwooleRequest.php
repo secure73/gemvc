@@ -109,7 +109,7 @@ class SwooleRequest
      * @param string $authorizationHeader The full authorization header.
      * @return string|null The parsed token, if present.
      */
-    private function parseAuthorizationToken(string $authorizationHeader): ?string
+    public function parseAuthorizationToken(string $authorizationHeader): ?string
     {
         if (preg_match('/Bearer\s(\S+)/', $authorizationHeader, $matches)) {
             return $matches[1]; // Return the token part

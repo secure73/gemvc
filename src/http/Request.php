@@ -4,6 +4,7 @@ namespace Gemvc\Http;
 
 use Gemvc\Helper\JsonHelper;
 use Gemvc\Helper\TypeHelper;
+use Gemvc\Http\JWTToken;
 
 /**
  * Class Request provides a structured way for managing and validating incoming HTTP request data,
@@ -50,11 +51,14 @@ class Request
     private string $time;
     private float $start_exec;
 
+    public ?string $cookies;
+
 
     public function __construct()
     {
         $this->token = null;
         $this->files = null;
+        $this->cookies = null;
         $this->error = "";
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
@@ -146,6 +150,53 @@ class Request
         return (float) $this->get[$key];
     }
 
+    /**
+     * @param  array<string> $toValidatePost Define Post Schema to validation
+     * @return bool
+     * definePostSchma(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
+     * @help   : ?name means it is optional
+     * @in     case of false $this->error will be set
+     */
+    public function definePostSchma(array $toValidatePost): bool
+    {
+        return $this->defineSchema($toValidatePost, 'post');
+    }
+
+    /**
+     * Summary of defineGetSchma
+     * @param array<string> $toValidateGet
+     * @return bool
+     */
+    public function defineGetSchma(array $toValidateGet): bool
+    {
+        return $this->defineSchema($toValidateGet, 'get');
+    }
+
+    /**
+     * @param  array<string> $toValidatePut Define PUT Schema to validation
+     * @return bool
+     * definePutSchma(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
+     * @help   : ?name means it is optional
+     * @in     case of false $this->error will be set
+     */
+    public function definePutSchma(array $toValidatePut): bool
+    {
+        return $this->defineSchema($toValidatePut, 'put');
+    }
+
+
+    /**
+     * @param  array<string> $toValidatePatch Define Patch Schema to validation
+     * @return bool
+     * definePatchSchma(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
+     * @help   : ?name means it is optional
+     * @in     case of false $this->error will be set
+     */
+    public function definePatchSchma(array $toValidatePatch): bool
+    {
+        return $this->defineSchema($toValidatePatch, 'patch');
+    }
+
 
     /**
      * @param  array<string> $toValidatePost Define Post Schema to validation
@@ -154,8 +205,18 @@ class Request
      * @help   : ?name means it is optional
      * @in     case of false $this->error will be set
      */
-    public function definePostSchema(array $toValidatePost): bool
+    private function defineSchema(array $toValidatePost , string $get_or_post): bool
     {
+        $target = $this->post;
+        if($get_or_post === 'get'){
+            $target = $this->get;
+        }
+        if($get_or_post === 'put'){
+            $target = $this->put;
+        }
+        elseif($get_or_post === 'patch'){
+            $target = $this->patch;
+        }
         //TODO: brake this function into smaller functions
         $errors = []; // Initialize an empty array to store errors
         $requires = [];
@@ -170,10 +231,10 @@ class Request
             }
             $all[$validation_key] = $validationString;
         }
-        foreach ($this->post as $postName => $postValue) {
+        foreach ($target as $postName => $postValue) {
             if (!array_key_exists($postName, $all)) {
-                $errors[$postName] = "unwanted post $postName";
-                $this->post = [];
+                $errors[$postName] = "unwanted $get_or_post $postName";
+                $target = [];
             }
         }
         if (count($errors) > 0) { //if unwanted post exists , stop process and return false
@@ -184,7 +245,7 @@ class Request
         }
 
         foreach ($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
-            if ((!isset($this->post[$validation_key]) || empty($this->post[$validation_key]))) {
+            if ((!isset($target[$validation_key]) || empty($target[$validation_key]))) {
                 $errors[] = "Missing required field: $validation_key";
             }
         }
@@ -196,9 +257,9 @@ class Request
         }
 
         foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
-            $validationResult = $this->checkPostKeyValue($validation_key, $validationString);
+            $validationResult = $this->checkKeyValue($validation_key, $validationString);
             if (!$validationResult) {
-                $errors[] = "Invalid value for field: $validation_key";
+                $errors[] = "Invalid value for $get_or_post field: $validation_key";
             }
         }
         if (count($errors) > 0) {
@@ -210,10 +271,10 @@ class Request
 
         foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
 
-            if (isset($this->post[$optionals_key]) && !empty($this->post[$optionals_key])) {
-                $validationResult = $this->checkPostKeyValue($optionals_key, $optionals_value);
+            if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
+                $validationResult = $this->checkKeyValue($optionals_key, $optionals_value);
                 if (!$validationResult) {
-                    $errors[] = "Invalid value for field: $optionals_key";
+                    $errors[] = "Invalid value for $get_or_post field: $optionals_key";
                 }
             }
         }
@@ -360,7 +421,7 @@ class Request
 
     //----------------------------PRIVATE FUNCTIONS---------------------------------------
 
-    private function checkPostKeyValue(string $key, string $validation): bool
+    private function checkKeyValue(string $key, string $validation): bool
     {
         // General validation (assumed in checkValidationTypes)
         if (!$this->checkValidationTypes($validation)) {
