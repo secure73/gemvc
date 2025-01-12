@@ -157,7 +157,7 @@ class Request
      * @help   : ?name means it is optional
      * @in     case of false $this->error will be set
      */
-    public function definePostSchma(array $toValidatePost): bool
+    public function definePostSchema(array $toValidatePost): bool
     {
         return $this->defineSchema($toValidatePost, 'post');
     }
@@ -167,7 +167,7 @@ class Request
      * @param array<string> $toValidateGet
      * @return bool
      */
-    public function defineGetSchma(array $toValidateGet): bool
+    public function defineGetSchema(array $toValidateGet): bool
     {
         return $this->defineSchema($toValidateGet, 'get');
     }
@@ -179,7 +179,7 @@ class Request
      * @help   : ?name means it is optional
      * @in     case of false $this->error will be set
      */
-    public function definePutSchma(array $toValidatePut): bool
+    public function definePutSchema(array $toValidatePut): bool
     {
         return $this->defineSchema($toValidatePut, 'put');
     }
@@ -192,7 +192,7 @@ class Request
      * @help   : ?name means it is optional
      * @in     case of false $this->error will be set
      */
-    public function definePatchSchma(array $toValidatePatch): bool
+    public function definePatchSchema(array $toValidatePatch): bool
     {
         return $this->defineSchema($toValidatePatch, 'patch');
     }
