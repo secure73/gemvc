@@ -8,12 +8,12 @@ use PDO;
 class QueryExecuter
 {
     private ?string $error;
-    private ?int $affectedRows;
+    private int $affectedRows;
     private string|false $lastInsertedId;
-    private ?\PDOStatement $stsment;
+    private \PDOStatement $stsment;
     private float $startExecutionTime;
     private float $endExecutionTime;
-    private ?string $_query;
+    private string $_query;
     private PDO|null $db;
     private bool $isConnected = false;
     public function __construct()

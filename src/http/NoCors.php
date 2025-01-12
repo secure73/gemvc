@@ -9,7 +9,10 @@ class NoCors
     public function __construct()
     {
     }
-
+    /**
+     * Handle cross-origin requests
+     * @method void NoCors()
+     */
     public static function NoCors(): void
     {
         header('Access-Control-Allow-Origin: *');
@@ -19,7 +22,7 @@ class NoCors
         header('Content-Type: application/json');
 
         // Allow from any origin
-        if (isset($_SERVER['HTTP_ORIGIN'])) {
+        if (isset($_SERVER['HTTP_ORIGIN']) && is_string($_SERVER['HTTP_ORIGIN'])) {
             // Decide if the origin in $_SERVER['HTTP_ORIGIN'] is one
             // you want to allow, and if so:
             header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
@@ -34,7 +37,7 @@ class NoCors
                 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             }
 
-            if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
+            if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']) && is_string($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])) {
                 header("Access-Control-Allow-Headers: {$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']}");
             }
 

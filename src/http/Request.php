@@ -231,6 +231,10 @@ class Request
             }
             $all[$validation_key] = $validationString;
         }
+        if(!is_array( $target )){ //if target is not array then return false
+            $this->error = "there is no  $get_or_post data";
+            return false;
+        }
         foreach ($target as $postName => $postValue) {
             if (!array_key_exists($postName, $all)) {
                 $errors[$postName] = "unwanted $get_or_post $postName";
@@ -338,6 +342,10 @@ class Request
                     $max = (int) $maxConstraint;
                 }
             }
+            if(!is_string($this->post[$key])){
+                $errors[] = "POST key '$key' is not a string";
+                continue;
+            }
 
             // Validate string length against min and max constraints
             $stringLength = strlen($this->post[$key]);
@@ -360,7 +368,9 @@ class Request
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
-        $caller->files = $this->files;
+        if($this->files !== null){
+            $caller->files = $this->files;
+        }
         $caller->authorizationHeader = $this->authorizationHeader;
 
         $response = $caller->post($remoteApiUrl, $this->post);
@@ -384,7 +394,9 @@ class Request
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
-        $caller->files = $this->files;
+        if($this->files !== null){
+            $caller->files = $this->files;
+        }
         $caller->authorizationHeader = $authorizationHeader ? $authorizationHeader : $this->authorizationHeader;
 
         $response = $caller->post($remoteApiUrl, $this->post);
@@ -400,11 +412,11 @@ class Request
     public static function mapPost(Request $request , object $object): void
     {
         $name = get_class($object);
-        if (!is_array($request->post) || !count($request->post)) {
+        /*if (!is_array($request->post) || !count($request->post)) {
             $request->error = 'there is no incoming post detected';
             Response::badRequest("there is no incoming post detected for mappping to $name")->show();
             die();
-        }
+        }*/
         foreach ($request->post as $postName => $value) {
             try {
                 if (property_exists($object, $postName)) {
@@ -437,7 +449,8 @@ class Request
             'array' => is_array($this->post[$key]),
             'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
             'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
-            'date' => (strtotime($this->post[$key])) ? true : false
+            // if date is string and can be converted to timestamp then return true otherwise false
+            'date' => (is_string($this->post[$key]) && strtotime($this->post[$key]) !== false)
         ];
 
         // Validate data type based on validationMap

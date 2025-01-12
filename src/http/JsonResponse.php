@@ -111,7 +111,22 @@ class JsonResponse
     public function show():void
     {
         header('Content-Type: application/json',true,$this->response_code);
+        if(!isset($this->json_response) || $this->json_response === false)
+        {
+            $this->message = "error in creating json response in Gemvc/JsonResponse .please check data payload because it is false or not set";
+            $this->response_code = 500;
+            $this->json_response = json_encode("error in creating json response in Gemvc/JsonResponse .please check data payload because it is false or not set");
+            $this->show();
+            die();
+        }
+        $result  =  html_entity_decode($this->json_response, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if($result == false)
+        {
+            echo json_encode("error in creating json response in Gemvc/JsonResponse .please check data payload");
+            die();
+        }
         $this->json_response =  html_entity_decode($this->json_response, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        
         echo $this->json_response;
     }
 
