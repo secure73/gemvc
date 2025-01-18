@@ -22,8 +22,6 @@ class TypeHelper
         return null;
     }
 
-
-
     /**
      * @return string GUID
      *                create GUID
@@ -37,8 +35,6 @@ class TypeHelper
         return vsprintf('%s%s%s%s%s%s%s%s', str_split(bin2hex($data), 4));
     }
 
-
-
     /**
      * create string Unix Y-m-d H:i:s time now.
      */
@@ -47,10 +43,8 @@ class TypeHelper
         return date('Y-m-d H:i:s');
     }
 
-
-
     /**
-     * @param  object|stdClass $object
+     * @param  object|\stdClass $object
      * @return array<string>
      * id is not in the non null!
      */
@@ -99,7 +93,12 @@ class TypeHelper
         }
         return $methods;
     }
+
+
+
 }
+
+
 
     
     

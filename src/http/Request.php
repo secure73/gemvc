@@ -2,7 +2,7 @@
 
 namespace Gemvc\Http;
 
-use Gemvc\Helper\JsonHelper;
+use Gemvc\Helper\TypeChecker;
 use Gemvc\Helper\TypeHelper;
 use Gemvc\Http\JWTToken;
 
@@ -53,6 +53,12 @@ class Request
 
     public ?string $cookies;
 
+    /**
+     * Summary of _searchableGetValues
+     * @var array<mixed> $_searchableGetValues
+     */
+    private array $_searchableGetValues = [];
+
 
     public function __construct()
     {
@@ -67,6 +73,39 @@ class Request
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
     }
+
+    /**
+     * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
+     * @param array $searchableGetValues
+     * @example $this->request->searchable(['email'=>'email','name' => 'string'])
+     * @return void or die with response
+     */
+    public function searchable(array $searchableGetValues):void
+    {
+        if(is_array($this->get ) && count($this->get) > 0){
+            foreach ($this->get as $get_key => $get_value) {
+                if (array_key_exists($get_key, $searchableGetValues)) {
+                    if(TypeChecker::check($searchableGetValues[$get_key],$get_value)){ {
+                       $this->_searchableGetValues[$get_key] = $get_value;
+                   }
+                }
+                else{
+                       $this->error .= "invalid value type for $get_key , accepted type is: ". $searchableGetValues[$get_key];
+                   }
+                }
+            }
+        }
+        if(strlen($this->error) > 0){
+            Response::badRequest($this->error)->show();
+            die();
+        }
+    }
+
+    public function getSearchableArray():array
+    {
+        return $this->_searchableGetValues;
+    }
+
 
     public function __get(string $name): mixed
     {
@@ -184,7 +223,6 @@ class Request
         return $this->defineSchema($toValidatePut, 'put');
     }
 
-
     /**
      * @param  array<string> $toValidatePatch Define Patch Schema to validation
      * @return bool
@@ -195,100 +233,6 @@ class Request
     public function definePatchSchema(array $toValidatePatch): bool
     {
         return $this->defineSchema($toValidatePatch, 'patch');
-    }
-
-
-    /**
-     * @param  array<string> $toValidatePost Define Post Schema to validation
-     * @return bool
-     * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
-     * @help   : ?name means it is optional
-     * @in     case of false $this->error will be set
-     */
-    private function defineSchema(array $toValidatePost , string $get_or_post): bool
-    {
-        $target = $this->post;
-        if($get_or_post === 'get'){
-            $target = $this->get;
-        }
-        if($get_or_post === 'put'){
-            $target = $this->put;
-        }
-        elseif($get_or_post === 'patch'){
-            $target = $this->patch;
-        }
-        //TODO: brake this function into smaller functions
-        $errors = []; // Initialize an empty array to store errors
-        $requires = [];
-        $optionals = [];
-        $all = [];
-        foreach ($toValidatePost as $validation_key => $validationString) {
-            if (substr($validation_key, 0, 1) === '?') {
-                $validation_key = ltrim($validation_key, '?');
-                $optionals[$validation_key] = $validationString;
-            } else {
-                $requires[$validation_key] = $validationString;
-            }
-            $all[$validation_key] = $validationString;
-        }
-        if(!is_array( $target )){ //if target is not array then return false
-            $this->error = "there is no  $get_or_post data";
-            return false;
-        }
-        foreach ($target as $postName => $postValue) {
-            if (!array_key_exists($postName, $all)) {
-                $errors[$postName] = "unwanted $get_or_post $postName";
-                $target = [];
-            }
-        }
-        if (count($errors) > 0) { //if unwanted post exists , stop process and return false
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
-        }
-
-        foreach ($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
-            if ((!isset($target[$validation_key]) || empty($target[$validation_key]))) {
-                $errors[] = "Missing required field: $validation_key";
-            }
-        }
-        if (count($errors) > 0) { //if requires not exists , stop process and return false
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
-        }
-
-        foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
-            $validationResult = $this->checkKeyValue($validation_key, $validationString);
-            if (!$validationResult) {
-                $errors[] = "Invalid value for $get_or_post field: $validation_key";
-            }
-        }
-        if (count($errors) > 0) {
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
-        }
-
-        foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
-
-            if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
-                $validationResult = $this->checkKeyValue($optionals_key, $optionals_value);
-                if (!$validationResult) {
-                    $errors[] = "Invalid value for $get_or_post field: $optionals_key";
-                }
-            }
-        }
-        if (count($errors) > 0) {
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
-        }
-        return true;
     }
 
     public function setPostToObject(object $class): bool
@@ -431,54 +375,98 @@ class Request
     }
 
 
-    //----------------------------PRIVATE FUNCTIONS---------------------------------------
-
-    private function checkKeyValue(string $key, string $validation): bool
+    // Private methods
+        /**
+     * @param  array<string> $toValidatePost Define Post Schema to validation
+     * @return bool
+     * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
+     * @help   : ?name means it is optional
+     * @in     case of false $this->error will be set
+     */
+    private function defineSchema(array $toValidatePost , string $get_or_post): bool
     {
-        // General validation (assumed in checkValidationTypes)
-        if (!$this->checkValidationTypes($validation)) {
+        $target = $this->post;
+        if($get_or_post === 'get'){
+            $target = $this->get;
+        }
+        if($get_or_post === 'put'){
+            $target = $this->put;
+        }
+        elseif($get_or_post === 'patch'){
+            $target = $this->patch;
+        }
+        //TODO: brake this function into smaller functions
+        $errors = []; // Initialize an empty array to store errors
+        $requires = [];
+        $optionals = [];
+        $all = [];
+        foreach ($toValidatePost as $validation_key => $validationString) {
+            if (substr($validation_key, 0, 1) === '?') {
+                $validation_key = ltrim($validation_key, '?');
+                $optionals[$validation_key] = $validationString;
+            } else {
+                $requires[$validation_key] = $validationString;
+            }
+            $all[$validation_key] = $validationString;
+        }
+        if(!is_array( $target )){ //if target is not array then return false
+            $this->error = "there is no  $get_or_post data";
+            return false;
+        }
+        foreach ($target as $postName => $postValue) {
+            if (!array_key_exists($postName, $all)) {
+                $errors[$postName] = "unwanted $get_or_post $postName";
+                $target = [];
+            }
+        }
+        if (count($errors) > 0) { //if unwanted post exists , stop process and return false
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
             return false;
         }
 
-        // Specific data type validation (using a dictionary for readability)
-        $validationMap = [
-            'string' => is_string($this->post[$key]),
-            'int' => is_numeric($this->post[$key]),
-            'float' => is_float($this->post[$key]),
-            'bool' => is_bool($this->post[$key]),
-            'array' => is_array($this->post[$key]),
-            'json' => (JsonHelper::validateJson($this->post[$key]) ? true : false),
-            'email' => filter_var($this->post[$key], FILTER_VALIDATE_EMAIL) !== false, // Explicit false check for email
-            // if date is string and can be converted to timestamp then return true otherwise false
-            'date' => (is_string($this->post[$key]) && strtotime($this->post[$key]) !== false)
-        ];
-
-        // Validate data type based on validationMap
-        $result = isset($validationMap[$validation]) ? $validationMap[$validation] : false;
-
-        if (!$result) {
-            $this->error = "The field '$key' must be of type '$validation'"; // More specific error message
+        foreach ($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
+            if ((!isset($target[$validation_key]) || empty($target[$validation_key]))) {
+                $errors[] = "Missing required field: $validation_key";
+            }
+        }
+        if (count($errors) > 0) { //if requires not exists , stop process and return false
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
+            return false;
         }
 
-        return $result;
-    }
+        foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
+            $validationResult = TypeChecker::check($validationString,$validation_key);
+            if (!$validationResult) {
+                $errors[] = "Invalid value for $get_or_post field: $validation_key";
+            }
+        }
+        if (count($errors) > 0) {
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
+            return false;
+        }
 
-    private function checkValidationTypes(string $validationString): bool
-    {
-        $validation = [
-            'string',
-            'int',
-            'float',
-            'bool',
-            'array',
-            'json',
-            'email',
-            'date'
-        ];
-        if (!in_array($validationString, $validation)) {
-            $this->error = "invalid type of validation for $validationString";
+        foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
+
+            if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
+                $validationResult = TypeChecker::check($optionals_value,$optionals_key);
+                if (!$validationResult) {
+                    $errors[] = "Invalid value for $get_or_post field: $optionals_key";
+                }
+            }
+        }
+        if (count($errors) > 0) {
+            foreach ($errors as $error) {
+                $this->error .= $error . ', '; // Combine errors into a single string
+            }
             return false;
         }
         return true;
     }
+
 }
