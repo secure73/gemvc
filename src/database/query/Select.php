@@ -183,10 +183,9 @@ class Select implements QueryBuilderInterface
 
     private function selectMaker(): string
     {
-        if (null !== $this->fields && \count($this->fields)) {
+        if (count($this->fields)) {
             return 'SELECT ' . implode(', ', $this->fields) . ' FROM ';
         }
-
         return 'SELECT * FROM ';
     }
 }
