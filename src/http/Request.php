@@ -58,6 +58,19 @@ class Request
      * @var array<mixed> $_searchableGetValues
      */
     private array $_searchableGetValues = [];
+    
+    /**
+     * Define which fields are allowed for exact matching
+     * @var array<string>
+     */
+    private array $_filterableGetValues = [];
+
+    /**
+     * Define which fields are allowed for ordering
+     * @var array<string>
+     */
+    private array $_orderableGetValues = [];
+
 
 
     public function __construct()
@@ -90,7 +103,7 @@ class Request
                    }
                 }
                 else{
-                       $this->error .= "invalid value type for $get_key , accepted type is: ". $searchableGetValues[$get_key];
+                       $this->error .= "invalid search value type for $get_key , accepted type is: ". $searchableGetValues[$get_key];
                    }
                 }
             }
@@ -101,10 +114,67 @@ class Request
         }
     }
 
+    public function filterable(array $filterableGetValues):void
+    {
+        if(is_array($this->get ) && count($this->get) > 0){
+            foreach ($this->get as $get_key => $get_value) {
+                if (array_key_exists($get_key, $filterableGetValues)) {
+                    if(TypeChecker::check($filterableGetValues[$get_key],$get_value)){ {
+                       $this->_filterableGetValues[$get_key] = $get_value;
+                   }
+                }
+                else{
+                       $this->error .= "invalid filter value type for $get_key , accepted type is: ". $filterableGetValues[$get_key];
+                   }
+                }
+            }
+        }
+        if(strlen($this->error) > 0){
+            Response::badRequest($this->error)->show();
+            die();
+        }
+    }
+
+    public function orderable(array $orderableGetValues):void
+    {
+        if(is_array($this->get ) && count($this->get) > 0){
+            foreach ($this->get as $get_key => $get_value) {
+                if (array_key_exists($get_key, $orderableGetValues)) {
+                    if(TypeChecker::check($orderableGetValues[$get_key],$get_value)){ {
+                       $this->_orderableGetValues[$get_key] = $get_value;
+                   }
+                }
+                else{
+                       $this->error .= "invalid order value type for $get_key , accepted type is: ". $orderableGetValues[$get_key];
+                   }
+                }
+            }
+        }
+        if(strlen($this->error) > 0){
+            Response::badRequest($this->error)->show();
+            die();
+        }
+    }
+
+
+
     public function getSearchableArray():array
     {
         return $this->_searchableGetValues;
     }
+
+    public function getFilterableArray():array
+    {
+        return $this->_filterableGetValues;
+    }
+
+
+    public function getOrderableArray():array
+    {
+        return $this->_orderableGetValues;
+    }
+
+
 
 
     public function __get(string $name): mixed
