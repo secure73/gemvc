@@ -53,23 +53,21 @@ class Request
 
     public ?string $cookies;
 
-    /**
-     * Summary of _searchableGetValues
-     * @var array<mixed> $_searchableGetValues
-     */
-    private array $_searchableGetValues = [];
-    
+    private array $_arr_filterBy = [];
+
     /**
      * Define which fields are allowed for exact matching
      * @var array<string>
      */
-    private array $_filterableGetValues = [];
+    private array $_arr_find_like = [];
 
     /**
      * Define which fields are allowed for ordering
      * @var array<string>
      */
-    private array $_orderableGetValues = [];
+    private array $_arr_sort_by = [];
+    private int $_page_number = 1;
+    private int $_per_page;
 
 
 
@@ -89,89 +87,164 @@ class Request
 
     /**
      * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
-     * @param array $searchableGetValues
-     * @example $this->request->searchable(['email'=>'email','name' => 'string'])
+     * @param array<string> $searchableGetValues
+     * @example $this->request->filterable(['email'=>'email','name' => 'string'])
      * @return void or die with response
      */
-    public function searchable(array $searchableGetValues):void
+    public function filterable(array $searchableGetValues): void
     {
-        if(is_array($this->get ) && count($this->get) > 0){
-            foreach ($this->get as $get_key => $get_value) {
-                if (array_key_exists($get_key, $searchableGetValues)) {
-                    if(TypeChecker::check($searchableGetValues[$get_key],$get_value)){ {
-                       $this->_searchableGetValues[$get_key] = $get_value;
-                   }
-                }
-                else{
-                       $this->error .= "invalid search value type for $get_key , accepted type is: ". $searchableGetValues[$get_key];
-                   }
+        if (isset($this->get["filter_by"]) && strlen($this->get["filter_by"]) > 0) {
+            $split_where = explode(",", $this->get["filter_by"]); {
+                foreach ($split_where as $item_string) {
+                    $inhalt = explode("=", $item_string);
+                    if (count($inhalt) == 2) {
+                        if (array_key_exists($inhalt[0], $searchableGetValues)) {
+                            if (TypeChecker::check($searchableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                    $this->_arr_filterBy[$inhalt[0]] = $inhalt[1];
+                                }
+                            } else {
+                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $searchableGetValues[$inhalt[0]];
+                            }
+                        }
+                    } else {
+                        Response::badRequest("filter_by request shall be formatted as key=value and seperated by , example: filter_by=country_id=3,company_id=4 ")->show();
+                        die();
+                    }
                 }
             }
         }
-        if(strlen($this->error) > 0){
+        if (strlen($this->error) > 0) {
             Response::badRequest($this->error)->show();
             die();
         }
     }
 
-    public function filterable(array $filterableGetValues):void
+    /**
+     * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
+     * @param array<string> $filterableGetValues
+     * @example $this->request->filterable(['email'=>'email','name' => 'string'])
+     * @return void or die with response
+     */
+    public function findable(array $filterableGetValues): void
     {
-        if(is_array($this->get ) && count($this->get) > 0){
-            foreach ($this->get as $get_key => $get_value) {
-                if (array_key_exists($get_key, $filterableGetValues)) {
-                    if(TypeChecker::check($filterableGetValues[$get_key],$get_value)){ {
-                       $this->_filterableGetValues[$get_key] = $get_value;
-                   }
-                }
-                else{
-                       $this->error .= "invalid filter value type for $get_key , accepted type is: ". $filterableGetValues[$get_key];
-                   }
+        if (isset($this->get["find_like"]) && strlen($this->get["find_like"]) > 0) {
+            $split_where = explode(",", $this->get["find_like"]); {
+                foreach ($split_where as $item_string) {
+                    $inhalt = explode("=", $item_string);
+                    if (count($inhalt) == 2) {
+                        if (array_key_exists($inhalt[0], $filterableGetValues)) {
+                            if (TypeChecker::check($filterableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                    $this->_arr_find_like[$inhalt[0]] = $inhalt[1];
+                                }
+                            } else {
+                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $filterableGetValues[$inhalt[0]];
+                            }
+                        }
+                    } else {
+                        Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
+                        die();
+                    }
                 }
             }
         }
-        if(strlen($this->error) > 0){
+        if (strlen($this->error) > 0) {
             Response::badRequest($this->error)->show();
             die();
         }
     }
 
-    public function orderable(array $orderableGetValues):void
+    /**
+     * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
+     * @param array<string> $sortableGetValues
+     * @example $this->request->filterable(['email'=>'email','name' => 'string'])
+     * @return void or die with response
+     */
+    public function sortable(array $sortableGetValues): void
     {
-        if(is_array($this->get ) && count($this->get) > 0){
-            foreach ($this->get as $get_key => $get_value) {
-                if (array_key_exists($get_key, $orderableGetValues)) {
-                    if(TypeChecker::check($orderableGetValues[$get_key],$get_value)){ {
-                       $this->_orderableGetValues[$get_key] = $get_value;
-                   }
-                }
-                else{
-                       $this->error .= "invalid order value type for $get_key , accepted type is: ". $orderableGetValues[$get_key];
-                   }
+        if (isset($this->get["sort_by"]) && strlen($this->get["sort_by"]) > 0) {
+            $split_where = explode(",", $this->get["sort_by"]); {
+                foreach ($split_where as $item_string) {
+                    $inhalt = explode("=", $item_string);
+                    if (count($inhalt) == 2) {
+                        if (array_key_exists($inhalt[0], $sortableGetValues)) {
+                            if (TypeChecker::check($sortableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                    $this->_arr_sort_by[$inhalt[0]] = $inhalt[1];
+                                }
+                            } else {
+                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $sortableGetValues[$inhalt[0]];
+                            }
+                        }
+                    } else {
+                        Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
+                        die();
+                    }
                 }
             }
         }
-        if(strlen($this->error) > 0){
+        if (strlen($this->error) > 0) {
             Response::badRequest($this->error)->show();
             die();
         }
     }
 
-
-
-    public function getSearchableArray():array
+    public function setPageNumber(): void
     {
-        return $this->_searchableGetValues;
+        if (isset($this->get["page_number"])) {
+            $result = $this->intValueGet("page_number");
+            if ($result === false) {
+                Response::badRequest("page_number shall be integer")->show();
+                die();
+            }
+            if ($result < 0) {
+                Response::badRequest("per_number shall be positive")->show();
+                die();
+            }
+            $this->page_number = $result;
+        }
     }
 
-    public function getFilterableArray():array
+    public function setPerPage(): void
     {
-        return $this->_filterableGetValues;
+        if (isset($this->get["per_page"])) {
+            $result = $this->intValueGet("page_number");
+            if ($result === false) {
+                Response::badRequest("per_page shall be integer")->show();
+                die();
+            }
+            if ($result < 0) {
+                Response::badRequest("per_page shall be positive")->show();
+                die();
+            }
+            $this->page_number = $result;
+        }
+    }
+
+    public function getPageNumber(): int
+    {
+        return $this->_page_number;
+    }
+
+    public function getPerPage(): int
+    {
+        return $this->_per_page;
     }
 
 
-    public function getOrderableArray():array
+
+    public function getFilterable(): array
     {
-        return $this->_orderableGetValues;
+        return $this->_arr_filterBy;
+    }
+
+    public function getFindable(): array
+    {
+        return $this->_arr_find_like;
+    }
+
+
+    public function getSortable(): array
+    {
+        return $this->_arr_sort_by;
     }
 
 
@@ -356,7 +429,7 @@ class Request
                     $max = (int) $maxConstraint;
                 }
             }
-            if(!is_string($this->post[$key])){
+            if (!is_string($this->post[$key])) {
                 $errors[] = "POST key '$key' is not a string";
                 continue;
             }
@@ -382,7 +455,7 @@ class Request
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
-        if($this->files !== null){
+        if ($this->files !== null) {
             $caller->files = $this->files;
         }
         $caller->authorizationHeader = $this->authorizationHeader;
@@ -408,7 +481,7 @@ class Request
 
         $jsonResponse = new JsonResponse();
         $caller = new ApiCall();
-        if($this->files !== null){
+        if ($this->files !== null) {
             $caller->files = $this->files;
         }
         $caller->authorizationHeader = $authorizationHeader ? $authorizationHeader : $this->authorizationHeader;
@@ -423,7 +496,7 @@ class Request
         return $jsonResponse;
     }
 
-    public static function mapPost(Request $request , object $object): void
+    public static function mapPost(Request $request, object $object): void
     {
         $name = get_class($object);
         /*if (!is_array($request->post) || !count($request->post)) {
@@ -446,23 +519,22 @@ class Request
 
 
     // Private methods
-        /**
+    /**
      * @param  array<string> $toValidatePost Define Post Schema to validation
      * @return bool
      * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
      * @help   : ?name means it is optional
      * @in     case of false $this->error will be set
      */
-    private function defineSchema(array $toValidatePost , string $get_or_post): bool
+    private function defineSchema(array $toValidatePost, string $get_or_post): bool
     {
         $target = $this->post;
-        if($get_or_post === 'get'){
+        if ($get_or_post === 'get') {
             $target = $this->get;
         }
-        if($get_or_post === 'put'){
+        if ($get_or_post === 'put') {
             $target = $this->put;
-        }
-        elseif($get_or_post === 'patch'){
+        } elseif ($get_or_post === 'patch') {
             $target = $this->patch;
         }
         //TODO: brake this function into smaller functions
@@ -479,7 +551,7 @@ class Request
             }
             $all[$validation_key] = $validationString;
         }
-        if(!is_array( $target )){ //if target is not array then return false
+        if (!is_array($target)) { //if target is not array then return false
             $this->error = "there is no  $get_or_post data";
             return false;
         }
@@ -509,7 +581,7 @@ class Request
         }
 
         foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
-            $validationResult = TypeChecker::check($validationString,$validation_key);
+            $validationResult = TypeChecker::check($validationString, $validation_key);
             if (!$validationResult) {
                 $errors[] = "Invalid value for $get_or_post field: $validation_key";
             }
@@ -524,7 +596,7 @@ class Request
         foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
 
             if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
-                $validationResult = TypeChecker::check($optionals_value,$optionals_key);
+                $validationResult = TypeChecker::check($optionals_value, $optionals_key);
                 if (!$validationResult) {
                     $errors[] = "Invalid value for $get_or_post field: $optionals_key";
                 }
