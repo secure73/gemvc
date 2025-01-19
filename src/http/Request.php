@@ -87,6 +87,8 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
+        $this->setPerPage();
+        
     }
 
     /**
