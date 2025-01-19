@@ -18,7 +18,7 @@ class JWTToken
     public int       $user_id;
     public string    $type;//access or refresh
     /**
-     * @var array<mixed> $payload
+     * @var \stdClass $payload
      */
     public \stdClass     $payload;
     public ?string   $token_id;
@@ -36,7 +36,7 @@ class JWTToken
     {
         $this->_token = null;
         $this->error = null;
-        $this->iss = $_ENV['TOKEN_ISSUER'];
+        $this->iss = is_string($_ENV['TOKEN_ISSUER']) ? $_ENV['TOKEN_ISSUER'] : 'undefined' ;
         $this->type = 'not defined';
         $this->user_id = 0;
         $this->employee_id = null;
@@ -61,19 +61,22 @@ class JWTToken
     public function createAccessToken(int $user_id):string
     {
         $this->type = 'access';
-        return $this->create($user_id, $_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS']);
+        $sec = is_numeric($_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS']) ? (int) $_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS'] : 300;
+        return $this->create($user_id, $sec);
     }
 
     public function createRefreshToken(int $user_id):string
     {
         $this->type = 'refresh';
-        return $this->create($user_id, $_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']);
+        $sec = is_numeric($_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']) ? (int) $_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS'] : 3600;
+        return $this->create($user_id, $sec);
     }
 
     public function createLoginToken(int $user_id):string
     {
         $this->type = 'login';
-        return $this->create($user_id, $_ENV['LOGIN_TOKEN_VALIDATION_IN_SECONDS']);
+        $sec = is_numeric($_ENV['LOGIN_TOKEN_VALIDATION_IN_SECONDS']) ? (int) $_ENV['LOGIN_TOKEN_VALIDATION_IN_SECONDS'] : 604800;
+        return $this->create($user_id, $sec);
     }
 
     /**
@@ -102,6 +105,7 @@ class JWTToken
         if(isset($this->employee_id)) {
             $payloadArray['employee_id'] = $this->employee_id;
         }
+        /**@phpstan-ignore-next-line */
         return JWT::encode($payloadArray,$_ENV['TOKEN_SECRET'], 'HS256');
     }
 
@@ -120,7 +124,13 @@ class JWTToken
             return false;
         }
         try {
-            $decodedToken = JWT::decode($this->_token, new Key($_ENV['TOKEN_SECRET'], 'HS256'));
+            if(!isset($_ENV['TOKEN_SECRET']) || !is_string($_ENV['TOKEN_SECRET']))
+            {
+                throw new \Exception('in .env TOKEN_SECRET is not defined or not type of string . please define secret for token');
+            }
+            /**phpstan-ignore-next-line */
+            $key = new  Key($_ENV['TOKEN_SECRET'], 'HS256');
+            $decodedToken = JWT::decode($this->_token, $key);
             if (isset($decodedToken->user_id) && $decodedToken->exp > time() && $decodedToken->user_id>0) {
                 $this->token_id = $decodedToken->token_id;
                 $this->user_id = (int)$decodedToken->user_id;

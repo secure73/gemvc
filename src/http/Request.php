@@ -53,6 +53,10 @@ class Request
 
     public ?string $cookies;
 
+    /**
+     * Summary of _arr_filterBy
+     * @var array<mixed> $_arr_filterBy
+     */
     private array $_arr_filterBy = [];
 
     /**
@@ -76,7 +80,7 @@ class Request
         $this->token = null;
         $this->files = null;
         $this->cookies = null;
-        $this->error = "";
+        $this->error = null;
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
         $this->requestMethod = null;
@@ -93,29 +97,33 @@ class Request
      */
     public function filterable(array $searchableGetValues): void
     {
-        if (isset($this->get["filter_by"]) && strlen($this->get["filter_by"]) > 0) {
-            $split_where = explode(",", $this->get["filter_by"]); {
-                foreach ($split_where as $item_string) {
-                    $inhalt = explode("=", $item_string);
-                    if (count($inhalt) == 2) {
-                        if (array_key_exists($inhalt[0], $searchableGetValues)) {
-                            if (TypeChecker::check($searchableGetValues[$inhalt[0]], $inhalt[1])) { {
-                                    $this->_arr_filterBy[$inhalt[0]] = $inhalt[1];
+        if(isset($this->get["filter_by"]))
+        {
+            $getFilterBy = $this->get["filter_by"];
+            if (is_string($getFilterBy)&&strlen( $getFilterBy) > 0) {
+                $split_where = explode(",",  $getFilterBy); {
+                    foreach ($split_where as $item_string) {
+                        $inhalt = explode("=", $item_string);
+                        if (count($inhalt) == 2) {
+                            if (array_key_exists($inhalt[0], $searchableGetValues)) {
+                                if (TypeChecker::check($searchableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                        $this->_arr_filterBy[$inhalt[0]] = $inhalt[1];
+                                    }
+                                } else {
+                                    $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $searchableGetValues[$inhalt[0]];
                                 }
-                            } else {
-                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $searchableGetValues[$inhalt[0]];
                             }
+                        } else {
+                            Response::badRequest("filter_by request shall be formatted as key=value and seperated by , example: filter_by=country_id=3,company_id=4 ")->show();
+                            die();
                         }
-                    } else {
-                        Response::badRequest("filter_by request shall be formatted as key=value and seperated by , example: filter_by=country_id=3,company_id=4 ")->show();
-                        die();
                     }
                 }
             }
-        }
-        if (strlen($this->error) > 0) {
-            Response::badRequest($this->error)->show();
-            die();
+            if ($this->error) {
+                Response::badRequest($this->error)->show();
+                die();
+            }
         }
     }
 
@@ -127,29 +135,33 @@ class Request
      */
     public function findable(array $filterableGetValues): void
     {
-        if (isset($this->get["find_like"]) && strlen($this->get["find_like"]) > 0) {
-            $split_where = explode(",", $this->get["find_like"]); {
-                foreach ($split_where as $item_string) {
-                    $inhalt = explode("=", $item_string);
-                    if (count($inhalt) == 2) {
-                        if (array_key_exists($inhalt[0], $filterableGetValues)) {
-                            if (TypeChecker::check($filterableGetValues[$inhalt[0]], $inhalt[1])) { {
-                                    $this->_arr_find_like[$inhalt[0]] = $inhalt[1];
+        if(isset($this->get["find_like"]))
+        {
+            $getFindLike = $this->get["find_like"];
+            if (is_string($getFindLike) && strlen($getFindLike) > 0) {
+                $split_where = explode(",", $getFindLike); {
+                    foreach ($split_where as $item_string) {
+                        $inhalt = explode("=", $item_string);
+                        if (count($inhalt) == 2) {
+                            if (array_key_exists($inhalt[0], $filterableGetValues)) {
+                                if (TypeChecker::check($filterableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                        $this->_arr_find_like[$inhalt[0]] = $inhalt[1];
+                                    }
+                                } else {
+                                    $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $filterableGetValues[$inhalt[0]];
                                 }
-                            } else {
-                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $filterableGetValues[$inhalt[0]];
                             }
+                        } else {
+                            Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
+                            die();
                         }
-                    } else {
-                        Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
-                        die();
                     }
                 }
             }
-        }
-        if (strlen($this->error) > 0) {
-            Response::badRequest($this->error)->show();
-            die();
+            if ($this->error) {
+                Response::badRequest($this->error)->show();
+                die();
+            }
         }
     }
 
@@ -161,29 +173,33 @@ class Request
      */
     public function sortable(array $sortableGetValues): void
     {
-        if (isset($this->get["sort_by"]) && strlen($this->get["sort_by"]) > 0) {
-            $split_where = explode(",", $this->get["sort_by"]); {
-                foreach ($split_where as $item_string) {
-                    $inhalt = explode("=", $item_string);
-                    if (count($inhalt) == 2) {
-                        if (array_key_exists($inhalt[0], $sortableGetValues)) {
-                            if (TypeChecker::check($sortableGetValues[$inhalt[0]], $inhalt[1])) { {
-                                    $this->_arr_sort_by[$inhalt[0]] = $inhalt[1];
+        if(isset($this->get["sort_by"]))
+        {
+            $sortBy = $this->get["sort_by"];
+            if (is_string($sortBy) && strlen($sortBy) > 0) {
+                $split_where = explode(",", $sortBy); {
+                    foreach ($split_where as $item_string) {
+                        $inhalt = explode("=", $item_string);
+                        if (count($inhalt) == 2) {
+                            if (array_key_exists($inhalt[0], $sortableGetValues)) {
+                                if (TypeChecker::check($sortableGetValues[$inhalt[0]], $inhalt[1])) { {
+                                        $this->_arr_sort_by[$inhalt[0]] = $inhalt[1];
+                                    }
+                                } else {
+                                    $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $sortableGetValues[$inhalt[0]];
                                 }
-                            } else {
-                                $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $sortableGetValues[$inhalt[0]];
                             }
+                        } else {
+                            Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
+                            die();
                         }
-                    } else {
-                        Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
-                        die();
                     }
                 }
             }
-        }
-        if (strlen($this->error) > 0) {
-            Response::badRequest($this->error)->show();
-            die();
+            if ($this->error) {
+                Response::badRequest($this->error)->show();
+                die();
+            }
         }
     }
 
@@ -199,7 +215,7 @@ class Request
                 Response::badRequest("per_number shall be positive")->show();
                 die();
             }
-            $this->page_number = $result;
+            $this->_page_number = $result;
         }
     }
 
@@ -215,7 +231,7 @@ class Request
                 Response::badRequest("per_page shall be positive")->show();
                 die();
             }
-            $this->page_number = $result;
+            $this->_per_page = $result;
         }
     }
 
@@ -231,17 +247,29 @@ class Request
 
 
 
+    /**
+     * Summary of getFilterable
+     * @return array<mixed>
+     */
     public function getFilterable(): array
     {
         return $this->_arr_filterBy;
     }
 
+    /**
+     * Summary of getFindable
+     * @return array<mixed>
+     */
     public function getFindable(): array
     {
         return $this->_arr_find_like;
     }
 
 
+    /**
+     * Summary of getSortable
+     * @return array<mixed>
+     */
     public function getSortable(): array
     {
         return $this->_arr_sort_by;
