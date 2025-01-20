@@ -108,7 +108,7 @@ class TypeChecker
      */
     private static function checkInteger(mixed $value, array $options): bool
     {
-        if (!is_int($value)) {
+        if (!is_numeric($value)) {
             return false;
         }
         if (isset($options['min']) && $value < $options['min']) {
