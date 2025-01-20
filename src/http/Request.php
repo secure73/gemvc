@@ -87,7 +87,7 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->setPerPage();
+        $this->_per_page =  $_ENV["QUERY_LIMIT"] ?? 10;
         
     }
 
