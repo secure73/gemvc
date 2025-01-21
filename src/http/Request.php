@@ -65,11 +65,8 @@ class Request
      */
     private array $_arr_find_like = [];
 
-    /**
-     * Define which fields are allowed for ordering
-     * @var array<string>
-     */
-    private array $_arr_sort_by = [];
+    private ?string $_sort_by;
+    private ?string $_sort_by_asc;
     private int $_page_number = 1;
     private int $_per_page;
 
@@ -81,14 +78,17 @@ class Request
         $this->files = null;
         $this->cookies = null;
         $this->error = null;
+        $this->_sort_by = null;
+        $this->_sort_by_asc = null;
         $this->authorizationHeader = null;
         $this->jwtTokenStringInHeader = null;
         $this->requestMethod = null;
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
-        $this->_per_page =  $_ENV["QUERY_LIMIT"] ?? 10;
-        
+        /**@phpstan-ignore-next-line */
+        $this->_per_page = $_ENV["QUERY_LIMIT"] ?? 10;
+
     }
 
     /**
@@ -99,11 +99,10 @@ class Request
      */
     public function filterable(array $searchableGetValues): void
     {
-        if(isset($this->get["filter_by"]))
-        {
+        if (isset($this->get["filter_by"])) {
             $getFilterBy = $this->get["filter_by"];
-            if (is_string($getFilterBy)&&strlen( $getFilterBy) > 0) {
-                $split_where = explode(",",  $getFilterBy); {
+            if (is_string($getFilterBy) && strlen($getFilterBy) > 0) {
+                $split_where = explode(",", $getFilterBy); {
                     foreach ($split_where as $item_string) {
                         $inhalt = explode("=", $item_string);
                         if (count($inhalt) == 2) {
@@ -137,8 +136,7 @@ class Request
      */
     public function findable(array $filterableGetValues): void
     {
-        if(isset($this->get["find_like"]))
-        {
+        if (isset($this->get["find_like"])) {
             $getFindLike = $this->get["find_like"];
             if (is_string($getFindLike) && strlen($getFindLike) > 0) {
                 $split_where = explode(",", $getFindLike); {
@@ -175,32 +173,31 @@ class Request
      */
     public function sortable(array $sortableGetValues): void
     {
-        if(isset($this->get["sort_by"]))
-        {
-            $sortBy = $this->get["sort_by"];
-            if (is_string($sortBy) && strlen($sortBy) > 0) {
-                $split_where = explode(",", $sortBy); {
-                    foreach ($split_where as $item_string) {
-                        $inhalt = explode("=", $item_string);
-                        if (count($inhalt) == 2) {
-                            if (array_key_exists($inhalt[0], $sortableGetValues)) {
-                                if (TypeChecker::check($sortableGetValues[$inhalt[0]], $inhalt[1])) { {
-                                        $this->_arr_sort_by[$inhalt[0]] = $inhalt[1];
-                                    }
-                                } else {
-                                    $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $sortableGetValues[$inhalt[0]];
-                                }
-                            }
-                        } else {
-                            Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
-                            die();
-                        }
-                    }
+        if (isset($this->get["sort_by_asc"])) {
+            if (is_string($this->get["sort_by_asc"]) && strlen($this->get["sort_by_asc"]) > 0) {
+                if (array_key_exists($this->get["sort_by_asc"], $sortableGetValues)) {
+                    $this->_sort_by_asc = $this->get["sort_by_asc"];
+                } else {
+                    $this->error .= "invalid search value type for" . $this->get["sort_by"];
+                }
+
+                if ($this->error) {
+                    Response::badRequest($this->error)->show();
+                    die();
                 }
             }
-            if ($this->error) {
-                Response::badRequest($this->error)->show();
-                die();
+        }
+        if (isset($this->get["sort_by"])) {
+            if (is_string($this->get["sort_by"]) && strlen($this->get["sort_by"]) > 0) {
+                if (array_key_exists($this->get["sort_by"], $sortableGetValues)) {
+                    $this->_sort_by = $this->get["sort_by"];
+                } else {
+                    $this->error .= "invalid search value type for" . $this->get["sort_by"];
+                }
+                if ($this->error) {
+                    Response::badRequest($this->error)->show();
+                    die();
+                }
             }
         }
     }
@@ -270,11 +267,20 @@ class Request
 
     /**
      * Summary of getSortable
-     * @return array<mixed>
+     * @return string|null
      */
-    public function getSortable(): array
+    public function getSortable(): string|null
     {
-        return $this->_arr_sort_by;
+        return $this->_sort_by;
+    }
+
+    /**
+     * Summary of getSortable
+     * @return string|null
+     */
+    public function getSortableAsc(): string|null
+    {
+        return $this->_sort_by_asc;
     }
 
 
