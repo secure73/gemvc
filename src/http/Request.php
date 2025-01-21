@@ -166,16 +166,15 @@ class Request
     }
 
     /**
-     * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
      * @param array<string> $sortableGetValues
-     * @example $this->request->filterable(['email'=>'email','name' => 'string'])
+     * @example $this->request->sortable(['email','id])
      * @return void or die with response
      */
     public function sortable(array $sortableGetValues): void
     {
         if (isset($this->get["sort_by_asc"])) {
             if (is_string($this->get["sort_by_asc"]) && strlen($this->get["sort_by_asc"]) > 0) {
-                if (array_key_exists($this->get["sort_by_asc"], $sortableGetValues)) {
+                if (in_array($this->get["sort_by_asc"], $sortableGetValues)) {
                     $this->_sort_by_asc = $this->get["sort_by_asc"];
                 } else {
                     $this->error .= "invalid search value type for" . $this->get["sort_by"];
@@ -189,10 +188,10 @@ class Request
         }
         if (isset($this->get["sort_by"])) {
             if (is_string($this->get["sort_by"]) && strlen($this->get["sort_by"]) > 0) {
-                if (array_key_exists($this->get["sort_by"], $sortableGetValues)) {
+                if (in_array($this->get["sort_by"], $sortableGetValues)) {
                     $this->_sort_by = $this->get["sort_by"];
                 } else {
-                    $this->error .= "invalid search value type for" . $this->get["sort_by"];
+                    $this->error .= "invalid search value type for " . $this->get["sort_by"];
                 }
                 if ($this->error) {
                     Response::badRequest($this->error)->show();
