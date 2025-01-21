@@ -229,8 +229,8 @@ class Request
                 die();
             }
             $result = (int)$get_per_page;
-            if ($result < 0) {
-                Response::badRequest("per_page shall be positive")->show();
+            if ($result < 1) {
+                Response::badRequest("per_page shall be positive, at least 1")->show();
                 die();
             }
             $this->_per_page = $result;
