@@ -223,11 +223,12 @@ class Request
     public function setPerPage(): void
     {
         if (isset($this->get["per_page"])) {
-            $result = $this->intValueGet("page_number");
-            if ($result === false) {
+            $get_per_page = $this->get["per_page"];
+            if (!is_numeric($get_per_page)) {
                 Response::badRequest("per_page shall be integer")->show();
                 die();
             }
+            $result = (int)$get_per_page;
             if ($result < 0) {
                 Response::badRequest("per_page shall be positive")->show();
                 die();
