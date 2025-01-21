@@ -201,19 +201,22 @@ class Request
         }
     }
 
+    
     public function setPageNumber(): void
     {
         if (isset($this->get["page_number"])) {
-            $result = $this->intValueGet("page_number");
+            $get_page_number = $this->get["page_number"];
+            $result = is_numeric($get_page_number);
             if ($result === false) {
                 Response::badRequest("page_number shall be integer")->show();
                 die();
             }
-            if ($result < 0) {
+            $number = (int)$get_page_number;
+            if ($number < 0) {
                 Response::badRequest("per_number shall be positive")->show();
                 die();
             }
-            $this->_page_number = $result;
+            $this->_page_number = $number;
         }
     }
 
