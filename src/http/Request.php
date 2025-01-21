@@ -212,8 +212,8 @@ class Request
                 die();
             }
             $number = (int)$get_page_number;
-            if ($number < 0) {
-                Response::badRequest("per_number shall be positive")->show();
+            if ($number < 1) {
+                Response::badRequest("per_number shall be positive, at least 1")->show();
                 die();
             }
             $this->_page_number = $number;
