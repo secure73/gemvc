@@ -67,7 +67,7 @@ class Request
 
     private ?string $_sort_by;
     private ?string $_sort_by_asc;
-    private int $_page_number = 1;
+    private int $_page_number;
     private int $_per_page;
 
 
