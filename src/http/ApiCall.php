@@ -8,6 +8,11 @@ class ApiCall
 {
     public ?string $error;
     public int $http_response_code;
+
+    /**
+     * Summary of header
+     * @var array<string>
+     */
     public array $header;
     public string $method;
     /**
@@ -40,18 +45,18 @@ class ApiCall
      * Perform a GET request
      * 
      * @param string $remoteApiUrl
-     * @param array $queryParams
+     * @param array<string> $queryParams
      * @return string|false
      */
     public function get(string $remoteApiUrl, array $queryParams = []): string|false
     {
         $this->method = 'GET';
         $this->data = $queryParams;
-        
+
         if (!empty($queryParams)) {
             $remoteApiUrl .= '?' . http_build_query($queryParams);
         }
-        
+
         return $this->call($remoteApiUrl);
     }
 
@@ -59,7 +64,7 @@ class ApiCall
      * Perform a POST request
      * 
      * @param string $remoteApiUrl
-     * @param array $postData
+     * @param array<mixed> $postData
      * @return string|false
      */
     public function post(string $remoteApiUrl, array $postData = []): string|false
@@ -69,11 +74,11 @@ class ApiCall
         return $this->call($remoteApiUrl);
     }
 
-     /**
+    /**
      * Perform a PUT request
      * 
      * @param string $remoteApiUrl
-     * @param array $putData
+     * @param array<mixed> $putData
      * @return string|false
      */
     public function put(string $remoteApiUrl, array $putData = []): string|false
@@ -120,6 +125,7 @@ class ApiCall
 
     /**
      * Set the HTTP method for the request
+     * @param \CurlHandle $ch
      */
     private function setMethod($ch): void
     {
@@ -127,7 +133,7 @@ class ApiCall
             curl_setopt($ch, CURLOPT_POST, true);
         } elseif ($this->method === 'PUT') {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-        } elseif ($this->method !== 'GET') {
+        } elseif ($this->method !== 'GET' && $this->method !== '') {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $this->method);
         }
     }
@@ -135,8 +141,9 @@ class ApiCall
 
     /**
      * Set the headers for the request
+     * @param \CurlHandle $ch 
      */
-    private function setHeaders($ch): void
+    private function setHeaders(\CurlHandle $ch): void
     {
         $headers = ['Content-Type: application/json'];
         foreach ($this->header as $key => $value) {
@@ -148,7 +155,7 @@ class ApiCall
     /**
      * Set the authorization header if present
      */
-    private function setAuthorization($ch): void
+    private function setAuthorization(\CurlHandle $ch): void
     {
         if (is_string($this->authorizationHeader)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $this->authorizationHeader]);
@@ -158,25 +165,36 @@ class ApiCall
     /**
      * Set the data for the request
      */
-    private function setData($ch): void
+    private function setData(\CurlHandle $ch): void
     {
         if ($this->method === 'POST' || $this->method === 'PUT') {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($this->data));
+            $data_to_send = json_encode($this->data);
+
+            if (!is_string($data_to_send)) {
+                throw new \Exception('process stopped becase data failed to encod to json format');
+            }
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $data_to_send);
         }
     }
 
     /**
      * Set the files for the request if any
      */
-    private function setFiles($ch): void
+    private function setFiles(\CurlHandle $ch): bool
     {
         if (!empty($this->files)) {
             $postFields = $this->data;
             foreach ($this->files as $key => $value) {
-                $postFields[$key] = new \CURLFile($value);
+                if (is_string($value)) {
+                    $postFields[$key] = new \CURLFile($value);
+                    $step_one = curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+                    $step_two = curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: multipart/form-data']);
+                    if ($step_one && $step_two) {
+                        return true;
+                    }
+                }
             }
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: multipart/form-data']);
         }
+        return false;
     }
 }
