@@ -26,13 +26,13 @@ class ApacheRequest
         $this->request->requestMethod = $this->getRequestMethod();
         $this->request->userMachine = $this->getUserAgent();
         $this->request->remoteAddress = $this->getRemoteAddress();
-        $this->request->queryString = $_SERVER['QUERY_STRING'];
+        $this->request->queryString = is_string($_SERVER['QUERY_STRING']) ?$_SERVER['QUERY_STRING'] : '' ;
         $this->request->post = $_POST;
         $this->request->get = $_GET;
         $this->request->put = $put;
         $this->request->patch = $patch;
-
-        if (isset($_FILES['file'])) {
+        $this->request->files = [];
+        if (isset($_FILES['file']) && is_array( $_FILES['file'] )) {
             $this->request->files = $_FILES['file'];
         }
         $this->getAuthHeader();
@@ -86,8 +86,8 @@ class ApacheRequest
         // Parse the raw input data
         parse_str($input, $_PATCH);
         
-        // Check if $_PATCH is an array and not empty
-        if (!is_array($_PATCH) || empty($_PATCH)) {
+        // Check if $_PATCH is not empty
+        if ( empty($_PATCH)) {
             return null;
         }
 
@@ -117,6 +117,7 @@ class ApacheRequest
             if (is_array($value)) {
                 foreach ($value as $subKey => $item) {
                     if (is_string($item)) {
+                        /**@phpstan-ignore-next-line */
                         $_GET[$key][$subKey] = $this->sanitizeInput($item);
                     }
                 }
@@ -137,8 +138,8 @@ class ApacheRequest
         // Parse the raw input data
         parse_str($input, $_PUT);
         
-        // Check if $_PUT is an array and not empty
-        if (!is_array($_PUT) || empty($_PUT)) {
+        // Check if $_PUT is not empty
+        if (empty($_PUT)) {
             return null;
         }
 
@@ -163,7 +164,7 @@ class ApacheRequest
 
     private function sanitizeQueryString():void
     {
-        if(isset($_SERVER['QUERY_STRING'])) {
+        if(isset($_SERVER['QUERY_STRING']) && is_string($_SERVER['QUERY_STRING'])) {
             $_SERVER['QUERY_STRING'] = trim($_SERVER['QUERY_STRING']);
             $_SERVER['QUERY_STRING'] = filter_var($_SERVER['QUERY_STRING'], FILTER_SANITIZE_FULL_SPECIAL_CHARS);
         }
@@ -195,16 +196,17 @@ class ApacheRequest
 
     private function getUserAgent():string
     {
-        if(isset($_SERVER['HTTP_USER_AGENT'])) {
+        if(isset($_SERVER['HTTP_USER_AGENT']) && is_string($_SERVER['HTTP_USER_AGENT'])) {
             return $_SERVER['HTTP_USER_AGENT'];
         }
-        return '';
+        return 'undetected';
     }
 
     private function getRemoteAddress():string
     {
         if(isset($_SERVER['REMOTE_ADDR'])) {
             if (filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP)) {
+                /**@phpstan-ignore-next-line */
                 return $_SERVER['REMOTE_ADDR'];
             } else {
                 return 'invalid_remote_address_ip_format';
@@ -215,7 +217,7 @@ class ApacheRequest
 
     private function getRequestMethod():string
     {
-        if(isset($_SERVER['REQUEST_METHOD'])) {
+        if(isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD'])) {
             $_SERVER['REQUEST_METHOD'] = trim($_SERVER['REQUEST_METHOD']);
             $_SERVER['REQUEST_METHOD'] = strtoupper($_SERVER['REQUEST_METHOD']);
             $allowedMethods = array('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD');
@@ -230,6 +232,7 @@ class ApacheRequest
 
     private function getAuthHeader():void
     {
+        /**@phpstan-ignore-next-line */
         $this->request->authorizationHeader = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : null;
         // If the "Authorization" header is empty, you may want to check for the "REDIRECT_HTTP_AUTHORIZATION" header as well.
         if (!$this->request->authorizationHeader && isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
