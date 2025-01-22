@@ -8,7 +8,7 @@ class TypeChecker
      *
      * @param mixed $type string,int,float,bool,array,json,email,date,integer,number,float,bool,boolean,array,object,callable,resource,null,email,url,date,datetime,json,ip,ipv4,ipv6,Class Names (as strings or objects)
      * @param mixed $value The value to check.
-     * @param array $options Optional parameters for specific types (e.g., min/max length for strings, date format).
+     * @param array<string> $options Optional parameters for specific types (e.g., min/max length for strings, date format).
      *
      * @return bool True if the value matches the type and any provided options, false otherwise.
      * @example TypeHelper::checkType('datetime', '10/27/2023 10:00:00', ['format' => 'm/d/Y H:i:s']);
@@ -79,7 +79,7 @@ class TypeChecker
      * Checks if a value is a string and meets the given options.
      *
      * @param mixed $value The value to check.
-     * @param array $options The options to check against.
+     * @param array<string> $options The options to check against.
      * @return bool True if the value is a string and meets the options, false otherwise.
      */
     private static function checkString(mixed $value, array $options): bool
@@ -103,7 +103,7 @@ class TypeChecker
      * Checks if a value is an integer and meets the given options.
      *
      * @param mixed $value The value to check.
-     * @param array $options The options to check against.
+     * @param array<string> $options The options to check against.
      * @return bool True if the value is an integer and meets the options, false otherwise.
      */
     private static function checkInteger(mixed $value, array $options): bool
@@ -124,7 +124,7 @@ class TypeChecker
      * Checks if a value is a float and meets the given options.
      *
      * @param mixed $value The value to check.
-     * @param array $options The options to check against.
+     * @param array<string> $options The options to check against.
      * @return bool True if the value is a float and meets the options, false otherwise.
      */
     private static function checkFloat(mixed $value, array $options): bool
@@ -145,11 +145,14 @@ class TypeChecker
      * Checks if a value is a date string and meets the given format.
      *
      * @param mixed $value The value to check.
-     * @param array $options The options to check against.
+     * @param array<string> $options The options to check against.
      * @return bool True if the value is a date string and meets the format, false otherwise.
      */
-    private static function checkDate(mixed $value, array $options): bool
+    private static function checkDate( $value, array $options): bool
     {
+        if(!is_string($value)) {
+            return false;
+        }
         $format = $options['format'] ?? 'Y-m-d'; // Default format
         $d = \DateTime::createFromFormat($format, $value);
         return $d && $d->format($format) === $value;
@@ -159,11 +162,14 @@ class TypeChecker
      * Checks if a value is a datetime string and meets the given format.
      *
      * @param mixed $value The value to check.
-     * @param array $options The options to check against.
+     * @param array<string> $options The options to check against.
      * @return bool True if the value is a datetime string and meets the format, false otherwise.
      */
     private static function checkDateTime(mixed $value, array $options): bool
     {
+        if(!is_string($value)) {
+            return false;
+        }
         $format = $options['format'] ?? 'Y-m-d H:i:s'; // Default format
         $d = \DateTime::createFromFormat($format, $value);
         return $d && $d->format($format) === $value;
@@ -177,6 +183,9 @@ class TypeChecker
      */
     private static function checkJson(mixed $value): bool
     {
+        if(!is_string($value)) {
+            return false;
+        }
         try {
             json_decode($value, null, 512, JSON_THROW_ON_ERROR);
             return true;
