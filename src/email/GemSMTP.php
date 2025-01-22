@@ -8,11 +8,10 @@ use Gemvc\Http\Response;
 
 final class GemSMTP
 {
-    private ?string $error = null;
     private bool $readyToSend = false;
     private PHPMailer $mail;
     private string $username;
-    private ?string $password = null;
+    private string $password;
     private string $senderName;
     private string $defaultLanguage;
     private int $maxSubjectLength;
@@ -34,10 +33,13 @@ final class GemSMTP
         'expression(', 'url(', 'eval(', 'alert('
     ];
 
-    private bool $verifySSL = true;  // Default to strict SSL
+    /**
+     * @var array<mixed> $sslOptions
+     */
     private array $sslOptions = [];
 
     public function __construct(
+        
         string $emailAddress,
         string $password,
         string $senderName,
@@ -72,6 +74,11 @@ final class GemSMTP
             throw $e;
         }
     }
+
+    public function getDefaultLanguage(): string
+{
+    return $this->defaultLanguage;
+}
 
     private function initializeMailer(bool $debug, int $port, int $timeout): void
     {
@@ -144,15 +151,9 @@ final class GemSMTP
     private function clearSensitiveData(): void
     {
         if (isset($this->mail)) {
-            $this->mail->Password = null;
+            $this->mail->Password = "-";
         }
-        
-        if (function_exists('sodium_memzero')) {
-            if ($this->password !== null) {
-                sodium_memzero($this->password);
-            }
-        }
-        $this->password = null;
+        $this->password = "-";
     }
 
     public function createMail(
@@ -163,7 +164,6 @@ final class GemSMTP
         string $contentLanguage = null
     ): bool {
         $this->readyToSend = false;
-        $this->error = null;
 
         // Stricter content type validation
         if (!str_contains($htmlContent, '<html') || !str_contains($htmlContent, '</html>')) {
@@ -189,10 +189,11 @@ final class GemSMTP
         $this->validateContent($htmlContent);
         $subject = $this->validateSubject($subject);
 
-        $this->mail->setLanguage($contentLanguage ?? $this->defaultLanguage);
+        $this->mail->setLanguage($contentLanguage);
         $this->mail->setFrom($this->username, $this->senderName);
         $this->mail->addAddress($receiverEmail, $receiverName);
         $this->mail->Subject = $subject;
+        /**@phpstan-ignore-next-line */
         $this->mail->Body = $this->sanitizeHtml($htmlContent);
         $this->mail->AltBody = strip_tags($htmlContent); // Always provide plain text alternative
         
@@ -200,7 +201,7 @@ final class GemSMTP
         return true;
     }
 
-    private function sanitizeHtml(string $html): string
+    private function sanitizeHtml(string $html): string|null
     {
         if (!mb_check_encoding($html, 'UTF-8')) {
             Response::internalError("Invalid UTF-8 encoding in content")->show();
@@ -210,8 +211,7 @@ final class GemSMTP
         $html = htmlspecialchars($html, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
         
         // Additional sanitization
-        $html = preg_replace('/<!--(.|\s)*?-->/', '', $html); // Remove comments
-        return $html;
+        return preg_replace('/<!--(.|\s)*?-->/', '', $html); // Remove comments
     }
 
     private function validateContent(string $htmlContent): void
@@ -244,7 +244,13 @@ final class GemSMTP
         
         // Path traversal protection
         $realPath = realpath($filePath);
-        if ($realPath === false || !str_starts_with($realPath, realpath(getcwd()))) {
+        if(!is_string($realPath)) 
+        {
+            Response::internalError("unable to get real path")->show();
+            die();
+        }
+        /**@phpstan-ignore-next-line */
+        if (!str_starts_with($realPath, realpath(getcwd()))) {
             Response::internalError("Invalid file path")->show();
             die();
         }
@@ -278,7 +284,14 @@ final class GemSMTP
         
         // Path traversal protection
         $realPath = realpath($imagePath);
-        if ($realPath === false || !str_starts_with($realPath, realpath(getcwd()))) {
+        if(!is_string($realPath))
+        {
+            Response::internalError("no able to get real path")->show();
+            die();
+        }
+        
+        /**@phpstan-ignore-next-line */
+        if (!str_starts_with($realPath, realpath(getcwd()))) {
             Response::internalError("Invalid image path")->show();
             die();
         }
@@ -332,10 +345,6 @@ final class GemSMTP
         }
     }
 
-    public function getError(): ?string
-    {
-        return $this->error;
-    }
 
     public function reset(): void
     {
@@ -346,7 +355,7 @@ final class GemSMTP
             $this->mail->clearReplyTos();
         }
         $this->readyToSend = false;
-        $this->error = null;
+
     }
 
     private function validateSubject(string $subject): string
@@ -384,7 +393,7 @@ final class GemSMTP
         bool $allowSelfSigned = false,
         bool $verifyPeerName = true
     ): void {
-        $this->verifySSL = $verify;
+        //$this->verifySSL = $verify;
         $this->sslOptions = [
             'ssl' => [
                 'verify_peer' => $verify,
