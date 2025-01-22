@@ -36,7 +36,7 @@ class StringHelper
      * $webName = StringHelper::makeWebName("This is a very long string that exceeds the default maximum length", 30);
      * echo $webName; // return: this-is-a-very-long-string-that
      */
-    public static function makeWebName($string, $maxLength = 60)
+    public static function makeWebName(string $string, int $maxLength = 60):string|null
     {
         // Konvertiere in Kleinbuchstaben und entferne Leerzeichen am Anfang und Ende
         $string = mb_strtolower(trim($string), 'UTF-8');
@@ -67,13 +67,19 @@ class StringHelper
     
         // Ersetze alle nicht-alphanumerischen Zeichen durch Bindestriche
         $string = preg_replace('/[^a-z0-9]+/', '-', $string);
-    
+        if(!is_string($string))
+        {
+            return null;
+        }
         // Entferne Bindestriche am Anfang und Ende
         $string = trim($string, '-');
     
         // Ersetze mehrfache Bindestriche durch einen einzelnen
         $string = preg_replace('/-+/', '-', $string);
-    
+        if(!is_string($string))
+        {
+            return null;
+        }
         // Kürze den String auf die maximale Länge
         if (mb_strlen($string, 'UTF-8') > $maxLength) {
             $string = mb_substr($string, 0, $maxLength, 'UTF-8');
