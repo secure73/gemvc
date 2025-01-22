@@ -30,7 +30,7 @@ class QueryExecuter
         return $this->_query;
     }
 
-    public function isConnected():bool
+    public function isConnected(): bool
     {
         return $this->isConnected;
     }
@@ -68,7 +68,7 @@ class QueryExecuter
             \is_string($value) => \PDO::PARAM_STR,
             default => \PDO::PARAM_STR,
         };
-        $this->stsment?->bindValue($param, $value, $type);
+        $this->stsment->bindValue($param, $value, $type);
     }
 
     /**
@@ -77,31 +77,30 @@ class QueryExecuter
      */
     public function execute(): bool
     {
-        if ($this->db && $this->stsment) {
-            try {
-                $this->stsment->execute();
-                $this->affectedRows = $this->stsment->rowCount();
-                $this->lastInsertedId = $this->db->lastInsertId();
-                $this->endExecutionTime = microtime(true);
-
-            } catch (\PDOException $e) {
-                $this->endExecutionTime = microtime(true);
-                $this->error = $e->getMessage();
-
-            }
-            if (!isset($this->error)) {
-                $this->endExecutionTime = microtime(true);
-                return true;
-            }
-        } else {
-            $this->error = 'PDO statement is NULL';
+        if (!$this->db) {
+            $this->error = 'nop connection';
+            return false;
+        }
+        try {
+            $this->stsment->execute();
+            $this->affectedRows = $this->stsment->rowCount();
+            $this->lastInsertedId = $this->db->lastInsertId();
             $this->endExecutionTime = microtime(true);
+
+        } catch (\PDOException $e) {
+            $this->endExecutionTime = microtime(true);
+            $this->error = $e->getMessage();
+
+        }
+        if (!isset($this->error)) {
+            $this->endExecutionTime = microtime(true);
+            return true;
         }
         $this->secure();
         return false;
     }
 
-    public function getError():?string
+    public function getError(): ?string
     {
         return $this->error;
     }
@@ -153,11 +152,7 @@ class QueryExecuter
      */
     public function fetchAll(): array|false
     {
-        if ($this->stsment) {
-            return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
-        }
-        $this->error = 'PDO Statement is null,please check your connection name or table name';
-        return false;
+        return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
     }
     /**
      * @return false|array<mixed>
@@ -165,11 +160,7 @@ class QueryExecuter
      */
     public function fetchAllObjects(): array|false
     {
-        if ($this->stsment) {
-            return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
-        } 
-        $this->error = 'PDO Statement is null,please check your connection name or table name';
-        return false;
+        return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
     }
 
     /**
@@ -178,29 +169,21 @@ class QueryExecuter
      */
     public function fetchAllClass(string $targetClassName): array|false
     {
-        if ($this->stsment) {
-            try{
-                return $this->stsment->fetchAll(\PDO::FETCH_CLASS, $targetClassName);
-            }catch(\PDOException $e){
-                $this->error = $e->getMessage();
-                return false;
-            }
-        } 
-        $this->error = 'PDO Statement is null,please check your connection name or table name';
+        try {
+            return $this->stsment->fetchAll(\PDO::FETCH_CLASS, $targetClassName);
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
+        }
         return false;
     }
 
     public function fetchColumn(): mixed
     {
-        if ($this->stsment) {
-            try{
-                return $this->stsment->fetchColumn();
-            }catch(\PDOException $e){
-                $this->error = $e->getMessage();
-                return false;
-            }
+        try {
+            return $this->stsment->fetchColumn();
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
         }
-        $this->error = 'PDO Statement is null,please check your connection name or table name';
         return false;
     }
 }
