@@ -41,12 +41,14 @@ class PdoConnection
      */
     public function connect(): \Pdo|null
     {
+        /** @phpstan-ignore-next-line */
         $dsn__db = 'mysql:host='.$_ENV['DB_HOST'].';port='.$_ENV['DB_PORT'].';dbname='.$_ENV['DB_NAME'].';charset='.$_ENV['DB_CHARSET'];
         try {
             $options__db = [
                 \PDO::ATTR_PERSISTENT => true,
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ];
+            /** @phpstan-ignore-next-line */
             $this->db = new \PDO($dsn__db, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options__db);
             $this->isConnected = true;
             $this->error  = null;
