@@ -1,14 +1,6 @@
 <?php
 
 namespace Gemvc\Database;
-/**
- * run and execute query strings within its functions
- * @method int|false insertQuery(string $insertQuery, array $arrayBindKeyValue = []):int|false
- * @method int|null|false updateQuery(string $updateQuery, array $arrayBindKeyValue = []): int|null|false
- * @method int|null|false deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null|false
- * @method array|false selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
- * @method array|false selectQueryObjects(string $selectQuery, array $arrayBindKeyValue = []): array|false
- */
 class PdoQuery extends QueryExecuter
 {
     public function __construct()
@@ -18,14 +10,9 @@ class PdoQuery extends QueryExecuter
 
 
     /**
-     * @param  string              $insertQuery       Sql insert query
-     * @param  array<string,mixed> $arrayBindKeyValue
+     * @param string $insertQuery Sql insert query
+     * @param array<string, string|int|float|bool|null> $arrayBindKeyValue
      * @return false|int
-     * $query example: 'INSERT INTO users (name,email,password) VALUES (:name,:email,:password)'
-     * arrayBindKeyValue Example [':name' => 'some new name' , ':email' => 'some@me.com , :password =>'si§d8x']
-     * success : return last inserted id
-     * you can call affectedRows() to get how many rows inserted
-     * error: $this->getError();
      */
     public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|false
     {

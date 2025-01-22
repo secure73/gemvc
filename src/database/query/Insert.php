@@ -87,6 +87,7 @@ class Insert implements QueryBuilderInterface
     public function run(PdoQuery $pdoQuery):int|false
     {
         $query = $this->__toString();
+        /** @phpstan-ignore-next-line */
         return $pdoQuery->insertQuery($query, $this->keyValue);
     }
 }
