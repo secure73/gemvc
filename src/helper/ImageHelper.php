@@ -2,6 +2,8 @@
 
 namespace Gemvc\Helper;
 
+use GdImage;
+
 class FileHelper
 {
     public string $sourceFile;
@@ -138,15 +140,16 @@ class FileHelper
         if ($this->error) {
             return false;
         }
-
         $fileContents = $this->readFileContents();
         if (!$fileContents) {
             return false;
         }
-
         $method = 'base64_' . $operation;
-        $fileContents = $method($fileContents);
 
+        if (!function_exists($method)) {
+            return false;
+        }
+        $fileContents = $method($fileContents);
         return $this->writeFileContents($fileContents) ? $this->outputFile : false;
     }
 
@@ -268,7 +271,7 @@ class FileHelper
         return true;
     }
 
-    private function createImageFromFile(int $type)
+    private function createImageFromFile(int $type): false|GdImage
     {
         switch ($type) {
             case IMAGETYPE_JPEG:
@@ -286,6 +289,7 @@ class FileHelper
     private function changeExtension(string $filename, string $newExtension): string
     {
         $info = pathinfo($filename);
-        return $info['dirname'] . DIRECTORY_SEPARATOR . $info['filename'] . '.' . $newExtension;
+        $dirname = $info['dirname'] ?? '.';
+        return $dirname . DIRECTORY_SEPARATOR . $info['filename'] . '.' . $newExtension;
     }
 }
