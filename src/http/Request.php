@@ -201,7 +201,7 @@ class Request
         }
     }
 
-    
+
     public function setPageNumber(): void
     {
         if (isset($this->get["page_number"])) {
@@ -211,7 +211,7 @@ class Request
                 Response::badRequest("page_number shall be integer")->show();
                 die();
             }
-            $number = (int)$get_page_number;
+            $number = (int) $get_page_number;
             if ($number < 1) {
                 Response::badRequest("per_number shall be positive, at least 1")->show();
                 die();
@@ -228,7 +228,7 @@ class Request
                 Response::badRequest("per_page shall be integer")->show();
                 die();
             }
-            $result = (int)$get_per_page;
+            $result = (int) $get_per_page;
             if ($result < 1) {
                 Response::badRequest("per_page shall be positive, at least 1")->show();
                 die();
@@ -582,6 +582,7 @@ class Request
         $optionals = [];
         $all = [];
         foreach ($toValidatePost as $validation_key => $validationString) {
+            //echo' post valkey: '. $validation_key .' val:'. $validationString .'<br>';
             if (substr($validation_key, 0, 1) === '?') {
                 $validation_key = ltrim($validation_key, '?');
                 $optionals[$validation_key] = $validationString;
@@ -619,10 +620,10 @@ class Request
             return false;
         }
 
-        foreach ($requires as $validation_key => $validation_value) { //now validate requires post Schema
-            $validationResult = TypeChecker::check($validationString, $validation_value);
+        foreach ($requires as $validation_key => $validation_type_value) { //now validate requires post Schema
+            $validationResult = TypeChecker::check($validation_type_value, $target[$validation_key]);
             if (!$validationResult) {
-                $errors[] = "Invalid value ". $validation_value ." that shallbe type of $validationString for $get_or_post field: $validation_key";
+                $errors[] = "Invalid value " . $target[$validation_key] . " which shall be of type $validation_type_value for $get_or_post  $validation_key ";
             }
         }
         if (count($errors) > 0) {
