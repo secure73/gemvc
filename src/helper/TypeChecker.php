@@ -28,7 +28,7 @@ class TypeChecker
                 case 'int':
                 case 'integer':
                 case 'number':
-                    return self::checkInteger($value, $options);
+                    return self::checkInteger($value);
                 case 'float':
                 case 'double':
                     return self::checkFloat($value, $options);
