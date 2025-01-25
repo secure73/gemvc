@@ -101,23 +101,12 @@ class TypeChecker
  
     /**
      * Checks if a value is an integer and meets the given options.
-     *
      * @param mixed $value The value to check.
-     * @param array<string> $options The options to check against.
      * @return bool True if the value is an integer and meets the options, false otherwise.
      */
-    private static function checkInteger(mixed $value, array $options): bool
+    private static function checkInteger(mixed $value): bool
     {
-        if (!is_numeric($value)) {
-            return false;
-        }
-        if (isset($options['min']) && $value < $options['min']) {
-            return false;
-        }
-        if (isset($options['max']) && $value > $options['max']) {
-            return false;
-        }
-        return true;
+        return is_numeric($value);
     }
  
     /**
