@@ -619,10 +619,10 @@ class Request
             return false;
         }
 
-        foreach ($requires as $validation_key => $validationString) { //now validate requires post Schema
-            $validationResult = TypeChecker::check($validationString, $validation_key);
+        foreach ($requires as $validation_key => $validation_value) { //now validate requires post Schema
+            $validationResult = TypeChecker::check($validationString, $validation_value);
             if (!$validationResult) {
-                $errors[] = "Invalid value for $get_or_post field: $validation_key";
+                $errors[] = "Invalid value ". $validation_value ." that shallbe type of $validationString for $get_or_post field: $validation_key";
             }
         }
         if (count($errors) > 0) {
