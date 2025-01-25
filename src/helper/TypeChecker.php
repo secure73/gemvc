@@ -26,13 +26,17 @@ class TypeChecker
                 case 'string':
                     return self::checkString($value, $options);
                 case 'int':
+                    return is_numeric($value);
                 case 'integer':
+                    return is_numeric($value);
                 case 'number':
                     return is_numeric($value);
                 case 'float':
+                    return self::checkFloat($value, $options);
                 case 'double':
                     return self::checkFloat($value, $options);
                 case 'bool':
+                    return is_bool($value);
                 case 'boolean':
                     return is_bool($value);
                 case 'array':
@@ -46,9 +50,9 @@ class TypeChecker
                 case 'null':
                     return is_null($value);
                 case 'email':
-                    return (bool)filter_var($value, FILTER_VALIDATE_EMAIL);
+                    return (bool) filter_var($value, FILTER_VALIDATE_EMAIL);
                 case 'url':
-                    return (bool)filter_var($value, FILTER_VALIDATE_URL);
+                    return (bool) filter_var($value, FILTER_VALIDATE_URL);
                 case 'date':
                     return self::checkDate($value, $options);
                 case 'datetime':
@@ -56,11 +60,11 @@ class TypeChecker
                 case 'json':
                     return self::checkJson($value);
                 case 'ip':
-                    return (bool)filter_var($value, FILTER_VALIDATE_IP);
+                    return (bool) filter_var($value, FILTER_VALIDATE_IP);
                 case 'ipv4':
-                    return (bool)filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
+                    return (bool) filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
                 case 'ipv6':
-                    return (bool)filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+                    return (bool) filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
                 default:
                     if (class_exists($type) || interface_exists($type)) {
                         return $value instanceof $type;
@@ -74,7 +78,7 @@ class TypeChecker
         }
     }
 
-    
+
     /**
      * Checks if a value is a string and meets the given options.
      *
@@ -98,7 +102,7 @@ class TypeChecker
         }
         return true;
     }
- 
+
     /**
      * Checks if a value is an integer and meets the given options.
      * @param mixed $value The value to check.
@@ -108,7 +112,7 @@ class TypeChecker
     {
         return is_numeric($value);
     }
- 
+
     /**
      * Checks if a value is a float and meets the given options.
      *
@@ -129,7 +133,7 @@ class TypeChecker
         }
         return true;
     }
- 
+
     /**
      * Checks if a value is a date string and meets the given format.
      *
@@ -137,16 +141,16 @@ class TypeChecker
      * @param array<string> $options The options to check against.
      * @return bool True if the value is a date string and meets the format, false otherwise.
      */
-    private static function checkDate( $value, array $options): bool
+    private static function checkDate($value, array $options): bool
     {
-        if(!is_string($value)) {
+        if (!is_string($value)) {
             return false;
         }
         $format = $options['format'] ?? 'Y-m-d'; // Default format
         $d = \DateTime::createFromFormat($format, $value);
         return $d && $d->format($format) === $value;
     }
- 
+
     /**
      * Checks if a value is a datetime string and meets the given format.
      *
@@ -156,14 +160,14 @@ class TypeChecker
      */
     private static function checkDateTime(mixed $value, array $options): bool
     {
-        if(!is_string($value)) {
+        if (!is_string($value)) {
             return false;
         }
         $format = $options['format'] ?? 'Y-m-d H:i:s'; // Default format
         $d = \DateTime::createFromFormat($format, $value);
         return $d && $d->format($format) === $value;
     }
- 
+
     /**
      * Checks if a value is a valid JSON string.
      *
@@ -172,7 +176,7 @@ class TypeChecker
      */
     private static function checkJson(mixed $value): bool
     {
-        if(!is_string($value)) {
+        if (!is_string($value)) {
             return false;
         }
         try {
