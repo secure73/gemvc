@@ -339,34 +339,38 @@ class Request
         return $this->start_exec;
     }
 
-    public function intValuePost(string $key): int|false
+    public function intValuePost(string $key): int
     {
         if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
-            return false;
+            Response::badRequest("post " . $this->post[$key] . " is required and must be type of int")->show();
+            die();
         }
         return (int) $this->post[$key];
     }
 
-    public function floatValuePost(string $key): float|false
+    public function floatValuePost(string $key): float
     {
         if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
-            return false;
+            Response::badRequest("post " . $this->post[$key] . " is required and must be type of float")->show();
+            die();
         }
         return (float) $this->post[$key];
     }
 
-    public function intValueGet(string $key): int|false
+    public function intValueGet(string $key): int
     {
         if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
-            return false;
+            Response::badRequest("get " . $this->get[$key] . " is required and must be type of integer")->show();
+            die();
         }
         return (int) $this->get[$key];
     }
 
-    public function floatValueGet(string $key): float|false
+    public function floatValueGet(string $key): float
     {
         if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
-            return false;
+            Response::badRequest("get " . $this->get[$key] . " is required and must be type of float")->show();
+            die();
         }
         return (float) $this->get[$key];
     }
