@@ -637,10 +637,10 @@ class Request
             return false;
         }
 
-        foreach ($optionals as $optionals_key => $optionals_value) { //check optionals if post exists and not null then do check
+        foreach ($optionals as $optionals_key => $optionals_type_value) { //check optionals if post exists and not null then do check
 
             if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
-                $validationResult = TypeChecker::check($optionals_value, $optionals_key);
+                $validationResult = TypeChecker::check($optionals_type_value, $target[$optionals_key]);
                 if (!$validationResult) {
                     $errors[] = "Invalid value for $get_or_post field: $optionals_key";
                 }
