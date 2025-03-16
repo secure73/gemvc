@@ -1,0 +1,990 @@
+{
+  "framework": {
+    "name": "GEMVC",
+    "version": "3.27.8",
+    "author": "Ali Khorsandfard <ali.khorsandfard@gmail.com>",
+    "github": "https://github.com/secure73/gemvc",
+    "phpVersion": ">=8.0",
+    "requiredExtensions": ["pdo", "openssl", "gd"],
+    "architecture": "microservice-based RESTful API framework"
+  },
+
+  "coreComponents": {
+    "database": {
+      "mainClasses": {
+        "PdoConnection": {
+          "purpose": "Database connection management with connection pooling",
+          "keyMethods": ["connect", "isConnected", "db"],
+          "errorPatterns": {
+            "connectionFailed": "Database connection not established",
+            "invalidCredentials": "SQLSTATE[28000]",
+            "connectionLost": "MySQL server has gone away"
+          },
+          "connectionOptions": {
+            "persistent": true,
+            "errorMode": "PDO::ERRMODE_EXCEPTION",
+            "charset": "UTF-8"
+          },
+          "errorHandling": {
+            "getError": "Returns detailed error message",
+            "isConnected": "Connection state verification",
+            "pdoExceptions": {
+              "connectionTimeout": "SQLSTATE[HY000] [2002]",
+              "accessDenied": "SQLSTATE[28000]",
+              "serverGone": "SQLSTATE[HY000] [2006]"
+            },
+            "customErrors": {
+              "notConnected": "Database connection not established",
+              "invalidCredentials": "Invalid database credentials",
+              "connectionLost": "Connection lost during operation"
+            }
+          }
+        },
+        "QueryBuilder": {
+          "purpose": "Fluent SQL query construction with automatic security",
+          "operations": ["select", "insert", "update", "delete"],
+          "features": {
+            "parameterBinding": "Automatic type-safe parameter binding",
+            "joinSupport": ["leftJoin", "innerJoin"],
+            "conditions": ["whereEqual", "whereLike", "whereBetween", "whereNull"]
+          },
+          "example": {
+            "select": "QueryBuilder::select('id', 'name')->from('users')->whereEqual('status', 'active')"
+          },
+          "whereConditions": {
+            "whereEqual": "Exact match with type detection",
+            "whereLike": "Pattern matching with % wildcards",
+            "whereBetween": "Range comparison",
+            "whereNull": "NULL check",
+            "whereNotNull": "NOT NULL check",
+            "whereLess": "< comparison",
+            "whereLessEqual": "<= comparison",
+            "whereBigger": "> comparison",
+            "whereBiggerEqual": ">= comparison"
+          },
+          "orderingOptions": {
+            "orderBy": "Column sorting",
+            "first": "First n records",
+            "last": "Last n records"
+          },
+          "resultFormats": {
+            "array": "Default array result",
+            "json": "JSON formatted result with pretty print",
+            "object": "stdClass object result"
+          },
+          "joinTypes": {
+            "leftJoin": "Clears any innerJoin",
+            "innerJoin": "Clears any leftJoin",
+            "mutualExclusive": "Cannot mix join types"
+          }
+        },
+        "QueryExecuter": {
+          "purpose": "Low-level query execution",
+          "features": {
+            "parameterBinding": "Automatic type detection",
+            "executionTracking": {
+              "timing": {
+                "startTime": "microtime(true) in constructor",
+                "endTime": "Set after execute() or on error",
+                "getExecutionTime": "Returns milliseconds * 1000 or -1 if never executed"
+              },
+              "results": {
+                "affectedRows": "Integer count of affected rows",
+                "lastInsertId": "String ID of last insert",
+                "fetchModes": {
+                  "fetchAll": "PDO::FETCH_ASSOC array",
+                  "fetchAllObjects": "PDO::FETCH_OBJ array",
+                  "fetchAllClass": "Custom class mapping",
+                  "fetchColumn": "Single column value"
+                }
+              }
+            },
+            "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
+          }
+        },
+        "SqlEnumCondition": {
+          "purpose": "SQL condition constants",
+          "values": {
+            "Equal": " = ",
+            "Bigger": " > ",
+            "Less": " < ",
+            "BiggerEqual": " >= ",
+            "LessEqual": " =< ",
+            "IsNull": " IS NULL ",
+            "NotNull": "IS NOT NULL",
+            "Not": " != ",
+            "Like": " LIKE ",
+            "Descending": " DESC ",
+            "Ascending": " ASC ",
+            "Between": " BETWEEN "
+          }
+        }
+      },
+      "queryTypes": {
+        "Select": {
+          "features": {
+            "resultFormats": {
+              "array": "fetchAll() with FETCH_ASSOC",
+              "object": "fetchAllObjects() with FETCH_OBJ",
+              "json": "json() with JSON_PRETTY_PRINT",
+              "class": "fetchAllClass() with custom class mapping"
+            },
+            "timing": "Query execution time tracking",
+            "pagination": "offset() and limit() support"
+          }
+        },
+        "Insert": {
+          "features": {
+            "columnMapping": "Automatic column-value binding",
+            "returnValue": "Last inserted ID"
+          }
+        },
+        "Update": {
+          "features": {
+            "setValue": "Type-safe value setting",
+            "returnValue": "Affected rows count",
+            "validation": "No changes detection"
+          }
+        },
+        "Delete": {
+          "features": {
+            "safeguards": "Where clause required",
+            "returnValue": "Affected rows count"
+          }
+        }
+      }
+    },
+
+    "http": {
+      "mainClasses": {
+        "ApacheRequest": {
+          "purpose": "Request handling and sanitization",
+          "securityFeatures": [
+            "Input sanitization",
+            "XSS prevention",
+            "Request method validation"
+          ],
+          "supportedMethods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+          "sanitizationRules": {
+            "headers": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
+            "queryString": "FILTER_SANITIZE_URL",
+            "postData": "Recursive sanitization"
+          }
+        },
+        "JsonResponse": {
+          "purpose": "Standardized API response formatting",
+          "statusCodes": {
+            "200": "success",
+            "201": "created",
+            "204": "successButNoContentToShow()",
+            "209": "updated()",
+            "210": "deleted",
+            "400": "badRequest",
+            "401": "unauthorized",
+            "403": "forbidden",
+            "404": "notFound",
+            "415": "unsupportedMediaType()",
+            "422": "unprocessableEntity()",
+            "500": "internalError"
+          },
+          "responseFormat": {
+            "response_code": "HTTP status code",
+            "message": "Standard HTTP message",
+            "service_message": "Custom message",
+            "count": "Optional result count",
+            "data": "Response payload"
+          }
+        },
+        "ApiCall": {
+          "purpose": "External API communication",
+          "methods": ["get", "post", "put"],
+          "features": [
+            "Authorization header support",
+            "File upload handling",
+            "Custom headers",
+            "Error tracking"
+          ],
+          "curlOptions": {
+            "CURLOPT_RETURNTRANSFER": true,
+            "CURLOPT_USERAGENT": "gemserver",
+            "CURLOPT_HTTPHEADER": ["Content-Type: application/json"],
+            "fileUpload": {
+              "multipart": true,
+              "CURLFile": "Secure file handling"
+            }
+          },
+          "errorTracking": {
+            "httpCode": "Response status tracking",
+            "curlError": "Detailed error messages",
+            "responseBody": "Raw response capture"
+          }
+        },
+        "Request": {
+          "purpose": "Request data container",
+          "properties": {
+            "requestedUrl": "Sanitized URL",
+            "requestMethod": "Validated HTTP method",
+            "userMachine": "User agent info",
+            "remoteAddress": "Client IP",
+            "queryString": "Raw query string",
+            "authorizationHeader": "Auth header data",
+            "post": "POST data",
+            "get": "GET data",
+            "put": "PUT data",
+            "patch": "PATCH data",
+            "files": "Uploaded files"
+          }
+        }
+      }
+    },
+
+    "security": {
+      "cryptography": {
+        "CryptHelper": {
+          "purpose": "Encryption and hashing operations",
+          "algorithms": {
+            "passwordHashing": "Argon2i",
+            "encryption": "AES-256-CBC",
+            "hmac": "SHA256"
+          },
+          "methods": {
+            "hashPassword": {
+              "purpose": "Secure password hashing",
+              "parameters": {
+                "password": "string",
+                "return": "string"
+              },
+              "returns": "string"
+            },
+            "passwordVerify": "Password verification",
+            "encryptString": "String encryption with HMAC",
+            "decryptString": "String decryption with HMAC verification"
+          },
+          "features": {
+            "name": {
+              "purpose": "Description",
+              "parameters": {},
+              "returns": "",
+              "examples": [],
+              "errors": []
+            }
+          }
+        }
+      },
+      "fileOperations": {
+        "FileHelper": {
+          "purpose": "Secure file operations",
+          "features": [
+            "Path traversal prevention",
+            "Encryption support",
+            "Base64 encoding/decoding",
+            "Secure file movement"
+          ],
+          "securityChecks": [
+            "Directory existence validation",
+            "Shell command injection prevention",
+            "File permission verification"
+          ],
+          "implementation_details": {
+            "name": {
+              "purpose": "Description",
+              "parameters": {},
+              "returns": "",
+              "examples": [],
+              "errors": []
+            }
+          }
+        }
+      },
+      "inputSanitization": {
+        "strategies": {
+          "headers": {
+            "method": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
+            "recursive": true
+          },
+          "files": {
+            "nameValidation": "/^[a-zA-Z0-9_.-]+$/",
+            "mimeValidation": "fileinfo extension"
+          }
+        },
+        "features": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      },
+      "encryption": {
+        "fileEncryption": {
+          "algorithm": "AES-256-CBC",
+          "keyDerivation": "SHA256",
+          "ivLength": 16,
+          "hmacAlgorithm": "SHA256",
+          "hmacPosition": "After IV, before ciphertext"
+        },
+        "features": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      }
+    },
+
+    "helpers": {
+      "ImageHelper": {
+        "purpose": "Image processing and security",
+        "mainFeatures": [
+          "WebP conversion",
+          "Quality optimization"
+        ],
+        "supportedFormats": ["JPEG", "PNG", "GIF", "WebP"],
+        "securityMeasures": [
+          "MIME type validation",
+          "Path traversal prevention",
+          "Size validation"
+        ],
+        "qualityControl": {
+          "jpeg": "1-100 quality scale",
+          "png": "0-9 compression level",
+          "webp": "0-100 quality scale"
+        },
+        "inheritance": "Shares core functionality with FileHelper",
+        "additionalSecurity": {
+          "mimeValidation": "getimagesize() verification",
+          "formatValidation": "Supported format checking",
+          "resolutionLimits": "Image dimension validation"
+        },
+        "implementation": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {}
+          }
+        },
+        "imageProcessing": {
+          "formats": {
+            "jpeg": {
+              "quality": "1-100 scale",
+              "default": 75
+            },
+            "png": {
+              "quality": "0-9 scale",
+              "default": 9
+            },
+            "webp": {
+              "quality": "0-100 scale",
+              "default": 80,
+              "lossless": "Optional for PNG conversion"
+            }
+          },
+          "validation": {
+            "gd": "Extension check",
+            "mime": "getimagesize verification",
+            "memory": "Resource cleanup"
+          }
+        }
+      },
+      "TypeChecker": {
+        "purpose": "Data type validation",
+        "supportedTypes": [
+          "string", "int", "float", "bool", "array",
+          "email", "url", "date", "datetime", "json",
+          "ip", "ipv4", "ipv6", "integer", "number",
+          "double", "boolean", "object", "callable",
+          "resource", "null"
+        ],
+        "validationOptions": {
+          "string": {
+            "minLength": "Minimum length check",
+            "maxLength": "Maximum length check",
+            "regex": "Pattern matching"
+          },
+          "number": {
+            "min": "Minimum value",
+            "max": "Maximum value"
+          },
+          "date": {
+            "format": "Custom format support",
+            "defaultFormat": "Y-m-d"
+          },
+          "datetime": {
+            "format": "Custom format support",
+            "defaultFormat": "Y-m-d H:i:s"
+          }
+        },
+        "options": {
+          "datetime": {
+            "defaultFormat": "Y-m-d H:i:s",
+            "customFormats": "Configurable"
+          },
+          "string": {
+            "regex": "Custom pattern matching",
+            "length": "Min/max validation"
+          },
+          "number": {
+            "range": "Min/max bounds",
+            "type": "Integer/float validation"
+          }
+        },
+        "errorHandling": "Returns boolean, no exceptions thrown",
+        "features": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      },
+      "StringHelper": {
+        "purpose": "String manipulation and validation",
+        "methods": {
+          "randomString": "Secure random string generation",
+          "makeWebName": {
+            "features": [
+              "UTF-8 support",
+              "European character handling",
+              "URL-safe conversion",
+              "Length limiting",
+              "Multiple dash prevention"
+            ],
+            "characterMappings": {
+              "umlauts": {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"},
+              "accents": {"á": "a", "à": "a", "ã": "a", "...": "..."}
+            },
+            "implementation_details": {
+              "name": {
+                "purpose": "Description",
+                "parameters": {},
+                "returns": "",
+                "examples": [],
+                "errors": []
+              }
+            }
+          },
+          "safeURL": "URL validation and sanitization",
+          "safeEmail": "Email validation and normalization",
+          "capitalizeAfterSpace": "Capitalize words in string",
+          "sanitizedString": {
+            "purpose": "Input sanitization",
+            "pattern": "/^[a-zA-Z0-9_\\-\\/\\(\\);,.,äÄöÖüÜß  ]{1,255}$/",
+            "maxLength": 255
+          },
+          "implementation_details": {
+            "name": {
+              "purpose": "Description",
+              "parameters": {},
+              "returns": "",
+              "examples": [],
+              "errors": []
+            }
+          }
+        },
+        "implementation_details": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      },
+      "TypeHelper": {
+        "purpose": "Type utilities and conversions",
+        "methods": {
+          "justInt": "Integer validation",
+          "justIntPositive": "Positive integer validation",
+          "guid": "GUID generation using OpenSSL",
+          "timeStamp": "Unix timestamp formatting",
+          "getNonNullableProperties": "Object property analysis",
+          "getClassPublicFunctions": "Method reflection"
+        },
+        "features": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      },
+      "JsonHelper": {
+        "purpose": "JSON validation and processing",
+        "methods": {
+          "validateJsonStringReturnArray": "JSON to array conversion",
+          "validateJsonStringReturnObject": "JSON to object conversion",
+          "validateJson": "JSON string validation",
+          "encodeToJson": "Safe JSON encoding"
+        },
+        "features": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      },
+      "WebHelper": {
+        "purpose": "Web server detection",
+        "supportedServers": [
+          "Apache",
+          "swoole",
+          "nginx"
+        ],
+        "errorHandling": "Logs server detection failure to error_log"
+      }
+    },
+
+    "email": {
+      "GemSMTP": {
+        "purpose": "Secure email handling",
+        "features": [
+          "TLS support",
+          "File attachment validation",
+          "Content security",
+          "HTML sanitization",
+          {
+            "name": {
+              "purpose": "Description",
+              "parameters": {},
+              "returns": "",
+              "examples": [],
+              "errors": []
+            }
+          }
+        ],
+        "securityLimits": {
+          "maxFileSize": 10485760,
+          "maxContentSize": 26214400,
+          "maxRetries": 3,
+          "retryDelay": 2,
+          "allowedLanguages": ["en", "de", "fr", "es", "..."]
+        },
+        "contentSecurity": {
+          "blacklist": [
+            "<script", "javascript:", "data:",
+            "onclick", "expression("
+          ],
+          "sanitization": "HTML special chars encoding"
+        },
+        "sslConfiguration": {
+          "verifyPeer": true,
+          "verifyPeerName": true,
+          "allowSelfSigned": false,
+          "minTlsVersion": "TLSv1.2",
+          "disableCompression": true,
+          "sniEnabled": true,
+          "verifyDepth": 5
+        },
+        "retryMechanism": {
+          "maxAttempts": 3,
+          "delaySeconds": 2,
+          "exponentialBackoff": false
+        },
+        "contentValidation": {
+          "htmlRequired": "Must contain <html> tags",
+          "encodingCheck": "UTF-8 validation",
+          "sizeLimits": {
+            "subject": 998,
+            "attachment": "10MB",
+            "totalContent": "25MB"
+          }
+        },
+        "implementation_details": {
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      }
+    },
+
+    "ai": {
+      "ChatGptClient": {
+        "purpose": "OpenAI API integration",
+        "features": {
+          "authentication": "Bearer token support",
+          "endpoints": ["chat/completion"],
+          "messageFormatting": {
+            "system": "Context setting",
+            "user": "Query handling"
+          },
+          "name": {
+            "purpose": "Description",
+            "parameters": {},
+            "returns": "",
+            "examples": [],
+            "errors": []
+          }
+        }
+      }
+    }
+  },
+
+  "errorHandling": {
+    "patterns": {
+      "database": {
+        "connection": "Check credentials and server status",
+        "query": "Validate query syntax and parameters",
+        "deadlock": "Implement retry mechanism"
+      },
+      "file": {
+        "permissions": "Verify directory permissions",
+        "existence": "Check file path validity",
+        "encryption": "Validate encryption key presence"
+      },
+      "http": {
+        "validation": "Check request payload format",
+        "authentication": "Verify token validity",
+        "authorization": "Check access rights"
+      }
+    },
+    "responseStrategy": {
+      "client": "Return appropriate HTTP status with message",
+      "server": "Log error details, return generic message",
+      "security": "Log attempt, return 403 without details"
+    },
+    "database": {
+      "deadlockRetry": {
+        "attempts": 3,
+        "delay": "2 seconds"
+      },
+      "connectionTimeout": {
+        "default": "10 seconds",
+        "configurable": true
+      }
+    }
+  },
+
+  "bestPractices": {
+    "security": [
+      "Always use parameterized queries",
+      "Validate file types before processing",
+      "Implement rate limiting",
+      "Use HTTPS for API calls"
+    ],
+    "performance": [
+      "Implement connection pooling",
+      "Use prepared statements",
+      "Optimize file operations",
+      "Cache frequent queries"
+    ],
+    "errorHandling": [
+      "Implement retry mechanisms",
+      "Log detailed errors",
+      "Return consistent error responses",
+      "Validate input early"
+    ]
+  },
+
+  "commonUseCases": {
+    "authentication": {
+      "implementation": "Use CryptHelper for password handling",
+      "tokenManagement": "Implement in authorization header",
+      "sessionHandling": "Stateless with JWT recommended"
+    },
+    "fileUploads": {
+      "implementation": "Use FileHelper with encryption",
+      "validation": "Check MIME types and size limits",
+      "storage": "Implement secure path construction"
+    },
+    "apiEndpoints": {
+      "structure": "Use JsonResponse for consistency",
+      "validation": "Implement TypeChecker for inputs",
+      "security": "Apply input sanitization"
+    }
+  },
+
+  "environmentConfiguration": {
+    "required": {
+      "database": {
+        "DB_HOST": "Database host",
+        "DB_PORT": "Database port",
+        "DB_NAME": "Database name",
+        "DB_CHARSET": "Database charset",
+        "DB_USER": "Database username",
+        "DB_PASSWORD": "Database password",
+        "QUERY_LIMIT": "Default query limit"
+      },
+      "authentication": {
+        "TOKEN_SECRET": "JWT secret key",
+        "TOKEN_ISSUER": "Token issuer name",
+        "REFRESH_TOKEN_VALIDATION_IN_SECONDS": "Refresh token lifetime",
+        "ACCESS_TOKEN_VALIDATION_IN_SECONDS": "Access token lifetime"
+      },
+      "routing": {
+        "SERVICE_IN_URL_SECTION": "Service route position",
+        "METHOD_IN_URL_SECTION": "Method route position"
+      }
+    }
+  },
+
+  "securityImplementations": {
+    "inputValidation": {
+      "request": "Multi-layer sanitization",
+      "files": "MIME and size validation",
+      "database": "Prepared statements"
+    },
+    "encryption": {
+      "symmetric": "AES-256-CBC with HMAC",
+      "passwords": "Argon2i hashing",
+      "files": "Encrypted storage"
+    },
+    "authentication": {
+      "tokens": "JWT with refresh mechanism",
+      "passwords": "Secure hashing and verification"
+    },
+    "shellCommands": {
+      "escapeshellarg": "Used in file operations",
+      "realpath": "Path traversal prevention",
+      "directoryValidation": "Existence and permission checks"
+    },
+    "sanitization": {
+      "headers": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
+      "urls": "FILTER_SANITIZE_URL",
+      "recursiveSanitization": "Nested array handling"
+    },
+    "implementation_details": {
+      "name": {
+        "purpose": "Description",
+        "parameters": {},
+        "returns": "",
+        "examples": [],
+        "errors": []
+      }
+    }
+  },
+
+  "performance": {
+    "database": {
+      "connectionPool": {
+        "persistent": true,
+        "options": {
+          "ATTR_PERSISTENT": true,
+          "ATTR_EMULATE_PREPARES": false
+        }
+      },
+      "caching": {
+        "preparedStatements": "Statement reuse",
+        "connectionPool": "Persistent connections"
+      }
+    },
+    "fileOperations": {
+      "imageProcessing": {
+        "webpConversion": {
+          "quality": "0-100 scale",
+          "lossless": "Optional for PNG conversion"
+        },
+        "memoryManagement": {
+          "imageDestroy": "Immediate resource release",
+          "streamProcessing": "Large file handling"
+        }
+      },
+      "caching": {
+        "bufferSize": "Optimal chunk size for operations",
+        "streamProcessing": "Memory-efficient handling"
+      }
+    }
+  },
+
+  "integrationPatterns": {
+    "microservices": {
+      "authentication": {
+        "tokenBased": "JWT implementation",
+        "headerFormat": "Bearer {token}"
+      },
+      "communication": {
+        "json": "Standardized response format",
+        "statusCodes": "Consistent HTTP codes",
+        "errorHandling": "Uniform error responses"
+      }
+    }
+  },
+
+  "dependencies": {
+    "required": {
+      "firebase/php-jwt": {
+        "version": "^6.8",
+        "purpose": "JWT token handling"
+      },
+      "phpmailer/phpmailer": {
+        "version": "^6.8",
+        "purpose": "Email functionality base"
+      },
+      "symfony/dotenv": {
+        "version": "^7.0",
+        "purpose": "Environment configuration"
+      }
+    },
+    "development": {
+      "phpstan/phpstan": {
+        "version": "^2.1",
+        "purpose": "Static analysis tool"
+      }
+    }
+  },
+  "autoloading": {
+    "psr-4": {
+      "GemLibrary\\": "src/",
+      "Gemvc\\Database\\": "src/database/",
+      "Gemvc\\Database\\Query\\": "src/database/query/",
+      "Gemvc\\Email\\": "src/email/",
+      "Gemvc\\Helper\\": "src/helper/",
+      "Gemvc\\Http\\": "src/http/"
+    },
+    "files": ["src/database/SqlEnumCondition.php"]
+  },
+  "errorMapping": {
+    "database": {
+      "connectionErrors": {
+        "SQLSTATE[28000]": "Invalid credentials",
+        "SQLSTATE[HY000]": "Connection failed",
+        "2002": "Server not found",
+        "2006": "Server gone away"
+      },
+      "queryErrors": {
+        "23000": "Duplicate entry",
+        "42S02": "Table not found",
+        "42000": "Syntax error"
+      }
+    },
+    "file": {
+      "operations": {
+        "UPLOAD_ERR_INI_SIZE": "File exceeds upload_max_filesize",
+        "UPLOAD_ERR_NO_FILE": "No file uploaded",
+        "UPLOAD_ERR_PARTIAL": "Partial upload"
+      }
+    },
+    "http": {
+      "200": "success()",
+      "201": "created()",
+      "209": "updated()",
+      "210": "deleted()",
+      "400": "badRequest()",
+      "401": "unauthorized()",
+      "403": "forbidden()",
+      "404": "notFound()",
+      "500": "internalError()",
+      "clientErrors": {
+        "400": "badRequest() - Invalid request format",
+        "401": "unauthorized() - Missing or invalid authentication",
+        "403": "forbidden() - Insufficient permissions",
+        "404": "notFound() - Resource not available",
+        "406": "notAcceptable() - Unsupported response format",
+        "409": "conflict() - Resource state conflict",
+        "415": "unsupportedMediaType() - Invalid content type",
+        "422": "unprocessableEntity() - Validation failed"
+      },
+      "serverErrors": {
+        "500": "internalError() - Server processing error",
+        "503": "serviceUnavailable() - Temporary server issue"
+      }
+    }
+  },
+
+  "examples": {
+    "database": {
+      "complexQuery": {
+        "code": "QueryBuilder::select('u.id', 'u.name', 'p.profile')\n  ->from('users', 'u')\n  ->leftJoin('profiles p ON p.user_id = u.id')\n  ->whereEqual('status', 'active')\n  ->whereBetween('created_at', $start, $end)\n  ->orderBy('u.name')\n  ->limit(10)\n  ->run($pdoQuery)",
+        "explanation": "Complex query with joins, conditions, and pagination"
+      }
+    },
+    "security": {
+      "fileEncryption": {
+        "code": "$file = new FileHelper($source, $destination);\n$file->secret = $encryptionKey;\n$file->moveAndEncrypt();",
+        "explanation": "Secure file movement with encryption"
+      }
+    },
+    "fullApiEndpoint": {
+      "code": [
+        "class UserController {",
+        "    public function create(ApacheRequest $request) {",
+        "        $data = $request->post;",
+        "        // Validation and processing",
+        "        return (new JsonResponse())->created($user);",
+        "    }",
+        "}"
+      ],
+      "explanation": "Complete API endpoint with request handling and response"
+    }
+  },
+
+  "integration": {
+    "microservices": {
+      "authentication": {
+        "flow": [
+          "Client sends credentials",
+          "Server validates using CryptHelper",
+          "JWT token generated",
+          "Token returned in JsonResponse",
+          "Subsequent requests use Authorization header"
+        ]
+      },
+      "fileHandling": {
+        "flow": [
+          "File uploaded through ApacheRequest",
+          "FileHelper validates and moves",
+          "Optional encryption applied",
+          "ImageHelper processes if image",
+          "Response includes file metadata"
+        ]
+      }
+    }
+  },
+
+  "classRelationships": {
+    "ImageHelper": {
+      "extends": "FileHelper",
+      "shared": ["move", "copy", "delete", "encrypt", "decrypt"]
+    },
+    "QueryBuilder": {
+      "implements": "QueryBuilderInterface",
+      "required": ["run"]
+    }
+  },
+
+  "versionControl": {
+    "stability": "stable",
+    "minimumStability": "stable",
+    "branches": {
+      "main": "Production ready code",
+      "develop": "Development branch"
+    },
+    "changelog": {
+      "3.27.8": {
+        "date": "2024-03-15",
+        "changes": [
+          "Added WebP support",
+          "Enhanced security features"
+        ]
+      }
+    }
+  },
+
+  "configurationTemplates": {
+    "env": {
+      "development": {
+        "template": ".env.development",
+        "settings": {}
+      },
+      "production": {
+        "template": ".env.production",
+        "settings": {}
+      }
+    }
+  }
+}

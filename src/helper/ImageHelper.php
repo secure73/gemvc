@@ -4,7 +4,7 @@ namespace Gemvc\Helper;
 
 use GdImage;
 
-class FileHelper
+class ImageHelper
 {
     public string $sourceFile;
     public string $outputFile;

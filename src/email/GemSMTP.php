@@ -16,10 +16,10 @@ final class GemSMTP
     private string $defaultLanguage;
     private int $maxSubjectLength;
     private string $smtpHost;
-    private const MAX_FILE_SIZE = 10485760; // 10MB in bytes
-    private const MAX_CONTENT_SIZE = 26214400; // 25MB in bytes
+    private const MAX_FILE_SIZE = 10485760;    // 10MB
+    private const MAX_CONTENT_SIZE = 26214400; // 25MB
     private const MAX_RETRIES = 3;
-    private const RETRY_DELAY = 2; // seconds
+    private const RETRY_DELAY = 2;
     
     private const ALLOWED_LANGUAGES = [
         'ar', 'az', 'ba', 'bg', 'bs', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'et', 
