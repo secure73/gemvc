@@ -23,7 +23,7 @@
 
 ## AI Integration
 
-This project includes an `AIAssist.jsonc` file that provides comprehensive metadata about the framework's structure, components, and functionality. This file is designed to help AI assistants better understand and work with the codebase.
+This project includes an `AIAssist.jsonc` and `GEMVCLibraryAPIReference.json` files that provides comprehensive metadata about the framework's structure, components, and functionality. This file is designed to help AI assistants better understand and work with the codebase.
 
 ### AIAssist.jsonc Structure
 

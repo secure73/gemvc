@@ -32,7 +32,9 @@ $file->moveAndEncrypt();  // AES-256-CBC + HMAC verification 🔐
 ```
 
 ### 🤖 AI-Ready Framework
-- **Built-in AI Support**: Comprehensive `AIAssist.jsonc` for enhanced AI understanding
+- **Dual AI Support**: 
+  - `AIAssist.jsonc`: Real-time AI coding assistance
+  - `GEMVCLibraryAPIReference.json`: Comprehensive API documentation
 - **Smart Code Completion**: AI tools understand our library structure
 - **Intelligent Debugging**: Better error analysis and fixes
 - **Future-Ready**: Ready for emerging AI capabilities

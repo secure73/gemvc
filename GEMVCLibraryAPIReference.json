@@ -1,0 +1,270 @@
+{
+  "libraryName": "GEMVC Library",
+  "version": "3.27.8",
+  "description": "A lightweight PHP library for building microservice-based RESTful APIs.",
+  "author": "Ali Khorsandfard <ali.khorsandfard@gmail.com>",
+  "repository": "https://github.com/secure73/gemvc",
+  "phpVersion": ">=8.0",
+  "requiredExtensions": ["pdo", "openssl", "gd"],
+  "architecture": "Microservice-based RESTful API",
+  "components": {
+    "database": {
+      "description": "Handles database interactions with PDO.",
+      "classes": {
+        "PdoConnection": {
+          "description": "Manages database connections and provides connection pooling.",
+          "methods": {
+            "connect": {
+              "description": "Establishes a database connection.",
+              "returns": "\\PDO|null",
+              "throws": ["DatabaseException"],
+              "example": "$pdo = (new PdoConnection())->connect();"
+            },
+            "isConnected": {
+              "description": "Checks if a database connection is active.",
+              "returns": "bool",
+              "example": "$isConnected = (new PdoConnection())->isConnected();"
+            },
+            "getError": {
+              "description": "Returns the last database error message.",
+              "returns": "string|null",
+              "example": "$error = (new PdoConnection())->getError();"
+            }
+          },
+          "errorHandling": {
+            "connectionFailed": "Check credentials and server status.",
+            "sqlExceptions": "Handle PDOExceptions for connection and query issues."
+          }
+        },
+        "QueryBuilder": {
+          "description": "Provides a fluent interface for constructing SQL queries.",
+          "methods": {
+            "select": {
+              "description": "Creates a SELECT query.",
+              "parameters": ["string ...$columns"],
+              "returns": "Select",
+              "example": "$query = QueryBuilder::select('id', 'name')->from('users');"
+            },
+            "insert": {
+              "description": "Creates an INSERT query.",
+              "parameters": ["string $table"],
+              "returns": "Insert",
+              "example": "$query = QueryBuilder::insert('users')->columns('name', 'email')->values('John Doe', 'john@example.com');"
+            },
+             "update": {
+              "description": "Creates an UPDATE query.",
+              "parameters": ["string $table"],
+              "returns": "Update",
+              "example": "$query = QueryBuilder::update('users')->set('status', 'active')->whereEqual('id', 1);"
+            },
+            "delete": {
+              "description": "Creates a DELETE query.",
+              "parameters": ["string $table"],
+              "returns": "Delete",
+              "example": "$query = QueryBuilder::delete('users')->whereEqual('id', 1);"
+            }
+          },
+          "features": {
+            "parameterBinding": "Automatic type-safe parameter binding.",
+            "joinSupport": ["leftJoin", "innerJoin"],
+            "whereConditions": ["whereEqual", "whereLike", "whereBetween", "whereNull"]
+          }
+        },
+        "QueryExecuter": {
+          "description": "Executes SQL queries built by QueryBuilder.",
+          "methods": {
+            "execute": {
+              "description": "Executes the SQL query.",
+              "parameters": ["\\PDO $pdo"],
+              "returns": "mixed",
+              "throws": ["\\PDOException"],
+              "example": "$result = (new QueryBuilder(...))->run($pdo);"
+            }
+          },
+          "features": {
+            "parameterBinding": "Automatic type detection.",
+            "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
+          }
+        },
+        "SqlEnumCondition": {
+          "description": "Defines constants for SQL conditions.",
+          "constants": ["Equal", "Bigger", "Less", "Like", "IsNull", "NotNull"]
+        }
+      }
+    },
+    "http": {
+      "description": "Handles HTTP requests and responses.",
+      "classes": {
+        "ApacheRequest": {
+          "description": "Processes incoming HTTP requests and sanitizes input.",
+          "properties": {
+            "request": {
+              "type": "Request",
+              "description": "Contains request data (GET, POST, PUT, etc.)."
+            }
+          },
+          "methods": {
+            "getPost": {
+              "description": "Returns sanitized POST data.",
+              "returns": "array"
+            },
+            "getQuery": {
+              "description": "Returns sanitized GET parameters.",
+              "returns": "array"
+            }
+          },
+          "security": {
+            "inputSanitization": "Uses FILTER_SANITIZE_* functions.",
+            "xssPrevention": "Escapes special characters."
+          }
+        },
+        "JsonResponse": {
+          "description": "Provides a standardized format for API responses.",
+          "methods": {
+            "success": {
+              "description": "Returns a success response with data.",
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse",
+              "example": "return (new JsonResponse())->success(['message' => 'OK'], 1);"
+            },
+            "error": {
+              "description": "Returns an error response.",
+              "parameters": ["string $message", "int $statusCode"],
+              "returns": "JsonResponse",
+              "example": "return (new JsonResponse())->error('Not found', 404);"
+            }
+          },
+          "statusCodes": {
+            "200": "OK",
+            "201": "Created",
+            "400": "Bad Request",
+            "404": "Not Found",
+            "500": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "email": {
+      "description": "Handles email sending with SMTP.",
+      "classes": {
+        "GemSMTP": {
+          "description": "Sends emails with attachments and embedded images.",
+          "methods": {
+            "createMail": {
+              "description": "Creates a new email message.",
+              "parameters": ["string $receiverEmail", "string $receiverName", "string $subject", "string $htmlContent"],
+              "returns": "bool",
+              "example": "$mail = (new GemSMTP())->createMail('user@example.com', 'John Doe', 'Hello', '<p>Hello!</p>');"
+            },
+            "addAttachment": {
+              "description": "Adds an attachment to the email.",
+              "parameters": ["string $filePath", "string $showName"],
+              "returns": "bool"
+            },
+            "send": {
+              "description": "Sends the email.",
+              "returns": "bool"
+            }
+          },
+          "configuration": {
+            "maxFileSize": "10MB",
+            "maxContentSize": "25MB",
+            "retryAttempts": 3
+          }
+        }
+      }
+    },
+    "helper": {
+      "description": "Provides utility classes for common tasks.",
+      "classes": {
+        "FileHelper": {
+          "description": "Provides secure file operations with encryption support.",
+          "methods": {
+            "moveAndEncrypt": {
+              "description": "Moves and encrypts a file.",
+              "parameters": ["string $sourceFile", "string $destinationFile", "string $encryptionKey"],
+              "returns": "bool",
+              "example": "$file = new FileHelper('temp.txt', 'secure.dat'); $file->moveAndEncrypt('secretkey');"
+            },
+            "getFileSize": {
+              "description": "Returns the human-readable file size.",
+              "parameters": ["string $filePath"],
+              "returns": "string"
+            }
+          }
+        },
+        "ImageHelper": {
+          "description": "Provides image processing functionalities.",
+          "methods": {
+            "convertToWebP": {
+              "description": "Converts an image to WebP format.",
+              "parameters": ["string $sourceFile", "string $destinationFile", "int $quality"],
+              "returns": "bool",
+              "example": "$image = new ImageHelper('image.png', 'image.webp'); $image->convertToWebP(80);"
+            }
+          }
+        },
+        "StringHelper": {
+          "description": "Provides string manipulation and validation methods.",
+          "methods": {
+            "randomString": {
+              "description": "Generates a secure random string.",
+              "parameters": ["int $length"],
+              "returns": "string",
+              "example": "$token = StringHelper::randomString(32);"
+            },
+            "safeEmail": {
+              "description": "Validates and sanitizes an email address.",
+              "parameters": ["string $email"],
+              "returns": "string|null"
+            }
+          }
+        },
+        "TypeChecker": {
+          "description": "Provides data type validation.",
+          "methods": {
+            "check": {
+              "description": "Checks if a value matches a given type.",
+              "parameters": ["string $type", "mixed $value", "array $options"],
+              "returns": "bool",
+              "example": "if (TypeChecker::check('email', 'user@example.com')) { ... }"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": {
+    "inputSanitization": "Uses FILTER_SANITIZE_* functions and custom validation.",
+    "encryption": "AES-256-CBC for symmetric encryption, Argon2i for password hashing.",
+    "fileHandling": "Prevents path traversal and shell command injection."
+  },
+  "bestPractices": [
+    "Use parameterized queries to prevent SQL injection.",
+    "Validate all user inputs.",
+    "Implement proper error handling and logging."
+  ],
+  "fileLocations": {
+    "sourceCode": "src/",
+    "documentation": "Documentation.md",
+    "aiAssistFile": "AIAssist.jsonc"
+  },
+  "dependencies": {
+    "required": {
+      "firebase/php-jwt": "^6.8",
+      "phpmailer/phpmailer": "^6.8",
+      "symfony/dotenv": "^7.0"
+    },
+    "development": {
+      "phpstan/phpstan": "^2.1"
+    }
+  },
+  "autoloading": {
+    "psr-4": {
+      "App\\Api\\": "app/api/",
+      "App\\Controller\\": "app/controller/",
+      "App\\Model\\": "app/model/",
+      "App\\Table\\": "app/table/"
+    }
+  }
+}
