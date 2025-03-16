@@ -1,12 +1,12 @@
 {
-  "framework": {
-    "name": "GEMVC",
+  "library": {
+    "name": "GEMVC Library",
     "version": "3.27.8",
     "author": "Ali Khorsandfard <ali.khorsandfard@gmail.com>",
     "github": "https://github.com/secure73/gemvc",
     "phpVersion": ">=8.0",
     "requiredExtensions": ["pdo", "openssl", "gd"],
-    "architecture": "microservice-based RESTful API framework"
+    "architecture": "microservice-based RESTful API Library"
   },
 
   "coreComponents": {
@@ -984,6 +984,26 @@
       "production": {
         "template": ".env.production",
         "settings": {}
+      }
+    }
+  },
+
+  "fileLocations": {
+    "sourceCode": {
+      "path": "src/",
+      "directories": {
+        "database": "src/database/",
+        "http": "src/http/",
+        "email": "src/email/",
+        "helper": "src/helper/"
+      }
+    },
+    "documentation": {
+      "path": "./",
+      "files": {
+        "aiAssist": "AIAssist.jsonc",
+        "documentation": "Documentation.md",
+        "readme": "README.md"
       }
     }
   }
