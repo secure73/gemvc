@@ -111,6 +111,8 @@ class Request
     }
 
     /**
+     * if is empty $authRules then it will check if the user is authenticated
+     * if $authRules is not empty then it will check if the user is authenticated and authorized
      * @param array<string> $authRules
      * @return bool
      */
