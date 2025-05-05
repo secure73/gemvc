@@ -210,6 +210,381 @@ class JsonResponse {
 }
 ```
 
+#### Request
+A comprehensive HTTP request handler with validation, authentication, and error handling capabilities.
+
+```php
+class Request {
+    // Key Properties
+    public null|string|array $authorizationHeader;  // Authorization header value
+    public array $post;                             // POST data
+    public null|array $put;                         // PUT data
+    public null|array $patch;                       // PATCH data 
+    public string|array $get;                       // GET parameters
+    public null|array $files;                       // Uploaded files
+    public string $requestedUrl;                    // Current URL
+    public ?string $requestMethod;                  // HTTP method (GET, POST, etc.)
+    public bool $isAuthenticated;                   // Authentication status
+    public bool $isAuthorized;                      // Authorization status
+    public ?JsonResponse $response;                 // Response object for error states
+    public ?string $error;                          // Error message if present
+    
+    // Authentication & Authorization
+    public function auth(array $authRules=null): bool                   // Authenticate and authorize request
+    public function userRole(): null|string                             // Get authenticated user's role
+    public function userId(): null|int                                  // Get authenticated user's ID
+    
+    // Request Data Validation
+    public function definePostSchema(array $toValidatePost): bool       // Validate POST data
+    public function defineGetSchema(array $toValidateGet): bool         // Validate GET data
+    public function definePutSchema(array $toValidatePut): bool         // Validate PUT data 
+    public function definePatchSchema(array $toValidatePatch): bool     // Validate PATCH data
+    
+    // Data Mapping Methods
+    public function mapPostToObject(object $object, array $manualMap = null): null|object // Map POST data to object
+    public function mapPutToObject(object $object, array $manualMap = null): null|object  // Map PUT data to object
+    
+    // API Request Forwarding
+    public function forwardPost(string $remoteApiUrl, string $authorizationHeader = null): JsonResponse // Forward POST request
+    
+    // Query Parameter Helpers
+    public function filterable(array $searchableGetValues): bool        // Handle filterable parameters
+    public function findable(array $filterableGetValues): bool          // Handle findable parameters
+    public function sortable(array $sortableGetValues): bool            // Handle sortable parameters
+    public function setPageNumber(): bool                               // Set page number for pagination
+    public function setPerPage(): bool                                  // Set items per page
+    
+    // String Validation
+    public function validateStringPosts(array $stringPosts): bool       // Validate string lengths
+}
+```
+
+##### Authentication and Authorization
+The Request class provides built-in JWT-based authentication:
+
+```php
+// Simple authentication
+if (!$request->auth()) {
+    return $response->unauthorized();
+}
+
+// Role-based authorization
+if (!$request->auth(['admin', 'editor'])) {
+    return $response->forbidden();
+}
+
+// Getting user info
+$userId = $request->userId();
+$userRole = $request->userRole();
+```
+
+##### Data Validation
+Schema-based validation ensures request data matches expected format:
+
+```php
+// Validate POST data
+if (!$request->definePostSchema([
+    'email' => 'email',          // Required email field
+    'name' => 'string',          // Required string field
+    '?bio' => 'string',          // Optional string field
+    'age' => 'int'               // Required integer field
+])) {
+    return $request->returnResponse(); // Returns error response automatically set by validation
+}
+
+// Validate string lengths
+if (!$request->validateStringPosts([
+    'username' => '3|15',        // Min length 3, max length 15
+    'password' => '8|',          // Min length 8, no max limit
+    'nickname' => '|20',         // No min limit, max length 20
+])) {
+    return $request->returnResponse();
+}
+```
+
+##### Mapping Request Data to Objects
+The Request class can automatically map request data to object properties:
+
+```php
+// Map all POST data to user object
+$user = $request->mapPostToObject(new User());
+if (!$user) {
+    return $request->returnResponse(); // Error during mapping
+}
+
+// Selective mapping with manual field selection
+$user = $request->mapPostToObject(new User(), ['username', 'email']);
+```
+
+##### Query Parameter Processing
+The Request class provides methods to handle filtering, sorting, and pagination:
+
+```php
+// Set up filterable fields with type validation
+$request->filterable([
+    'email' => 'email',
+    'status' => 'string',
+    'age' => 'int'
+]);
+
+// Set up sortable fields
+$request->sortable(['created_at', 'name', 'id']);
+
+// Set up pagination
+$request->setPageNumber();
+$request->setPerPage();
+
+// Build query with processed parameters
+$query = QueryBuilder::select('*')
+    ->from('users');
+    
+// Apply filters
+foreach ($request->getFilterable() as $field => $value) {
+    $query->whereEqual($field, $value);
+}
+
+// Apply sorting
+if ($sortField = $request->getSortable()) {
+    $query->orderBy($sortField);
+}
+
+// Apply pagination
+$query->limit($request->getPerPage())
+    ->offset(($request->getPageNumber() - 1) * $request->getPerPage());
+```
+
+##### Forwarding Requests to External APIs
+The Request class can forward POST requests to external APIs:
+
+```php
+// Forward the current POST request to an external API
+$response = $request->forwardPost('https://api.example.com/users');
+
+// Forward with a custom authorization header
+$response = $request->forwardPost(
+    'https://api.example.com/users',
+    'Bearer ' . $apiToken
+);
+```
+
+##### Error Handling
+The Request class provides centralized error handling:
+
+```php
+// Check for validation errors
+if ($request->error) {
+    return $request->returnResponse();
+}
+
+// Manual error setting
+$request->error = "Custom error message";
+$request->response = Response::badRequest($request->error);
+return $request->returnResponse();
+```
+
+The Request class serves as the foundation for all API endpoint implementations, providing a standardized approach to input validation, authentication, and error handling across your application.
+
+#### SwooleWebSocketHandler
+A WebSocket handler for OpenSwoole with advanced features for real-time applications.
+
+```php
+class SwooleWebSocketHandler {
+    // Main Properties
+    private array $connections;                 // Active connection tracking
+    private array $channels;                    // Channel subscriptions
+    
+    // Configuration Properties
+    private int $connectionTimeout;             // Default: 300 seconds
+    private int $maxMessagesPerMinute;          // Default: 60 messages/minute
+    private int $heartbeatInterval;             // Default: 30 seconds
+    
+    // Constructor and initialization
+    public function __construct(array $config = [])  // Initialize with optional configuration
+    public function registerHeartbeat(\Swoole\WebSocket\Server $server): void  // Setup heartbeat timers
+    
+    // WebSocket Event Handlers
+    public function onOpen($server, $request)   // Handle new connections
+    public function onMessage($server, $frame)  // Process incoming messages
+    public function onClose($server, $fd)       // Handle disconnections
+    
+    // Channel Operations
+    private function handleSubscribe($server, $fd, Request $request)    // Process channel subscriptions
+    private function handleUnsubscribe($server, $fd, Request $request)  // Process channel unsubscribes
+    private function handleMessage($server, $fd, Request $request)      // Process and broadcast messages
+}
+```
+
+##### Key Features
+
+1. **Connection Management**
+   - Automatic tracking and cleanup of inactive connections
+   - Configurable connection timeout (default: 300 seconds)
+   - Event-based connection lifecycle handling
+
+2. **Rate Limiting**
+   - Per-client message rate limiting
+   - Configurable message limits (default: 60 messages per minute)
+   - Automatic throttling with informative client feedback
+
+3. **Heartbeat Mechanism**
+   - Automatic ping/pong protocol implementation
+   - Configurable heartbeat interval (default: 30 seconds)
+   - Detection and cleanup of broken connections
+
+4. **Channel-based Messaging**
+   - Publisher/subscriber messaging patterns
+   - Multi-channel subscription support
+   - Target-specific message delivery
+
+5. **Redis Integration for Scalability**
+   - Optional Redis support for multi-server deployments
+   - Distributed connection and channel tracking
+   - Scalable rate limiting across server instances
+
+##### Configuration Options
+
+```php
+$config = [
+    // Basic settings
+    'connectionTimeout' => 300,       // Seconds before inactive connections are closed
+    'maxMessagesPerMinute' => 60,     // Rate limiting threshold
+    'heartbeatInterval' => 30,        // Seconds between ping messages
+    
+    // Redis configuration (optional)
+    'redis' => [
+        'enabled' => true,            // Enable Redis integration
+        'host' => '127.0.0.1',        // Redis server hostname
+        'port' => 6379,               // Redis server port
+        'password' => 'secret',       // Redis password (if required)
+        'database' => 0,              // Redis database number
+        'prefix' => 'websocket:'      // Key prefix for Redis entries
+    ]
+];
+```
+
+##### Usage Example
+
+Server-side implementation:
+
+```php
+// Create Swoole WebSocket server
+$server = new \Swoole\WebSocket\Server('0.0.0.0', 9501);
+
+// Initialize WebSocket handler with configuration
+$handler = new SwooleWebSocketHandler([
+    'connectionTimeout' => 600,
+    'maxMessagesPerMinute' => 120
+]);
+
+// Register event handlers
+$server->on('open', [$handler, 'onOpen']);
+$server->on('message', [$handler, 'onMessage']);
+$server->on('close', [$handler, 'onClose']);
+
+// Start heartbeat mechanism
+$handler->registerHeartbeat($server);
+
+// Start server
+$server->start();
+```
+
+Client-side JavaScript implementation:
+
+```javascript
+// Create WebSocket connection
+const socket = new WebSocket('ws://your-server:9501');
+
+// Connection opened event
+socket.onopen = (event) => {
+    console.log('Connected to WebSocket server');
+    
+    // Subscribe to a channel
+    socket.send(JSON.stringify({
+        action: 'subscribe',
+        data: {
+            channel: 'notifications'
+        }
+    }));
+};
+
+// Handle incoming messages
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    
+    // Handle ping messages to maintain connection
+    if (data.action === 'ping') {
+        socket.send(JSON.stringify({
+            action: 'pong',
+            time: Date.now()
+        }));
+        return;
+    }
+    
+    // Handle normal messages
+    if (data.action === 'message') {
+        console.log(`Message from channel ${data.channel}: ${data.message}`);
+    }
+};
+
+// Send a message to a channel
+function sendMessage(channel, message) {
+    socket.send(JSON.stringify({
+        action: 'message',
+        data: {
+            channel: channel,
+            message: message
+        }
+    }));
+}
+```
+
+##### Message Protocol
+
+The WebSocket handler uses a simple JSON-based message protocol:
+
+**Client to Server Messages:**
+```json
+{
+    "action": "subscribe|unsubscribe|message|pong",
+    "data": {
+        // Action-specific data
+    }
+}
+```
+
+**Server to Client Messages:**
+```json
+{
+    "action": "welcome|ping|message|timeout",
+    // Action-specific data
+}
+```
+
+Common message types:
+- `subscribe`: Join a channel
+- `unsubscribe`: Leave a channel
+- `message`: Send a message to a channel
+- `ping`/`pong`: Heartbeat mechanism
+- `welcome`: Initial connection data
+- `timeout`: Connection timeout notification
+
+##### Integration with Request Class
+
+The SwooleWebSocketHandler uses the Request class for validation and authentication:
+
+```php
+// Inside handleSubscribe method
+if ($request->definePostSchema([
+    'channel' => 'string',
+    '?options' => 'array'
+])) {
+    // Valid subscription request
+    // ...
+}
+```
+
+This integration allows you to leverage the same validation, authentication, and error handling patterns used throughout your REST API in your WebSocket application.
+
 ### 3. Email System
 
 #### GemSMTP

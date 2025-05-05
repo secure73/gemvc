@@ -141,6 +141,225 @@
             "404": "Not Found",
             "500": "Internal Server Error"
           }
+        },
+        "Request": {
+          "description": "Manages HTTP request data with validation, authentication, and error handling capabilities.",
+          "properties": {
+            "post": {
+              "type": "array",
+              "description": "Contains POST data."
+            },
+            "get": {
+              "type": "array",
+              "description": "Contains GET parameters."
+            },
+            "put": {
+              "type": "array",
+              "description": "Contains PUT data."
+            },
+            "patch": {
+              "type": "array",
+              "description": "Contains PATCH data."
+            },
+            "files": {
+              "type": "array",
+              "description": "Contains uploaded files."
+            },
+            "isAuthenticated": {
+              "type": "bool",
+              "description": "Indicates if the request has been authenticated."
+            },
+            "isAuthorized": {
+              "type": "bool",
+              "description": "Indicates if the request has been authorized."
+            },
+            "error": {
+              "type": "string|null",
+              "description": "Contains error message if validation or authentication fails."
+            },
+            "response": {
+              "type": "JsonResponse|null",
+              "description": "Contains error response if validation or authentication fails."
+            }
+          },
+          "methods": {
+            "auth": {
+              "description": "Authenticates and optionally authorizes the request.",
+              "parameters": ["array $authRules = null"],
+              "returns": "bool",
+              "example": "if ($request->auth(['admin', 'editor'])) { /* authorized */ }"
+            },
+            "userRole": {
+              "description": "Returns the authenticated user's role.",
+              "returns": "string|null",
+              "example": "$role = $request->userRole();"
+            },
+            "userId": {
+              "description": "Returns the authenticated user's ID.",
+              "returns": "int|null",
+              "example": "$userId = $request->userId();"
+            },
+            "definePostSchema": {
+              "description": "Validates POST data against a schema.",
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "example": "$request->definePostSchema(['email' => 'email', 'name' => 'string', '?bio' => 'string']);"
+            },
+            "defineGetSchema": {
+              "description": "Validates GET data against a schema.",
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "example": "$request->defineGetSchema(['id' => 'int', '?search' => 'string']);"
+            },
+            "definePutSchema": {
+              "description": "Validates PUT data against a schema.",
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "example": "$request->definePutSchema(['name' => 'string', '?email' => 'email']);"
+            },
+            "definePatchSchema": {
+              "description": "Validates PATCH data against a schema.",
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "example": "$request->definePatchSchema(['?name' => 'string', '?email' => 'email']);"
+            },
+            "validateStringPosts": {
+              "description": "Validates string lengths in POST data.",
+              "parameters": ["array $stringPosts"],
+              "returns": "bool",
+              "example": "$request->validateStringPosts(['username' => '3|15', 'password' => '8|']);"
+            },
+            "mapPostToObject": {
+              "description": "Maps POST data to an object's properties.",
+              "parameters": ["object $object", "array $manualMap = null"],
+              "returns": "object|null",
+              "example": "$user = $request->mapPostToObject(new User());"
+            },
+            "mapPutToObject": {
+              "description": "Maps PUT data to an object's properties.",
+              "parameters": ["object $object", "array $manualMap = null"],
+              "returns": "object|null",
+              "example": "$user = $request->mapPutToObject(new User());"
+            },
+            "forwardPost": {
+              "description": "Forwards the current POST request to a remote API.",
+              "parameters": ["string $remoteApiUrl", "string $authorizationHeader = null"],
+              "returns": "JsonResponse",
+              "example": "$response = $request->forwardPost('https://api.example.com/users');"
+            },
+            "filterable": {
+              "description": "Handles filterable query parameters.",
+              "parameters": ["array $searchableGetValues"],
+              "returns": "bool",
+              "example": "$request->filterable(['email' => 'email', 'status' => 'string']);"
+            },
+            "findable": {
+              "description": "Handles findable query parameters.",
+              "parameters": ["array $filterableGetValues"],
+              "returns": "bool",
+              "example": "$request->findable(['name' => 'string', 'email' => 'email']);"
+            },
+            "sortable": {
+              "description": "Handles sortable query parameters.",
+              "parameters": ["array $sortableGetValues"],
+              "returns": "bool",
+              "example": "$request->sortable(['created_at', 'name', 'id']);"
+            },
+            "returnResponse": {
+              "description": "Returns the response object if set.",
+              "returns": "JsonResponse",
+              "example": "return $request->returnResponse();"
+            }
+          },
+          "features": {
+            "validation": "Schema-based validation with support for required and optional fields.",
+            "authentication": "JWT-based authentication with role verification.",
+            "objectMapping": "Maps request data to PHP objects with selective field mapping.",
+            "pagination": "Support for page_number and per_page parameters.",
+            "filtering": "Support for filter_by and find_like parameters.",
+            "sorting": "Support for sort_by and sort_by_asc parameters.",
+            "errorHandling": "Centralized error handling with consistent responses."
+          }
+        },
+        "SwooleWebSocketHandler": {
+          "description": "Manages WebSocket connections using OpenSwoole with support for real-time messaging.",
+          "requirements": {
+            "extensions": ["openswoole", "redis (optional)"]
+          },
+          "properties": {
+            "connectionTimeout": {
+              "type": "int",
+              "description": "Time in seconds before inactive connections are closed.",
+              "default": 300
+            },
+            "maxMessagesPerMinute": {
+              "type": "int",
+              "description": "Rate limiting threshold for client messages.",
+              "default": 60
+            },
+            "heartbeatInterval": {
+              "type": "int",
+              "description": "Time in seconds between ping messages.",
+              "default": 30
+            },
+            "useRedis": {
+              "type": "bool",
+              "description": "Whether Redis is used for scalable multi-server deployments.",
+              "default": false
+            }
+          },
+          "methods": {
+            "__construct": {
+              "description": "Initializes the WebSocket handler with configuration options.",
+              "parameters": ["array $config = []"],
+              "example": "$handler = new SwooleWebSocketHandler(['connectionTimeout' => 600]);"
+            },
+            "registerHeartbeat": {
+              "description": "Sets up heartbeat and cleanup timers with the Swoole server.",
+              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
+              "returns": "void",
+              "example": "$handler->registerHeartbeat($server);"
+            },
+            "onOpen": {
+              "description": "Handles new WebSocket connections.",
+              "parameters": ["$server", "$request"],
+              "returns": "void",
+              "example": "$server->on('open', [$handler, 'onOpen']);"
+            },
+            "onMessage": {
+              "description": "Processes incoming WebSocket messages.",
+              "parameters": ["$server", "$frame"],
+              "returns": "void",
+              "example": "$server->on('message', [$handler, 'onMessage']);"
+            },
+            "onClose": {
+              "description": "Handles WebSocket connection closures.",
+              "parameters": ["$server", "$fd"],
+              "returns": "void",
+              "example": "$server->on('close', [$handler, 'onClose']);"
+            }
+          },
+          "features": {
+            "connectionManagement": "Automatic tracking and cleanup of connections with timeout detection.",
+            "rateLimiting": "Per-connection message rate limiting to prevent abuse.",
+            "heartbeatMechanism": "Ping/pong protocol to maintain connections and detect broken ones.",
+            "channelMessaging": "Publisher/subscriber pattern for group message delivery.",
+            "redisIntegration": "Optional Redis support for scalable multi-server deployments."
+          },
+          "messageProtocol": {
+            "clientToServer": {
+              "subscribe": "Join a messaging channel",
+              "unsubscribe": "Leave a messaging channel",
+              "message": "Send a message to a channel",
+              "pong": "Response to server ping"
+            },
+            "serverToClient": {
+              "welcome": "Initial connection data",
+              "ping": "Connection heartbeat check",
+              "message": "Message from a channel",
+              "timeout": "Connection timeout notification"
+            }
+          }
         }
       }
     },

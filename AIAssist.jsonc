@@ -220,7 +220,7 @@
           }
         },
         "Request": {
-          "purpose": "Request data container",
+          "purpose": "Comprehensive HTTP request management with validation and authentication",
           "properties": {
             "requestedUrl": "Sanitized URL",
             "requestMethod": "Validated HTTP method",
@@ -232,7 +232,108 @@
             "get": "GET data",
             "put": "PUT data",
             "patch": "PATCH data",
-            "files": "Uploaded files"
+            "files": "Uploaded files",
+            "isAuthenticated": "Authentication status flag",
+            "isAuthorized": "Authorization status flag",
+            "error": "Error message if validation fails",
+            "response": "JsonResponse object for error states"
+          },
+          "methods": {
+            "auth": "Authentication with optional role-based authorization",
+            "userRole": "Returns authenticated user's role as string or null",
+            "userId": "Returns authenticated user's ID as int or null",
+            "definePostSchema": "Schema-based POST data validation",
+            "defineGetSchema": "Schema-based GET data validation",
+            "definePutSchema": "Schema-based PUT data validation",
+            "definePatchSchema": "Schema-based PATCH data validation",
+            "validateStringPosts": "String length validation with min/max constraints",
+            "mapPostToObject": "Maps POST data to object properties",
+            "mapPutToObject": "Maps PUT data to object properties",
+            "forwardPost": "Forward request to remote API endpoint",
+            "filterable": "Processes filter_by query parameters",
+            "findable": "Processes find_like query parameters",
+            "sortable": "Processes sort_by and sort_by_asc parameters",
+            "setPageNumber": "Sets pagination page number",
+            "setPerPage": "Sets items per page count",
+            "returnResponse": "Returns error response if validation fails"
+          },
+          "validationFeatures": {
+            "schemaValidation": "Support for required and optional fields",
+            "typeChecking": "Integration with TypeChecker",
+            "stringValidation": "Length and format validation with min/max constraints",
+            "pagination": "Page number and per-page validation",
+            "sorting": "Field-based sorting validation",
+            "filtering": "Type-safe field filtering"
+          },
+          "errorHandling": {
+            "centralized": "setErrorResponse method for consistent responses",
+            "statusCodes": [400, 401, 403, 422],
+            "messageFormatting": "Consistent error message concatenation"
+          },
+          "objectMapping": {
+            "automaticMapping": "Maps request data directly to object properties",
+            "selectiveMapping": "Manual mapping with field selection",
+            "typeConversion": "String to native type conversion"
+          }
+        },
+        "SwooleWebSocketHandler": {
+          "purpose": "Real-time WebSocket communication manager for OpenSwoole",
+          "requirements": ["OpenSwoole extension", "Redis extension (optional)"],
+          "properties": {
+            "connections": "Active WebSocket connection tracking",
+            "channels": "Messaging channel subscription registry",
+            "connectionTimeout": "Time before inactive connections are closed (default: 300s)",
+            "maxMessagesPerMinute": "Rate limiting threshold (default: 60 messages)",
+            "heartbeatInterval": "Time between ping messages (default: 30s)",
+            "useRedis": "Whether Redis is used for multi-server scaling"
+          },
+          "methods": {
+            "constructorConfig": "Initialization with optional configuration array",
+            "registerHeartbeat": "Setup heartbeat and cleanup timers with Swoole server",
+            "onOpen": "Handle new WebSocket connections",
+            "onMessage": "Process incoming WebSocket frames",
+            "onClose": "Handle connection closures and cleanup",
+            "handleSubscribe": "Process channel subscription requests",
+            "handleUnsubscribe": "Process channel unsubscription requests",
+            "handleMessage": "Process and broadcast channel messages"
+          },
+          "features": {
+            "connectionManagement": {
+              "tracking": "Automatic connection state tracking",
+              "cleanup": "Inactive connection detection and removal",
+              "timeout": "Configurable inactivity thresholds"
+            },
+            "rateLimiting": {
+              "perClient": "Per-connection message counting",
+              "timeWindow": "Sliding 60-second window for limits",
+              "throttling": "Automatic rejection of excess messages"
+            },
+            "heartbeat": {
+              "pingPong": "Automatic ping/pong protocol implementation",
+              "detection": "Broken connection identification",
+              "interval": "Configurable timing"
+            },
+            "messaging": {
+              "pubSub": "Channel-based publisher/subscriber pattern",
+              "multiChannel": "Support for multiple channel subscriptions",
+              "targeting": "Filtered message delivery to specific clients"
+            },
+            "scaling": {
+              "redis": "Optional Redis integration for horizontal scaling",
+              "connectionSharing": "Distributed connection tracking across servers",
+              "channelSharing": "Distributed subscription management"
+            },
+            "requestIntegration": "Uses Request class for validation and authentication"
+          },
+          "errorHandling": {
+            "rateLimits": "Clear error messages for rate-limited clients",
+            "timeouts": "Graceful timeout notifications before disconnection",
+            "validation": "Request class schema validation for messages"
+          },
+          "messageProtocol": {
+            "format": "JSON-based messaging protocol",
+            "clientActions": ["subscribe", "unsubscribe", "message", "pong"],
+            "serverActions": ["welcome", "ping", "message", "timeout"]
           }
         }
       }

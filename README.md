@@ -31,6 +31,56 @@ $file->secret = $encryptionKey;
 $file->moveAndEncrypt();  // AES-256-CBC + HMAC verification 🔐
 ```
 
+### 🔀 Dual Server Support
+```php
+// Same business logic, different server environments!
+
+// --- APACHE/NGINX with PHP-FPM ---
+function processUser($request) {
+    if ($request->auth(['admin'])) {
+        return (new JsonResponse())->success([
+            'message' => 'Hello ' . $request->userId()
+        ]);
+    }
+    return $request->returnResponse(); // Returns error response
+}
+
+// Apache handler
+$request = new ApacheRequest(); // Handles traditional PHP request
+$response = processUser($request->request);
+$response->show(); // Output JSON
+
+// --- OPENSWOOLE HIGH-PERFORMANCE SERVER ---
+$server = new \Swoole\HTTP\Server('0.0.0.0', 8080);
+$server->on('request', function($swooleRequest, $swooleResponse) {
+    // Same code, different environment!
+    $request = new SwooleRequest($swooleRequest);
+    $response = processUser($request->request);
+    $swooleResponse->end($response->toJson());
+});
+$server->start();
+```
+
+### 🔄 Real-Time Communication
+```php
+// Set up WebSocket server with advanced features
+$server = new \Swoole\WebSocket\Server('0.0.0.0', 9501);
+
+// Initialize handler with scalability options
+$handler = new SwooleWebSocketHandler([
+    'connectionTimeout' => 300,
+    'maxMessagesPerMinute' => 60,
+    'redis' => ['enabled' => true]  // Scale across servers!
+]);
+
+// Register events and start server
+$server->on('open', [$handler, 'onOpen']);
+$server->on('message', [$handler, 'onMessage']);
+$server->on('close', [$handler, 'onClose']);
+$handler->registerHeartbeat($server);
+$server->start();
+```
+
 ### 🤖 AI-Ready Framework
 - **Dual AI Support**: 
   - `AIAssist.jsonc`: Real-time AI coding assistance
@@ -60,6 +110,7 @@ QueryBuilder::select('id', 'name')
 - **Zero Lock-in**: No rigid rules or forced patterns
 - **Cherry-Pick Features**: Use only what you need
 - **Framework Agnostic**: Works with any PHP project
+- **Server Agnostic**: Same code works on Apache and OpenSwoole
 
 ## 🔥 5-Second Installation
 ```bash
@@ -104,11 +155,26 @@ class UserController {
 - **Smart Patterns**: Factory, Builder, Traits
 - **Clean Structure**: Intuitive organization
 
+### 🖥️ Server Flexibility
+- **Apache/Nginx Support**: Traditional PHP request handling
+- **OpenSwoole Support**: High-performance asynchronous server
+- **Unified Request Interface**: Same code, different environments
+- **Server-Specific Optimizations**: Get the best from each platform
+- **Zero Code Changes**: Deploy to any environment without rewriting
+
 ### 🛡️ Security Features
 - **Input Sanitization**: Automatic XSS prevention
 - **Query Protection**: SQL injection prevention
 - **File Security**: Path traversal protection
 - **Email Safety**: Content security validation
+- **WebSocket Protection**: Rate limiting and authentication
+
+### 📡 Real-Time Communication
+- **WebSocket Support**: Built-in OpenSwoole integration
+- **Channel Messaging**: Pub/Sub pattern for group communication
+- **Connection Management**: Automatic heartbeat and cleanup
+- **Horizontal Scaling**: Redis integration for multi-server deployments
+- **Request Integration**: Same validation and authentication as REST APIs
 
 ### 🎯 Developer Tools
 - **Query Builder**: Intuitive database operations
@@ -121,18 +187,24 @@ class UserController {
 - **Resource Management**: Efficient file streaming
 - **Memory Optimization**: Smart image processing
 - **Query Optimization**: Built-in performance features
+- **WebSocket Efficiency**: Optimized for high-concurrency applications
+- **Async Operations**: Non-blocking I/O with OpenSwoole
 
 ## 📋 Requirements
 - PHP 8.0+
 - PDO Extension
 - OpenSSL Extension
 - GD Library
+- OpenSwoole Extension (optional, for high-performance server and WebSockets)
+- Redis Extension (optional, for WebSocket scaling)
 
 ## 🎯 Perfect For
 - **Microservices**: Specific, efficient functionality
 - **Legacy Projects**: Add modern features
 - **New Projects**: Full control from day one
 - **Learning**: Clear, understandable code
+- **Real-Time Apps**: Chat, notifications, live updates
+- **High-Load Applications**: Scale with OpenSwoole when needed
 
 ## 📚 Documentation
 Want to dive deeper? Check out our [Documentation.md](Documentation.md)

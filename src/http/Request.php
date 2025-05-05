@@ -5,7 +5,8 @@ namespace Gemvc\Http;
 use Gemvc\Helper\TypeChecker;
 use Gemvc\Helper\TypeHelper;
 use Gemvc\Http\JWTToken;
-
+use Gemvc\Http\Response;
+use Gemvc\Http\JsonResponse;
 /**
  * Class Request provides a structured way for managing and validating incoming HTTP request data,
  * handling errors, and forward request to external APIs
@@ -16,6 +17,9 @@ class Request
     public string $requestedUrl;
     public ?string $queryString;
     public ?string $error;
+
+    public bool $isAuthenticated;
+    public bool $isAuthorized;
     private ?JWTToken $token;
     /**
      * @var null|string|array<string>
@@ -67,14 +71,17 @@ class Request
 
     private ?string $_sort_by;
     private ?string $_sort_by_asc;
-    private int $_page_number;
+    private int $_pageNumber;
     private int $_per_page;
+
+    public ?JsonResponse    $response;
 
 
 
     public function __construct()
     {
         $this->token = null;
+        $this->response = null;
         $this->files = null;
         $this->cookies = null;
         $this->error = null;
@@ -86,18 +93,115 @@ class Request
         $this->start_exec = microtime(true);
         $this->id = TypeHelper::guid();
         $this->time = TypeHelper::timeStamp();
+        $this->isAuthenticated = false;
+        $this->isAuthorized = false;
+        $this->_pageNumber = 1;
         /**@phpstan-ignore-next-line */
         $this->_per_page = $_ENV["QUERY_LIMIT"] ?? 10;
 
+    }
+
+    public function returnResponse(): JsonResponse
+    {
+        if(!$this->response)
+        {
+            return Response::unknownError("No response property set in Request Object");
+        }
+        return $this->response;
+    }
+
+    /**
+     * @param array<string> $authRules
+     * @return bool
+     */
+    public function auth(array $authRules=null): bool
+    {
+        if(!$this->authenticate())
+        {
+            return false;
+        }
+        if ($authRules) {
+            $this->authorize($this->token,$authRules);
+            if(!$this->isAuthorized)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @return null|string
+     * in case of Authenticated user with valid JWT Token return string role, otherwise return null and set $this->error and $this->response
+     */
+    public function userRole(): null|string
+    {
+        // Check if token exists
+        if (!$this->token) {
+            return $this->setErrorResponse(['JWT token not found. User is not authenticated.'], 401);
+        }
+        
+        // Verify token validity
+        if (!$this->token->isTokenValid) {
+            return $this->setErrorResponse(['Invalid JWT token. Authentication failed.'], 401);
+        }
+        
+        // Check if role is actually set
+        if (empty($this->token->role)) {
+            return $this->setErrorResponse(['User role not found in token.'], 403);
+        }
+        
+        return $this->token->role;
+    }
+
+    private function authenticate(): bool
+    {
+        $JWT = new JWTToken();
+        if($JWT->extractToken($this))
+        {
+            if (!$JWT->verify()) {
+                $this->error = $JWT->error;	
+                $this->response = Response::forbidden($this->error);
+                return false;
+            }
+        }
+        $this->token = $JWT;
+        $this->isAuthenticated = true;
+        return true;
+    }
+
+
+    /**
+     * Authorize the user against a list of roles
+     *
+     * @param array<string> $roles Allowed roles
+     * @return bool Whether the user is authorized
+     */
+    private function authorize(JWTToken $token,array $roles): bool
+    {
+        if ($token->role && strlen($token->role) > 1) {
+            $user_roles = explode(',', $token->role);
+            foreach ($roles as $role) {
+                if (in_array($role, $user_roles)) {
+                    $this->isAuthorized = true;
+                    return true;
+                }
+            }
+        }
+        $this->isAuthorized = false;
+        $roleText = $token->role;
+        $this->error = "Role $roleText not allowed to perform this action";
+        $this->response = Response::unauthorized($this->error);
+        return false;
     }
 
     /**
      * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
      * @param array<string> $searchableGetValues
      * @example $this->request->filterable(['email'=>'email','name' => 'string'])
-     * @return void or die with response
+     * @return bool with response
      */
-    public function filterable(array $searchableGetValues): void
+    public function filterable(array $searchableGetValues): bool
     {
         if (isset($this->get["filter_by"])) {
             $getFilterBy = $this->get["filter_by"];
@@ -112,29 +216,34 @@ class Request
                                     }
                                 } else {
                                     $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $searchableGetValues[$inhalt[0]];
+                                    $this->response = Response::badRequest($this->error);
+                                    return false;
+
                                 }
                             }
                         } else {
-                            Response::badRequest("filter_by request shall be formatted as key=value and seperated by , example: filter_by=country_id=3,company_id=4 ")->show();
-                            die();
+                            $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $searchableGetValues[$inhalt[0]];
+                            $this->response = Response::badRequest($this->error);
+                            return false;
                         }
                     }
                 }
             }
             if ($this->error) {
-                Response::badRequest($this->error)->show();
-                die();
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
         }
+        return true;
     }
 
     /**
      * you can use string,int,float,bool,array,json,email,date,integer,number,boolean,url,datetime,ip,ipv4,ipv6
      * @param array<string> $filterableGetValues
      * @example $this->request->filterable(['email'=>'email','name' => 'string'])
-     * @return void or die with response
+     * @return bool with response
      */
-    public function findable(array $filterableGetValues): void
+    public function findable(array $filterableGetValues): bool
     {
         if (isset($this->get["find_like"])) {
             $getFindLike = $this->get["find_like"];
@@ -152,25 +261,27 @@ class Request
                                 }
                             }
                         } else {
-                            Response::badRequest("find_like request shall be formatted as key=value and seperated by , example: find_like=name=anton,email=ant@ ")->show();
-                            die();
+                            $this->error .= "invalid search value type for" . $inhalt[0] . " , accepted type is: " . $filterableGetValues[$inhalt[0]];
+                            $this->response = Response::badRequest($this->error);
+                            return false;
                         }
                     }
                 }
             }
             if ($this->error) {
-                Response::badRequest($this->error)->show();
-                die();
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
         }
+        return true;
     }
 
     /**
      * @param array<string> $sortableGetValues
      * @example $this->request->sortable(['email','id])
-     * @return void or die with response
+     * @return bool  with response
      */
-    public function sortable(array $sortableGetValues): void
+    public function sortable(array $sortableGetValues): bool
     {
         if (isset($this->get["sort_by_asc"])) {
             if (is_string($this->get["sort_by_asc"]) && strlen($this->get["sort_by_asc"]) > 0) {
@@ -178,11 +289,13 @@ class Request
                     $this->_sort_by_asc = $this->get["sort_by_asc"];
                 } else {
                     $this->error .= "invalid search value type for" . $this->get["sort_by"];
+                    $this->response = Response::badRequest($this->error);
+                    return false;
                 }
 
                 if ($this->error) {
-                    Response::badRequest($this->error)->show();
-                    die();
+                    $this->response = Response::badRequest($this->error);
+                    return false;
                 }
             }
         }
@@ -192,54 +305,63 @@ class Request
                     $this->_sort_by = $this->get["sort_by"];
                 } else {
                     $this->error .= "invalid search value type for " . $this->get["sort_by"];
+                    $this->response = Response::badRequest($this->error);
+                    return false;
                 }
-                if ($this->error) {
-                    Response::badRequest($this->error)->show();
-                    die();
+                if ($this->error) { 
+                    $this->response = Response::badRequest($this->error);
+                    return false;
                 }
             }
         }
+        return true;
     }
 
 
-    public function setPageNumber(): void
+    public function setPageNumber(): bool
     {
         if (isset($this->get["page_number"])) {
             $get_page_number = $this->get["page_number"];
             $result = is_numeric($get_page_number);
             if ($result === false) {
-                Response::badRequest("page_number shall be integer")->show();
-                die();
+                $this->error .= "page_number shall be integer";
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
             $number = (int) $get_page_number;
             if ($number < 1) {
-                Response::badRequest("per_number shall be positive, at least 1")->show();
-                die();
+                $this->error .= "per_number shall be positive, at least 1";
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
-            $this->_page_number = $number;
+            $this->_pageNumber = $number;
         }
+        return true;
     }
 
-    public function setPerPage(): void
+    public function setPerPage(): bool
     {
         if (isset($this->get["per_page"])) {
             $get_per_page = $this->get["per_page"];
             if (!is_numeric($get_per_page)) {
-                Response::badRequest("per_page shall be integer")->show();
-                die();
+                $this->error .= "per_page shall be integer";
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
             $result = (int) $get_per_page;
             if ($result < 1) {
-                Response::badRequest("per_page shall be positive, at least 1")->show();
-                die();
+                $this->error .= "per_page shall be positive, at least 1";
+                $this->response = Response::badRequest($this->error);
+                return false;
             }
             $this->_per_page = $result;
         }
+        return true;
     }
 
     public function getPageNumber(): int
     {
-        return $this->_page_number;
+        return $this->_pageNumber;
     }
 
     public function getPerPage(): int
@@ -269,7 +391,7 @@ class Request
 
 
     /**
-     * Summary of getSortable
+     * return sort by
      * @return string|null
      */
     public function getSortable(): string|null
@@ -278,15 +400,13 @@ class Request
     }
 
     /**
-     * Summary of getSortable
+     * return sort by asc
      * @return string|null
      */
     public function getSortableAsc(): string|null
     {
         return $this->_sort_by_asc;
     }
-
-
 
 
     public function __get(string $name): mixed
@@ -309,14 +429,26 @@ class Request
     }
 
     /**
-     * @return int|false 
-     * in case of Authenticated user with valid JWT Token return int user_id, otherwise return false 
+     * @return int|null     
+     * in case of Authenticated user with valid JWT Token return int user_id, otherwise return null and set $this->error and $this->response
      */
-    public function userId(): false|int
+    public function userId(): null|int
     {
-        if (!$this->token || $this->token->isTokenValid) {
-            return false;
+        // Check if token exists
+        if (!$this->token) {
+            return $this->setErrorResponse(['JWT token not found. User is not authenticated.'], 401);
         }
+        
+        // Verify token validity
+        if (!$this->token->isTokenValid) {
+            return $this->setErrorResponse(['Invalid JWT token. Authentication failed.'], 401);
+        }
+        
+        // Check if user_id is actually set and valid
+        if (empty($this->token->user_id) || !is_numeric($this->token->user_id)) {
+            return $this->setErrorResponse(['User ID not found or invalid in token.'], 403);
+        }
+        
         return $this->token->user_id;
     }
 
@@ -339,38 +471,34 @@ class Request
         return $this->start_exec;
     }
 
-    public function intValuePost(string $key): int
+    public function intValuePost(string $key): int|false
     {
         if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
-            Response::badRequest("post " . $this->post[$key] . " is required and must be type of int")->show();
-            die();
+            return $this->setErrorResponse(["Post parameter '$key' is required and must be of type integer"], 400);
         }
         return (int) $this->post[$key];
     }
 
-    public function floatValuePost(string $key): float
+    public function floatValuePost(string $key): float|false    
     {
         if (!isset($this->post[$key]) || empty($this->post[$key]) || !is_numeric($this->post[$key])) {
-            Response::badRequest("post " . $this->post[$key] . " is required and must be type of float")->show();
-            die();
+            return $this->setErrorResponse(["Post parameter '$key' is required and must be of type float"], 400);
         }
         return (float) $this->post[$key];
     }
 
-    public function intValueGet(string $key): int
+    public function intValueGet(string $key): int|false 
     {
         if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
-            Response::badRequest("get " . $this->get[$key] . " is required and must be type of integer")->show();
-            die();
+            return $this->setErrorResponse(["Get parameter '$key' is required and must be of type integer"], 400);
         }
         return (int) $this->get[$key];
     }
 
-    public function floatValueGet(string $key): float
+    public function floatValueGet(string $key): float|false 
     {
         if (!isset($this->get[$key]) || empty($this->get[$key]) || !is_numeric($this->get[$key])) {
-            Response::badRequest("get " . $this->get[$key] . " is required and must be type of float")->show();
-            die();
+            return $this->setErrorResponse(["Get parameter '$key' is required and must be of type float"], 400);
         }
         return (float) $this->get[$key];
     }
@@ -431,9 +559,8 @@ class Request
             }
             return true;
         } catch (\Exception $e) {
-            $this->error = $e->getMessage();
+            return $this->setErrorResponse(["Error mapping post data to object: " . $e->getMessage()], 422);
         }
-        return false;
     }
 
     /**
@@ -505,12 +632,12 @@ class Request
 
         $response = $caller->post($remoteApiUrl, $this->post);
         if (!$response) {
-            $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
-            return $jsonResponse;
+            $this->response = $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
+            return $this->response;
         }
         $response = json_decode($response);
-        $jsonResponse->create($caller->http_response_code, $response);
-        return $jsonResponse;
+        $this->response = $jsonResponse->create($caller->http_response_code, $response);
+        return  $this->response;
     }
 
     /**
@@ -531,127 +658,234 @@ class Request
 
         $response = $caller->post($remoteApiUrl, $this->post);
         if (!$response) {
-            $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
-            return $jsonResponse;
+            $this->response = $jsonResponse->create($caller->http_response_code, null, 0, $caller->error);
+            return $this->response;
         }
         $response = json_decode($response);
-        $jsonResponse->create($caller->http_response_code, $response);
-        return $jsonResponse;
+        $this->response =$jsonResponse->create($caller->http_response_code, $response);
+        return $this->response;
     }
 
-    public static function mapPost(Request $request, object $object): void
+    /**
+     * if $manualMap is null then map all post to object
+     * if $manualMap is not null then map only the post that are in the $manualMap
+     * if success return object, if failed return null and set $this->error and $this->response
+     * @param object $object
+     * @param array<string>|null  $manualMap
+     * @return object|null
+     */
+    public function mapPostToObject(object $object, array $manualMap = null): null|object  
+    {
+        if(count($this->post) == 0){
+            $this->setErrorResponse(["No post data available"], 422);
+            return null;
+        }
+        
+        if($manualMap == null){
+            return $this->_mapArrayToObject($this->post, $object, 'post');
+        }
+        
+        $manualArray = [];
+        $errors = [];
+        
+        foreach ($manualMap as $keyName => $value) {
+            if(!isset($this->post[$keyName])){
+                $errors[] = "Manual map post $keyName not found in request";
+            }
+            else{
+                $manualArray[$keyName] = $this->post[$keyName];
+            }
+        }
+        
+        if(!empty($errors)){
+            $this->setErrorResponse($errors, 422);
+            return null;
+        }
+        
+        return $this->_mapArrayToObject($manualArray, $object, 'post');
+    }
+
+    /**
+     * if $manualMap is null then map all put to object
+     * if $manualMap is not null then map only the put that are in the $manualMap
+     * if success return object, if failed return null and set $this->error and $this->response
+     * @param object $object
+     * @param array $manualMap
+     * @return object|null
+     */
+    public function mapPutToObject(object $object, array $manualMap = null): null|object  
+    {
+        if(count($this->put) == 0){
+            $this->setErrorResponse(["No put data available"], 422);
+            return null;
+        }
+        
+        if($manualMap == null){
+            return $this->_mapArrayToObject($this->put, $object, 'put');
+        }
+        
+        $manualArray = [];
+        $errors = [];
+        
+        foreach ($manualMap as $keyName => $value) {
+            if(!isset($this->put[$keyName])){
+                $errors[] = "Manual map put $keyName not found in request";
+            }
+            else{
+                $manualArray[$keyName] = $this->put[$keyName];
+            }
+        }
+        
+        if(!empty($errors)){
+            $this->setErrorResponse($errors, 422);
+            return null;
+        }
+        
+        return $this->_mapArrayToObject($manualArray, $object, 'put');
+    }
+
+    private function _mapArrayToObject(array $assoc_array, object $object, string $method): null|object
+    {
+        try {
+            foreach ($assoc_array as $keyName => $value) {
+                if (property_exists($object, $keyName)) {
+                    $object->$keyName = $value;
+                }
+            }
+            return $object;
+        } catch (\Exception $e) {
+            $errorMsg = "$method $keyName cannot be set to " . get_class($object) . " because: " . $e->getMessage();
+            $this->setErrorResponse([$errorMsg], 422);
+            return null;
+        }
+    }
+
+    public static function mapPost(Request $request, object $object): null|object
     {
         $name = get_class($object);
-        /*if (!is_array($request->post) || !count($request->post)) {
-            $request->error = 'there is no incoming post detected';
-            Response::badRequest("there is no incoming post detected for mappping to $name")->show();
-            die();
-        }*/
-        foreach ($request->post as $postName => $value) {
-            try {
+        $errors = [];
+        
+        try {
+            foreach ($request->post as $postName => $value) {
                 if (property_exists($object, $postName)) {
                     $object->$postName = $value;
                 }
-            } catch (\Exception $e) {
-                $request->error = "post $postName cannot be set because " . $e->getMessage();
-                Response::unprocessableEntity("post $postName cannot be set to $name because " . $e->getMessage())->show();
-                die();
             }
+            return $object;
+        } catch (\Exception $e) {
+            $errorMsg = "Post $postName cannot be set to $name because: " . $e->getMessage();
+            $request->setErrorResponse([$errorMsg], 422);
+            return null;
         }
     }
 
+    /**
+     * Helper method to set error response and return false
+     * 
+     * @param array<string> $errors List of error messages
+     * @param int $responseCode HTTP response code to use
+     * @return false Always returns false for convenient method chaining
+     */
+    private function setErrorResponse(array $errors, int $responseCode = 400): false
+    {
+        $this->error = implode(', ', $errors);
+        
+        // Use the response code parameter
+        $this->response = match($responseCode) {
+            401 => Response::unauthorized($this->error),
+            403 => Response::forbidden($this->error),
+            422 => Response::unprocessableEntity($this->error),
+            default => Response::badRequest($this->error),
+        };
+        
+        return false;
+    }
 
     // Private methods
     /**
-     * @param  array<string> $toValidatePost Define Post Schema to validation
-     * @return bool
-     * validatePosts(['email'=>'email' , 'id'=>'int' , '?name' => 'string'])
-     * @help   : ?name means it is optional
-     * @in     case of false $this->error will be set
+     * @param  array<string> $schemaDefinition Define data schema for validation
+     * @param  string $dataSource Which data source to validate ('post', 'get', 'put', 'patch')
+     * @return bool Success or failure of validation
      */
-    private function defineSchema(array $toValidatePost, string $get_or_post): bool
+    private function defineSchema(array $schemaDefinition, string $dataSource): bool
     {
-        $target = $this->post;
-        if ($get_or_post === 'get') {
-            $target = $this->get;
+        // Get the correct data source
+        $target = match($dataSource) {
+            'get' => $this->get,
+            'put' => $this->put,
+            'patch' => $this->patch,
+            default => $this->post,
+        };
+
+        // Validate that target is an array
+        if (!is_array($target)) {
+            return $this->setErrorResponse(["There is no $dataSource data"], 422);
         }
-        if ($get_or_post === 'put') {
-            $target = $this->put;
-        } elseif ($get_or_post === 'patch') {
-            $target = $this->patch;
-        }
-        //TODO: brake this function into smaller functions
-        $errors = []; // Initialize an empty array to store errors
-        $requires = [];
-        $optionals = [];
-        $all = [];
-        foreach ($toValidatePost as $validation_key => $validationString) {
-            //echo' post valkey: '. $validation_key .' val:'. $validationString .'<br>';
-            if (substr($validation_key, 0, 1) === '?') {
-                $validation_key = ltrim($validation_key, '?');
-                $optionals[$validation_key] = $validationString;
+
+        // Separate required and optional fields
+        $required = [];
+        $optional = [];
+        $allFields = [];
+        
+        foreach ($schemaDefinition as $fieldKey => $fieldType) {
+            if (substr($fieldKey, 0, 1) === '?') {
+                $fieldName = ltrim($fieldKey, '?');
+                $optional[$fieldName] = $fieldType;
+                $allFields[$fieldName] = $fieldType;
             } else {
-                $requires[$validation_key] = $validationString;
+                $required[$fieldKey] = $fieldType;
+                $allFields[$fieldKey] = $fieldType;
             }
-            $all[$validation_key] = $validationString;
-        }
-        if (!is_array($target)) { //if target is not array then return false
-            $this->error = "there is no  $get_or_post data";
-            return false;
-        }
-        foreach ($target as $postName => $postValue) {
-            if (!array_key_exists($postName, $all)) {
-                $errors[$postName] = "unwanted $get_or_post $postName";
-                $target = [];
-            }
-        }
-        if (count($errors) > 0) { //if unwanted post exists , stop process and return false
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
         }
 
-        foreach ($requires as $validation_key => $validation_value) {      //now only check existence of requires post 
-            if ((!isset($target[$validation_key]) || empty($target[$validation_key]))) {
-                $errors[] = "Missing required field: $validation_key";
+        // Step 1: Check for unwanted fields
+        $errors = [];
+        foreach ($target as $fieldName => $fieldValue) {
+            if (!array_key_exists($fieldName, $allFields)) {
+                $errors[] = "Unwanted $dataSource field: $fieldName";
             }
         }
-        if (count($errors) > 0) { //if requires not exists , stop process and return false
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
-        }
-
-        foreach ($requires as $validation_key => $validation_type_value) { //now validate requires post Schema
-            $validationResult = TypeChecker::check($validation_type_value, $target[$validation_key]);
-            if (!$validationResult) {
-                $errors[] = "Invalid value " . $target[$validation_key] . " which shall be of type $validation_type_value for $get_or_post  $validation_key ";
-            }
-        }
-        if (count($errors) > 0) {
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
+        
+        if (!empty($errors)) {
+            return $this->setErrorResponse($errors, 400);
         }
 
-        foreach ($optionals as $optionals_key => $optionals_type_value) { //check optionals if post exists and not null then do check
+        // Step 2: Check for required fields existence
+        foreach ($required as $fieldName => $fieldType) {
+            if (!isset($target[$fieldName]) || empty($target[$fieldName])) {
+                $errors[] = "Missing required field: $fieldName";
+            }
+        }
+        
+        if (!empty($errors)) {
+            return $this->setErrorResponse($errors, 400);
+        }
 
-            if (isset($target[$optionals_key]) && !empty($target[$optionals_key])) {
-                $validationResult = TypeChecker::check($optionals_type_value, $target[$optionals_key]);
-                if (!$validationResult) {
-                    $errors[] = "Invalid value for $get_or_post field: $optionals_key";
+        // Step 3: Validate required fields data types
+        foreach ($required as $fieldName => $fieldType) {
+            if (!TypeChecker::check($fieldType, $target[$fieldName])) {
+                $errors[] = "Invalid value for required field $fieldName, expected type: $fieldType";
+            }
+        }
+        
+        if (!empty($errors)) {
+            return $this->setErrorResponse($errors, 400);
+        }
+
+        // Step 4: Validate optional fields if they are present
+        foreach ($optional as $fieldName => $fieldType) {
+            if (isset($target[$fieldName]) && !empty($target[$fieldName])) {
+                if (!TypeChecker::check($fieldType, $target[$fieldName])) {
+                    $errors[] = "Invalid value for optional field $fieldName, expected type: $fieldType";
                 }
             }
         }
-        if (count($errors) > 0) {
-            foreach ($errors as $error) {
-                $this->error .= $error . ', '; // Combine errors into a single string
-            }
-            return false;
+        
+        if (!empty($errors)) {
+            return $this->setErrorResponse($errors, 400);
         }
+
+        // All validations passed
         return true;
     }
 
