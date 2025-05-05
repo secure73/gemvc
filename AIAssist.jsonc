@@ -240,8 +240,8 @@
           },
           "methods": {
             "auth": "Authentication with optional role-based authorization",
-            "userRole": "Returns authenticated user's role as string or null",
-            "userId": "Returns authenticated user's ID as int or null",
+            "userRole": "Returns authenticated user's role as string or null with improved error handling",
+            "userId": "Returns authenticated user's ID as int or null with improved error handling",
             "definePostSchema": "Schema-based POST data validation",
             "defineGetSchema": "Schema-based GET data validation",
             "definePutSchema": "Schema-based PUT data validation",
@@ -255,7 +255,12 @@
             "sortable": "Processes sort_by and sort_by_asc parameters",
             "setPageNumber": "Sets pagination page number",
             "setPerPage": "Sets items per page count",
-            "returnResponse": "Returns error response if validation fails"
+            "returnResponse": "Returns error response if validation fails",
+            "intValuePost": "Gets validated integer from POST data",
+            "floatValuePost": "Gets validated float from POST data",
+            "intValueGet": "Gets validated integer from GET data",
+            "floatValueGet": "Gets validated float from GET data",
+            "setErrorResponse": "Centralized error handling with appropriate status codes"
           },
           "validationFeatures": {
             "schemaValidation": "Support for required and optional fields",
@@ -268,12 +273,14 @@
           "errorHandling": {
             "centralized": "setErrorResponse method for consistent responses",
             "statusCodes": [400, 401, 403, 422],
-            "messageFormatting": "Consistent error message concatenation"
+            "messageFormatting": "Array-based error collection with implode",
+            "responseMapping": "match() expression for appropriate response types"
           },
           "objectMapping": {
             "automaticMapping": "Maps request data directly to object properties",
             "selectiveMapping": "Manual mapping with field selection",
-            "typeConversion": "String to native type conversion"
+            "typeConversion": "String to native type conversion",
+            "namingConsistency": "Consistent camelCase naming (manualArray)"
           }
         },
         "SwooleWebSocketHandler": {
@@ -282,10 +289,13 @@
           "properties": {
             "connections": "Active WebSocket connection tracking",
             "channels": "Messaging channel subscription registry",
+            "messageCounters": "Rate limiting counters",
             "connectionTimeout": "Time before inactive connections are closed (default: 300s)",
             "maxMessagesPerMinute": "Rate limiting threshold (default: 60 messages)",
             "heartbeatInterval": "Time between ping messages (default: 30s)",
-            "useRedis": "Whether Redis is used for multi-server scaling"
+            "useRedis": "Whether Redis is used for multi-server scaling",
+            "redis": "Redis connection instance",
+            "redisPrefix": "Prefix for Redis keys"
           },
           "methods": {
             "constructorConfig": "Initialization with optional configuration array",
@@ -295,40 +305,59 @@
             "onClose": "Handle connection closures and cleanup",
             "handleSubscribe": "Process channel subscription requests",
             "handleUnsubscribe": "Process channel unsubscription requests",
-            "handleMessage": "Process and broadcast channel messages"
+            "handleMessage": "Process and broadcast channel messages",
+            "performHeartbeat": "Send ping messages to maintain connections",
+            "cleanupExpiredConnections": "Remove inactive connections",
+            "checkRateLimit": "Enforce message rate limits",
+            "updateLastActivity": "Track connection activity",
+            "initRedis": "Setup Redis connection with fallback",
+            "storeConnectionInRedis": "Store connection data in Redis",
+            "getConnectionFromRedis": "Retrieve connection data from Redis",
+            "getAllConnectionsFromRedis": "Get all active connections from Redis",
+            "removeConnectionFromRedis": "Remove connection data from Redis",
+            "subscribeChannelRedis": "Handle channel subscription in Redis",
+            "unsubscribeChannelRedis": "Handle channel unsubscription in Redis",
+            "checkRateLimitRedis": "Rate limiting with Redis"
           },
           "features": {
             "connectionManagement": {
               "tracking": "Automatic connection state tracking",
               "cleanup": "Inactive connection detection and removal",
-              "timeout": "Configurable inactivity thresholds"
+              "timeout": "Configurable inactivity thresholds",
+              "metadata": "Detailed connection information storage"
             },
             "rateLimiting": {
               "perClient": "Per-connection message counting",
               "timeWindow": "Sliding 60-second window for limits",
-              "throttling": "Automatic rejection of excess messages"
+              "throttling": "Automatic rejection of excess messages",
+              "fairImplementation": "Window-based limiting with reset"
             },
             "heartbeat": {
               "pingPong": "Automatic ping/pong protocol implementation",
               "detection": "Broken connection identification",
-              "interval": "Configurable timing"
+              "interval": "Configurable timing",
+              "timeoutNotification": "Explicit notifications before disconnection"
             },
             "messaging": {
               "pubSub": "Channel-based publisher/subscriber pattern",
               "multiChannel": "Support for multiple channel subscriptions",
-              "targeting": "Filtered message delivery to specific clients"
+              "targeting": "Filtered message delivery to specific clients",
+              "channelTracking": "Per-connection channel subscription tracking"
             },
             "scaling": {
               "redis": "Optional Redis integration for horizontal scaling",
               "connectionSharing": "Distributed connection tracking across servers",
-              "channelSharing": "Distributed subscription management"
+              "channelSharing": "Distributed subscription management",
+              "fallbackMode": "Graceful fallback to local storage if Redis unavailable",
+              "memoryManagement": "TTL-based key expiration to prevent leaks"
             },
             "requestIntegration": "Uses Request class for validation and authentication"
           },
           "errorHandling": {
             "rateLimits": "Clear error messages for rate-limited clients",
             "timeouts": "Graceful timeout notifications before disconnection",
-            "validation": "Request class schema validation for messages"
+            "validation": "Request class schema validation for messages",
+            "redisErrors": "Graceful fallback if Redis connection fails"
           },
           "messageProtocol": {
             "format": "JSON-based messaging protocol",

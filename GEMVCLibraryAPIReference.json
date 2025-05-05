@@ -190,14 +190,16 @@
               "example": "if ($request->auth(['admin', 'editor'])) { /* authorized */ }"
             },
             "userRole": {
-              "description": "Returns the authenticated user's role.",
+              "description": "Returns the authenticated user's role with enhanced error handling.",
               "returns": "string|null",
-              "example": "$role = $request->userRole();"
+              "example": "$role = $request->userRole();",
+              "features": "Sets appropriate 401/403 responses with detailed error messages."
             },
             "userId": {
-              "description": "Returns the authenticated user's ID.",
+              "description": "Returns the authenticated user's ID with enhanced error handling.",
               "returns": "int|null",
-              "example": "$userId = $request->userId();"
+              "example": "$userId = $request->userId();",
+              "features": "Validates ID existence and type with appropriate error responses."
             },
             "definePostSchema": {
               "description": "Validates POST data against a schema.",
@@ -230,16 +232,46 @@
               "example": "$request->validateStringPosts(['username' => '3|15', 'password' => '8|']);"
             },
             "mapPostToObject": {
-              "description": "Maps POST data to an object's properties.",
+              "description": "Maps POST data to an object's properties using consistent naming.",
               "parameters": ["object $object", "array $manualMap = null"],
               "returns": "object|null",
               "example": "$user = $request->mapPostToObject(new User());"
             },
             "mapPutToObject": {
-              "description": "Maps PUT data to an object's properties.",
+              "description": "Maps PUT data to an object's properties using consistent naming.",
               "parameters": ["object $object", "array $manualMap = null"],
               "returns": "object|null",
               "example": "$user = $request->mapPutToObject(new User());"
+            },
+            "intValuePost": {
+              "description": "Gets and validates an integer from POST data.",
+              "parameters": ["string $key"],
+              "returns": "int|false",
+              "example": "$id = $request->intValuePost('user_id');"
+            },
+            "floatValuePost": {
+              "description": "Gets and validates a float from POST data.",
+              "parameters": ["string $key"],
+              "returns": "float|false",
+              "example": "$price = $request->floatValuePost('price');"
+            },
+            "intValueGet": {
+              "description": "Gets and validates an integer from GET data.",
+              "parameters": ["string $key"],
+              "returns": "int|false",
+              "example": "$page = $request->intValueGet('page');"
+            },
+            "floatValueGet": {
+              "description": "Gets and validates a float from GET data.",
+              "parameters": ["string $key"],
+              "returns": "float|false",
+              "example": "$amount = $request->floatValueGet('amount');"
+            },
+            "setErrorResponse": {
+              "description": "Centralized method for setting error responses with appropriate status codes.",
+              "parameters": ["array $errors", "int $responseCode = 400"],
+              "returns": "false",
+              "example": "$this->setErrorResponse(['Invalid data format'], 422);"
             },
             "forwardPost": {
               "description": "Forwards the current POST request to a remote API.",
@@ -278,11 +310,13 @@
             "pagination": "Support for page_number and per_page parameters.",
             "filtering": "Support for filter_by and find_like parameters.",
             "sorting": "Support for sort_by and sort_by_asc parameters.",
-            "errorHandling": "Centralized error handling with consistent responses."
+            "errorHandling": "Centralized error handling with consistent responses and appropriate status codes.",
+            "valueExtraction": "Type-safe methods for getting validated integers and floats.",
+            "namingConsistency": "Consistent camelCase variable naming (manualArray)"
           }
         },
         "SwooleWebSocketHandler": {
-          "description": "Manages WebSocket connections using OpenSwoole with support for real-time messaging.",
+          "description": "Manages WebSocket connections using OpenSwoole with support for real-time messaging and horizontal scaling.",
           "requirements": {
             "extensions": ["openswoole", "redis (optional)"]
           },
@@ -306,6 +340,16 @@
               "type": "bool",
               "description": "Whether Redis is used for scalable multi-server deployments.",
               "default": false
+            },
+            "redis": {
+              "type": "mixed",
+              "description": "Redis connection instance if Redis integration is enabled.",
+              "default": null
+            },
+            "redisPrefix": {
+              "type": "string",
+              "description": "Key prefix for Redis entries.",
+              "default": "websocket:"
             }
           },
           "methods": {
@@ -321,30 +365,47 @@
               "example": "$handler->registerHeartbeat($server);"
             },
             "onOpen": {
-              "description": "Handles new WebSocket connections.",
+              "description": "Handles new WebSocket connections with authentication.",
               "parameters": ["$server", "$request"],
               "returns": "void",
               "example": "$server->on('open', [$handler, 'onOpen']);"
             },
             "onMessage": {
-              "description": "Processes incoming WebSocket messages.",
+              "description": "Processes incoming WebSocket messages with rate limiting.",
               "parameters": ["$server", "$frame"],
               "returns": "void",
               "example": "$server->on('message', [$handler, 'onMessage']);"
             },
             "onClose": {
-              "description": "Handles WebSocket connection closures.",
+              "description": "Handles WebSocket connection closures and cleanup.",
               "parameters": ["$server", "$fd"],
               "returns": "void",
               "example": "$server->on('close', [$handler, 'onClose']);"
+            },
+            "initRedis": {
+              "description": "Initializes Redis connection with fallback to local storage.",
+              "parameters": ["array $config"],
+              "returns": "void"
+            },
+            "performHeartbeat": {
+              "description": "Sends ping messages to maintain connections and detect broken ones.",
+              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
+              "returns": "void"
+            },
+            "cleanupExpiredConnections": {
+              "description": "Removes inactive connections with notification.",
+              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
+              "returns": "void"
             }
           },
           "features": {
             "connectionManagement": "Automatic tracking and cleanup of connections with timeout detection.",
-            "rateLimiting": "Per-connection message rate limiting to prevent abuse.",
-            "heartbeatMechanism": "Ping/pong protocol to maintain connections and detect broken ones.",
-            "channelMessaging": "Publisher/subscriber pattern for group message delivery.",
-            "redisIntegration": "Optional Redis support for scalable multi-server deployments."
+            "rateLimiting": "Per-connection message rate limiting with sliding window implementation.",
+            "heartbeatMechanism": "Ping/pong protocol with explicit timeout notifications.",
+            "channelMessaging": "Publisher/subscriber pattern with per-connection channel tracking.",
+            "redisIntegration": "Optional Redis support for scalable multi-server deployments with TTL for memory management.",
+            "authentication": "Integration with Request authentication system.",
+            "gracefulFallback": "Automatic fallback to local storage if Redis is unavailable."
           },
           "messageProtocol": {
             "clientToServer": {

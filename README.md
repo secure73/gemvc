@@ -2,6 +2,20 @@
 
 Transform your PHP development with GEMVC - where security meets simplicity! Build professional, secure APIs in minutes, not hours.
 
+## 📋 Table of Contents
+- [Overview](#overview)
+- [Installation](#-5-second-installation)
+- [Quick Start](#-quick-start)
+- [Key Components](#-key-components)
+- [Why GEMVC Stands Out](#-why-gemvc-stands-out)
+- [Core Features](#-core-features)
+- [Requirements](#-requirements)
+- [Perfect For](#-perfect-for)
+- [Documentation](#-documentation)
+- [About](#about)
+
+## Overview
+
 ```php
 // From complex, error-prone code...
 $stmt = $pdo->prepare("SELECT u.id, u.name FROM users WHERE status = ?");
@@ -13,6 +27,57 @@ $users = QueryBuilder::select('u.id', 'u.name')
     ->whereEqual('status', 'active')
     ->run($pdoQuery);
 ```
+
+## 🔥 5-Second Installation
+```bash
+composer require gemvc/library
+```
+
+## 🚀 Quick Start
+
+### 1. Configure Your Magic
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_NAME=your_db
+DB_USER=root
+DB_PASSWORD='yourPassword'
+
+# Security Settings
+TOKEN_SECRET='your_secret'
+TOKEN_ISSUER='your_api'
+```
+
+### 2. Start Building
+```php
+// Create an API endpoint
+class UserController {
+    public function getUsers(ApacheRequest $request) {
+        // Smart type-safe value extraction
+        $limit = $request->intValueGet('limit') ?: 10;
+        
+        $users = QueryBuilder::select('id', 'name')
+            ->from('users')
+            ->whereEqual('status', 'active')
+            ->limit($limit)
+            ->run($this->db);
+            
+        return (new JsonResponse())->success($users);
+    }
+}
+```
+
+## 🧩 Key Components
+
+| Component | Description | Key Features |
+|-----------|-------------|-------------|
+| **Database** | SQL query building & execution | Type-safe queries, injection protection |
+| **HTTP** | Request/response handling | Validation, auth, WebSockets |
+| **Security** | Security features | Encryption, sanitization, protection |
+| **Helpers** | Utility classes | File, image, type handling |
+| **WebSocket** | Real-time communication | Redis scaling, heartbeat, channels |
+
+---
 
 ## 🌟 Why GEMVC Stands Out
 
@@ -29,6 +94,28 @@ $users = QueryBuilder::select('u.id', 'u.name')
 $file = new FileHelper($_FILES['upload']['tmp_name'], 'secure/file.dat');
 $file->secret = $encryptionKey;
 $file->moveAndEncrypt();  // AES-256-CBC + HMAC verification 🔐
+```
+
+### 🔄 Robust Error Handling
+```php
+// Consistent error responses with appropriate status codes
+public function authorizeUser() {
+    // Smart authentication with proper error responses
+    $userId = $request->userId();
+    
+    // If invalid token or missing user ID, automatic 401/403 responses
+    if (!$userId) {
+        return $request->returnResponse(); // Already set with proper error info
+    }
+    
+    // Type-safe value extraction with built-in validation
+    $amount = $request->floatValueGet('amount');
+    if (!$amount) {
+        return $request->returnResponse(); // Returns 400 Bad Request with details
+    }
+    
+    return $this->processTransaction($userId, $amount);
+}
 ```
 
 ### 🔀 Dual Server Support
@@ -70,7 +157,13 @@ $server = new \Swoole\WebSocket\Server('0.0.0.0', 9501);
 $handler = new SwooleWebSocketHandler([
     'connectionTimeout' => 300,
     'maxMessagesPerMinute' => 60,
-    'redis' => ['enabled' => true]  // Scale across servers!
+    'heartbeatInterval' => 30,
+    'redis' => [
+        'enabled' => true,
+        'host' => '127.0.0.1',
+        'port' => 6379,
+        'prefix' => 'websocket:'
+    ]  // Scale across servers with automatic failover!
 ]);
 
 // Register events and start server
@@ -89,22 +182,6 @@ $server->start();
 - **Intelligent Debugging**: Better error analysis and fixes
 - **Future-Ready**: Ready for emerging AI capabilities
 
-### ⚡ Lightning-Fast Development
-```php
-// Modern image processing in one line
-$image = new ImageHelper($uploadedFile)->convertToWebP(80);
-
-// Clean API responses
-$response = new JsonResponse()->success($data)->show();
-
-// Type-safe database queries
-QueryBuilder::select('id', 'name')
-    ->from('users')
-    ->whereEqual('status', 'active')
-    ->limit(10)
-    ->run($pdoQuery);
-```
-
 ### 🎈 Lightweight & Flexible
 - **Minimal Dependencies**: Just 3 core packages
 - **Zero Lock-in**: No rigid rules or forced patterns
@@ -112,40 +189,7 @@ QueryBuilder::select('id', 'name')
 - **Framework Agnostic**: Works with any PHP project
 - **Server Agnostic**: Same code works on Apache and OpenSwoole
 
-## 🔥 5-Second Installation
-```bash
-composer require gemvc/library
-```
-
-## 🚀 Quick Start
-
-### 1. Configure Your Magic
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_NAME=your_db
-DB_USER=root
-DB_PASSWORD='yourPassword'
-
-# Security Settings
-TOKEN_SECRET='your_secret'
-TOKEN_ISSUER='your_api'
-```
-
-### 2. Start Building
-```php
-// Create an API endpoint
-class UserController {
-    public function getUsers(ApacheRequest $request) {
-        $users = QueryBuilder::select('id', 'name')
-            ->from('users')
-            ->whereEqual('status', 'active')
-            ->run($this->db);
-            
-        return (new JsonResponse())->success($users);
-    }
-}
-```
+---
 
 ## 💪 Core Features
 
@@ -154,6 +198,7 @@ class UserController {
 - **Modular Design**: Clear separation of concerns
 - **Smart Patterns**: Factory, Builder, Traits
 - **Clean Structure**: Intuitive organization
+- **Consistent Naming**: camelCase conventions throughout
 
 ### 🖥️ Server Flexibility
 - **Apache/Nginx Support**: Traditional PHP request handling
@@ -168,19 +213,22 @@ class UserController {
 - **File Security**: Path traversal protection
 - **Email Safety**: Content security validation
 - **WebSocket Protection**: Rate limiting and authentication
+- **Robust Error Handling**: Consistent error responses with appropriate status codes
 
 ### 📡 Real-Time Communication
 - **WebSocket Support**: Built-in OpenSwoole integration
 - **Channel Messaging**: Pub/Sub pattern for group communication
 - **Connection Management**: Automatic heartbeat and cleanup
-- **Horizontal Scaling**: Redis integration for multi-server deployments
+- **Horizontal Scaling**: Redis integration for multi-server deployments with TTL-based memory management
 - **Request Integration**: Same validation and authentication as REST APIs
+- **Graceful Fallbacks**: Automatic local storage if Redis is unavailable
 
 ### 🎯 Developer Tools
 - **Query Builder**: Intuitive database operations
 - **File Processing**: Secure file handling with encryption
 - **Image Handling**: WebP conversion and optimization
 - **Type System**: Comprehensive validation
+- **Value Extraction**: Type-safe methods for validated data access
 
 ### ⚡ Performance
 - **Connection Pooling**: Smart database connections
@@ -189,6 +237,19 @@ class UserController {
 - **Query Optimization**: Built-in performance features
 - **WebSocket Efficiency**: Optimized for high-concurrency applications
 - **Async Operations**: Non-blocking I/O with OpenSwoole
+
+### 📊 Feature Comparison
+
+| Feature | Traditional Approach | GEMVC Approach |
+|---------|---------------------|----------------|
+| **Database Queries** | Manual SQL strings, manual binding | Type-safe QueryBuilder, automatic binding |
+| **Error Handling** | Inconsistent error responses | Standardized responses with proper status codes |
+| **Authentication** | Manual token parsing, unclear errors | Built-in JWT handling with specific error responses |
+| **WebSockets** | Manual implementation, no scaling | Ready-to-use handler with Redis scaling |
+| **File Handling** | Manual validation, no encryption | Built-in validation, one-line encryption |
+| **Server Support** | Either Apache OR Swoole | Same code on BOTH platforms |
+
+---
 
 ## 📋 Requirements
 - PHP 8.0+
