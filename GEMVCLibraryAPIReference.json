@@ -164,18 +164,69 @@
           }
         },
         "QueryExecuter": {
-          "description": "Executes SQL queries built by QueryBuilder.",
+          "description": "Executes SQL queries built by QueryBuilder with lazy database connection loading.",
           "methods": {
             "execute": {
-              "description": "Executes the SQL query.",
-              "parameters": ["\\PDO $pdo"],
-              "returns": "mixed",
+              "description": "Executes the SQL query, establishing a connection if needed.",
+              "parameters": [],
+              "returns": "bool",
               "throws": ["\\PDOException"],
-              "example": "$result = (new QueryBuilder(...))->run($pdo);"
+              "example": "$queryExecuter->query(\"SELECT * FROM users\");\n$queryExecuter->execute();"
+            },
+            "query": {
+              "description": "Prepares an SQL query for execution, establishing a connection if needed.",
+              "parameters": ["string $query"],
+              "returns": "void",
+              "example": "$queryExecuter->query(\"SELECT * FROM users WHERE id = :id\");"
+            },
+            "bind": {
+              "description": "Binds a parameter to the prepared statement with automatic type detection.",
+              "parameters": ["string $param", "mixed $value"],
+              "returns": "void",
+              "example": "$queryExecuter->bind(':id', 1);"
+            },
+            "fetchAll": {
+              "description": "Fetches all rows as associative arrays.",
+              "parameters": [],
+              "returns": "array|false",
+              "example": "$rows = $queryExecuter->fetchAll();"
+            },
+            "fetchAllObjects": {
+              "description": "Fetches all rows as stdClass objects.",
+              "parameters": [],
+              "returns": "array|false",
+              "example": "$objects = $queryExecuter->fetchAllObjects();"
+            },
+            "fetchAllClass": {
+              "description": "Fetches all rows as instances of a specific class.",
+              "parameters": ["string $targetClassName"],
+              "returns": "array|false",
+              "example": "$users = $queryExecuter->fetchAllClass('User');"
+            },
+            "fetchColumn": {
+              "description": "Fetches a single column from the first row.",
+              "parameters": [],
+              "returns": "mixed",
+              "example": "$count = $queryExecuter->fetchColumn();"
+            },
+            "ensureConnection": {
+              "description": "Lazy-loads the database connection when needed.",
+              "parameters": [],
+              "returns": "bool",
+              "example": "// Called internally when a database operation is requested"
+            },
+            "secure": {
+              "description": "Releases database resources and closes the connection.",
+              "parameters": [],
+              "returns": "void",
+              "example": "$queryExecuter->secure();"
             }
           },
           "features": {
-            "parameterBinding": "Automatic type detection.",
+            "lazyConnection": "Database connections established only when needed for query operations.",
+            "resourceEfficiency": "Child classes can be instantiated without creating unnecessary database connections.",
+            "autoCleanup": "Connections automatically closed when the object is destroyed.",
+            "parameterBinding": "Automatic type detection for parameter binding.",
             "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
           }
         },

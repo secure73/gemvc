@@ -174,6 +174,66 @@ class QueryBuilder {
 }
 ```
 
+#### QueryExecuter
+Executes SQL queries with lazy database connection loading.
+```php
+class QueryExecuter {
+    /**
+     * Constructor initializes execution timer but doesn't establish a database connection
+     * Connection is only established when needed for query execution
+     */
+    public function __construct()
+    
+    /**
+     * Destructor ensures resources are properly cleaned up
+     */
+    public function __destruct()
+    
+    /**
+     * Lazy-loads the database connection when needed
+     */
+    private function ensureConnection(): bool
+    
+    /**
+     * Prepare an SQL query for execution
+     * Establishes a database connection if needed
+     */
+    public function query(string $query): void
+    
+    /**
+     * Execute the prepared statement
+     * Establishes a database connection if needed
+     */
+    public function execute(): bool
+    
+    /**
+     * Release database resources and close connection
+     */
+    public function secure(): void
+    
+    // Result fetching methods
+    public function fetchAll(): array|false
+    public function fetchAllObjects(): array|false
+    public function fetchAllClass(string $targetClassName): array|false
+    public function fetchColumn(): mixed
+    
+    // Metadata methods
+    public function affectedRows(): int|null
+    public function lastInsertId(): string|false
+    public function getExecutionTime(): float
+    public function getError(): ?string
+}
+```
+
+Key features:
+- **Lazy Database Connection**: Connections are only established when actually needed for query operations
+- **Resource Efficiency**: Child classes can be instantiated without creating unnecessary database connections
+- **Automatic Resource Cleanup**: Connections are properly closed when the object is destroyed
+- **Error Handling**: Comprehensive error reporting and tracking
+- **Type Detection**: Automatic parameter type detection for binding
+- **Result Fetching**: Multiple formats for retrieving query results
+- **Performance Tracking**: Query execution time measurement
+
 #### TableGenerator
 Automatically creates and modifies database tables from PHP objects using reflection.
 ```php
@@ -793,9 +853,7 @@ if ($file->moveAndEncrypt()) {
 
 // Image optimization
 $image = new ImageHelper($uploadedFile);
-if ($image->convertToWebP(80)) {
-    // Image converted to WebP format
-}
+$image->convertToWebP(80);
 ```
 
 #### String Manipulation
@@ -1095,6 +1153,56 @@ class QueryBuilder {
      * @return Insert Query builder instance
      */
     public static function insert(string $table): Insert
+}
+```
+
+#### QueryExecuter
+```php
+class QueryExecuter {
+    /**
+     * Constructor initializes execution timer but doesn't establish a database connection
+     * Connection is only established when needed for query execution
+     */
+    public function __construct()
+    
+    /**
+     * Destructor ensures resources are properly cleaned up
+     */
+    public function __destruct()
+    
+    /**
+     * Lazy-loads the database connection when needed
+     */
+    private function ensureConnection(): bool
+    
+    /**
+     * Prepare an SQL query for execution
+     * Establishes a database connection if needed
+     */
+    public function query(string $query): void
+    
+    /**
+     * Execute the prepared statement
+     * Establishes a database connection if needed
+     */
+    public function execute(): bool
+    
+    /**
+     * Release database resources and close connection
+     */
+    public function secure(): void
+    
+    // Result fetching methods
+    public function fetchAll(): array|false
+    public function fetchAllObjects(): array|false
+    public function fetchAllClass(string $targetClassName): array|false
+    public function fetchColumn(): mixed
+    
+    // Metadata methods
+    public function affectedRows(): int|null
+    public function lastInsertId(): string|false
+    public function getExecutionTime(): float
+    public function getError(): ?string
 }
 ```
 

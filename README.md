@@ -404,6 +404,13 @@ return (new JsonResponse())->success($data)->show();
 - **Clean Structure**: Intuitive organization
 - **Consistent Naming**: camelCase conventions throughout
 
+### 🔋 Efficient Resource Management
+- **Lazy Database Connections**: Connections only established when actually needed
+- **Model Efficiency**: Table and model classes can be instantiated without database overhead
+- **Connection Pooling**: Optimal database connection management
+- **Automatic Cleanup**: Resources properly released through destructors
+- **Memory Optimization**: Smart image processing
+
 ### 🖥️ Server Flexibility
 - **Apache/Nginx Support**: Traditional PHP request handling
 - **OpenSwoole Support**: High-performance asynchronous server

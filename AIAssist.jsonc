@@ -119,8 +119,20 @@
           }
         },
         "QueryExecuter": {
-          "purpose": "Low-level query execution",
+          "purpose": "Low-level query execution with lazy database connection loading",
           "features": {
+            "lazyDatabaseConnection": {
+              "description": "Establishes database connections only when needed for queries",
+              "benefits": {
+                "resourceEfficiency": "No connections created until actually required",
+                "modelInstantiation": "Table and model classes can be instantiated without database connections",
+                "connectionPooling": "More efficient use of database connections"
+              },
+              "implementation": {
+                "ensureConnection": "Private method to establish connection when needed",
+                "connectionTiming": "Connected only during query/execute operations"
+              }
+            },
             "parameterBinding": "Automatic type detection",
             "executionTracking": {
               "timing": {
@@ -138,6 +150,10 @@
                   "fetchColumn": "Single column value"
                 }
               }
+            },
+            "resourceManagement": {
+              "autoCleanup": "Destructor ensures connections are closed",
+              "secure": "Method to explicitly release resources"
             },
             "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
           }
