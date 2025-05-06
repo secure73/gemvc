@@ -7,60 +7,121 @@ use PDO;
  */
 class QueryExecuter
 {
-    private ?string $error;
-    private int $affectedRows;
-    private string|false $lastInsertedId;
-    private \PDOStatement $stsment;
+    private ?string $error = null;
+    private int $affectedRows = 0;
+    private string|false $lastInsertedId = false;
+    private ?\PDOStatement $stsment = null;
     private float $startExecutionTime;
-    private float $endExecutionTime;
-    private string $_query;
-    private PDO|null $db;
+    private ?float $endExecutionTime = null;
+    private string $_query = '';
+    private ?PDO $db = null;
     private bool $isConnected = false;
+    private ?PdoConnection $connection = null;
+
+    /**
+     * Constructor initializes execution timer but doesn't establish a database connection
+     * Connection is only established when needed for query execution
+     */
     public function __construct()
     {
-        $connection = new PdoConnection();
-        $this->db = $connection->connect();
-        $this->error = $connection->getError();
-        $this->isConnected = $connection->isConnected();
         $this->startExecutionTime = microtime(true);
     }
 
-    public function getQuery(): null|string
+    /**
+     * Destructor ensures resources are properly cleaned up
+     */
+    public function __destruct()
     {
-        return $this->_query;
+        $this->secure();
     }
 
+    /**
+     * Lazy-loads the database connection when needed
+     * 
+     * @return bool True if connection was successful, false otherwise
+     */
+    private function ensureConnection(): bool
+    {
+        // Only create connection if it doesn't exist or is not connected
+        if ($this->db === null && !$this->isConnected) {
+            $this->connection = new PdoConnection();
+            $this->db = $this->connection->connect();
+            $this->error = $this->connection->getError();
+            $this->isConnected = $this->connection->isConnected();
+        }
+        
+        return $this->isConnected;
+    }
+
+    /**
+     * Get the current SQL query string
+     * 
+     * @return string|null The current SQL query or null if not set
+     */
+    public function getQuery(): null|string
+    {
+        return $this->_query ?: null;
+    }
+
+    /**
+     * Check if database connection is active
+     * 
+     * @return bool True if connected, false otherwise
+     */
     public function isConnected(): bool
     {
         return $this->isConnected;
     }
 
     /**
-     * @param string $query
-     * convert sql query to PDO Statement trough PDO::prepare()
-     * if connection to database is failed, set error
+     * Prepare an SQL query for execution
+     * Establishes a database connection if needed
+     * 
+     * @param string $query SQL query to prepare
+     * @return void
      */
     public function query(string $query): void
     {
         $this->_query = $query;
-        if ($this->isConnected && $this->db) {
+        
+        // Ensure we have a connection before preparing the query
+        if (!$this->ensureConnection()) {
+            $this->error = 'Database connection is null, please check your connection to Database';
+            return;
+        }
+        
+        try {
             $this->stsment = $this->db->prepare($query);
-        } else {
-            $this->error = 'Database connection is null,please check your connection to Database';
+        } catch (\PDOException $e) {
+            $this->error = 'Error preparing statement: ' . $e->getMessage();
         }
     }
 
+    /**
+     * Set an error message
+     * 
+     * @param string $error Error message
+     * @return void
+     */
     public function setError(string $error): void
     {
         $this->error = $error;
     }
 
     /**
-     * @param mixed $value
-     * this method automatically detect value Type and bind Parameter to value
+     * Bind a parameter to the prepared statement with automatic type detection
+     * 
+     * @param string $param Parameter name or placeholder
+     * @param mixed $value Value to bind
+     * @return void
      */
     public function bind(string $param, mixed $value): void
     {
+        if (!isset($this->stsment)) {
+            $this->error = 'Cannot bind parameters: No statement prepared';
+            return;
+        }
+        
         $type = match (true) {
             \is_int($value) => \PDO::PARAM_INT,
             null === $value => \PDO::PARAM_NULL,
@@ -72,53 +133,67 @@ class QueryExecuter
     }
 
     /**
-     * @set error
-     * @set affectedRows
+     * Execute the prepared statement
+     * Establishes a database connection if needed
+     * 
+     * @return bool True on success, false on failure
      */
     public function execute(): bool
     {
-        if (!$this->db) {
-            $this->error = 'nop connection';
+        // Ensure we have a connection before executing
+        if (!$this->ensureConnection()) {
+            $this->error = 'Database connection not established';
+            $this->endExecutionTime = microtime(true);
             return false;
         }
+        
+        if (!isset($this->stsment)) {
+            $this->error = 'No statement prepared';
+            $this->endExecutionTime = microtime(true);
+            return false;
+        }
+        
         try {
             $this->stsment->execute();
             $this->affectedRows = $this->stsment->rowCount();
             $this->lastInsertedId = $this->db->lastInsertId();
             $this->endExecutionTime = microtime(true);
+            
+            // Clear error if execution was successful
+            $this->error = null;
+            return true;
 
         } catch (\PDOException $e) {
             $this->endExecutionTime = microtime(true);
             $this->error = $e->getMessage();
-
+            return false;
         }
-        if (!isset($this->error)) {
-            $this->endExecutionTime = microtime(true);
-            return true;
-        }
-        $this->secure();
-        return false;
     }
 
+    /**
+     * Get the last error message
+     * 
+     * @return string|null Error message or null if no error
+     */
     public function getError(): ?string
     {
         return $this->error;
     }
 
     /**
-     * @return null|int Query affected Rows
-     *
-     * @IMPORTANT this method return null in case of Execution Error
-     * @IMPORTANT if Select Execution was successfull but no records found, return 0 ,NOT null
+     * Get the number of rows affected by the last query
+     * 
+     * @return int|null Number of affected rows or null if execution failed
      */
     public function affectedRows(): int|null
     {
-        return $this->affectedRows;
+        return isset($this->error) ? null : $this->affectedRows;
     }
 
     /**
-     * @return false|string
-     *                      in case of Execution Error , Will return false
+     * Get the ID of the last inserted row
+     * 
+     * @return string|false Last insert ID or false on failure
      */
     public function lastInsertId(): string|false
     {
@@ -126,64 +201,113 @@ class QueryExecuter
     }
 
     /**
-     * close Database connection and make resource free.
+     * Release database resources and close connection
+     * 
+     * @return void
      */
     public function secure(): void
     {
+        if (isset($this->stsment)) {
+            $this->stsment->closeCursor();
+            $this->stsment = null;
+        }
         $this->db = null;
+        $this->isConnected = false;
     }
 
-
     /**
-     * @Query Execution time in microsecond
+     * Get the execution time of the last query in milliseconds
+     * 
+     * @return float Execution time in milliseconds or -1 if never executed
      */
     public function getExecutionTime(): float
     {
         if (isset($this->endExecutionTime)) {
             return ($this->endExecutionTime - $this->startExecutionTime) * 1000;
         }
-        $this->error = 'Query never Executed successfully,please check your query and try again';
+        $this->error = 'Query never executed successfully, please check your query and try again';
 
         return -1;
     }
 
     /**
-     * @return false|array<mixed>
+     * Fetch all rows as associative arrays
+     * 
+     * @return array|false Array of rows or false on failure
      */
     public function fetchAll(): array|false
     {
-        return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
+        if (!isset($this->stsment)) {
+            $this->error = 'No statement to fetch results from';
+            return false;
+        }
+        
+        try {
+            return $this->stsment->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
+            return false;
+        }
     }
+    
     /**
-     * @return false|array<mixed>
-     * return stdClass object
+     * Fetch all rows as stdClass objects
+     * 
+     * @return array|false Array of objects or false on failure
      */
     public function fetchAllObjects(): array|false
     {
-        return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
+        if (!isset($this->stsment)) {
+            $this->error = 'No statement to fetch results from';
+            return false;
+        }
+        
+        try {
+            return $this->stsment->fetchAll(\PDO::FETCH_OBJ);
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
+            return false;
+        }
     }
 
     /**
-     * @return false|array<object>
-     * @param  string $targetClassName class name to convert result into it
+     * Fetch all rows as instances of a specific class
+     * 
+     * @param string $targetClassName Class name to map results to
+     * @return array|false Array of objects or false on failure
      */
     public function fetchAllClass(string $targetClassName): array|false
     {
+        if (!isset($this->stsment)) {
+            $this->error = 'No statement to fetch results from';
+            return false;
+        }
+        
         try {
             return $this->stsment->fetchAll(\PDO::FETCH_CLASS, $targetClassName);
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
+            return false;
         }
-        return false;
     }
 
+    /**
+     * Fetch a single column from the first row
+     * 
+     * @return mixed Column value or false on failure
+     */
     public function fetchColumn(): mixed
     {
+        if (!isset($this->stsment)) {
+            $this->error = 'No statement to fetch results from';
+            return false;
+        }
+        
         try {
             return $this->stsment->fetchColumn();
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
+            return false;
         }
-        return false;
     }
 }
