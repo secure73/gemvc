@@ -137,6 +137,11 @@ DB_USER=root
 DB_PASSWORD='databasePassword'
 QUERY_LIMIT=10
 
+# Database Connection Pool Configuration
+MIN_DB_CONNECTION_POOL=2
+MAX_DB_CONNECTION_POOL=10
+DB_CONNECTION_MAX_AGE=3600
+
 # Authentication
 TOKEN_SECRET='secret for your token'
 TOKEN_ISSUER='your_api_name'
@@ -146,6 +151,9 @@ ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
 # URL Configuration
 SERVICE_IN_URL_SECTION=2
 METHOD_IN_URL_SECTION=3
+
+# OpenSwoole Configuration
+SWOOLE_MODE=false
 ```
 
 ## Core Components
@@ -153,15 +161,60 @@ METHOD_IN_URL_SECTION=3
 ### 1. Database Layer
 
 #### PdoConnection
-Handles database connectivity and state management.
+Handles database connectivity and state management with advanced connection pooling.
 ```php
 class PdoConnection {
     public function connect(): \PDO|null
     public function isConnected(): bool
     public function getError(): null|string
     public function db(): \PDO|null
+    
+    // Connection pool management
+    public static function getMinPoolSize(): int
+    public static function getMaxPoolSize(): int
+    public static function getMaxConnectionAge(): int
+    public static function getPoolSize(?string $key = null): int
+    public static function getTotalConnections(): int
+    public static function cleanExpiredConnections(?string $key = null): int
+    public static function clearPool(?string $key = null): void
+    
+    // Connection lifecycle methods
+    public function releaseConnection(): bool
 }
 ```
+
+##### Connection Pooling Features
+- **Parameter-Based Pooling**: Connections grouped by database parameters
+- **Connection Aging**: Automatic expiration of connections based on age
+- **Pool Size Control**: Configurable minimum and maximum pool sizes
+- **Health Verification**: Connections tested for validity before use and reuse
+- **Resource Tracking**: Accurate monitoring of total active connections
+
+##### Environment Configuration
+```env
+# Database Connection Pool Configuration
+MIN_DB_CONNECTION_POOL=2
+MAX_DB_CONNECTION_POOL=10
+DB_CONNECTION_MAX_AGE=3600
+```
+
+These environment variables control:
+- `MIN_DB_CONNECTION_POOL`: Minimum connections to maintain per pool
+- `MAX_DB_CONNECTION_POOL`: Maximum connections allowed per pool
+- `DB_CONNECTION_MAX_AGE`: Maximum age in seconds before a connection expires (default: 3600)
+
+##### Connection Lifecycle
+1. When `connect()` is called, expired connections are cleaned from the pool
+2. The system tries to reuse an existing connection from the appropriate pool
+3. If no valid connection exists in the pool, a new one is created
+4. When `releaseConnection()` is called, the connection is validated and returned to the pool
+5. Connections exceeding the maximum age are automatically removed
+
+This system is particularly beneficial in high-concurrency environments and when using OpenSwoole, as it:
+- Reduces connection overhead
+- Prevents connection leaks
+- Ensures database resource efficiency
+- Automatically handles stale connections
 
 #### QueryBuilder
 Provides fluent interface for building SQL queries.

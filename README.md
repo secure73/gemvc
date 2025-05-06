@@ -51,6 +51,11 @@ DB_NAME=your_db
 DB_USER=root
 DB_PASSWORD='yourPassword'
 
+# Database Connection Pool
+MIN_DB_CONNECTION_POOL=2
+MAX_DB_CONNECTION_POOL=10
+DB_CONNECTION_MAX_AGE=3600
+
 # Security Settings
 TOKEN_SECRET='your_secret'
 TOKEN_ISSUER='your_api'
@@ -407,7 +412,12 @@ return (new JsonResponse())->success($data)->show();
 ### 🔋 Efficient Resource Management
 - **Lazy Database Connections**: Connections only established when actually needed
 - **Model Efficiency**: Table and model classes can be instantiated without database overhead
-- **Connection Pooling**: Optimal database connection management
+- **Advanced Connection Pooling**: Sophisticated connection management with:
+  - Parameter-based connection sharing
+  - Automatic connection health verification
+  - Time-based connection expiration
+  - Configurable pool sizes
+  - Efficient resource tracking
 - **Automatic Cleanup**: Resources properly released through destructors
 - **Memory Optimization**: Smart image processing
 

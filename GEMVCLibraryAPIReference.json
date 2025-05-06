@@ -15,7 +15,7 @@
           "description": "Manages database connections and provides connection pooling.",
           "methods": {
             "connect": {
-              "description": "Establishes a database connection.",
+              "description": "Establishes a database connection, retrieving from pool when available.",
               "returns": "\\PDO|null",
               "throws": ["DatabaseException"],
               "example": "$pdo = (new PdoConnection())->connect();"
@@ -29,7 +29,60 @@
               "description": "Returns the last database error message.",
               "returns": "string|null",
               "example": "$error = (new PdoConnection())->getError();"
+            },
+            "releaseConnection": {
+              "description": "Returns the current connection to the pool after validating health.",
+              "returns": "bool",
+              "example": "$connection->releaseConnection();"
+            },
+            "getMinPoolSize": {
+              "description": "Gets the minimum pool size from environment variables.",
+              "returns": "int",
+              "example": "$minSize = PdoConnection::getMinPoolSize();"
+            },
+            "getMaxPoolSize": {
+              "description": "Gets the maximum pool size from environment variables.",
+              "returns": "int",
+              "example": "$maxSize = PdoConnection::getMaxPoolSize();"
+            },
+            "getMaxConnectionAge": {
+              "description": "Gets the maximum connection age in seconds from environment variables.",
+              "returns": "int",
+              "example": "$maxAge = PdoConnection::getMaxConnectionAge();"
+            },
+            "getPoolSize": {
+              "description": "Gets the current size of the connection pool.",
+              "parameters": ["string|null $key"],
+              "returns": "int",
+              "example": "$poolSize = PdoConnection::getPoolSize();"
+            },
+            "getTotalConnections": {
+              "description": "Gets the total number of active connections across all pools.",
+              "returns": "int",
+              "example": "$totalConnections = PdoConnection::getTotalConnections();"
+            },
+            "cleanExpiredConnections": {
+              "description": "Removes expired connections from the pool.",
+              "parameters": ["string|null $key"],
+              "returns": "int",
+              "example": "$removed = PdoConnection::cleanExpiredConnections();"
+            },
+            "clearPool": {
+              "description": "Clears all connections from the pool.",
+              "parameters": ["string|null $key"],
+              "returns": "void",
+              "example": "PdoConnection::clearPool();"
             }
+          },
+          "environmentVariables": {
+            "MIN_DB_CONNECTION_POOL": "Minimum connections to maintain per pool",
+            "MAX_DB_CONNECTION_POOL": "Maximum connections allowed per pool",
+            "DB_CONNECTION_MAX_AGE": "Maximum age in seconds before a connection expires"
+          },
+          "connectionPooling": {
+            "parameterBased": "Connections are grouped by database parameters",
+            "connectionAging": "Connections expire after a configurable time period",
+            "healthVerification": "Connections are tested before reuse and before storage"
           },
           "errorHandling": {
             "connectionFailed": "Check credentials and server status.",

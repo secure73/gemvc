@@ -14,7 +14,7 @@
       "mainClasses": {
         "PdoConnection": {
           "purpose": "Database connection management with connection pooling",
-          "keyMethods": ["connect", "isConnected", "db"],
+          "keyMethods": ["connect", "isConnected", "db", "releaseConnection", "cleanExpiredConnections"],
           "errorPatterns": {
             "connectionFailed": "Database connection not established",
             "invalidCredentials": "SQLSTATE[28000]",
@@ -24,6 +24,24 @@
             "persistent": true,
             "errorMode": "PDO::ERRMODE_EXCEPTION",
             "charset": "UTF-8"
+          },
+          "connectionPooling": {
+            "parameterBased": "Groups connections by database parameters",
+            "agingSystem": "Expires connections based on configurable maximum age",
+            "healthVerification": "Tests connections before reuse with SELECT 1",
+            "poolSizing": {
+              "minPoolSize": "Configured via MIN_DB_CONNECTION_POOL environment variable",
+              "maxPoolSize": "Configured via MAX_DB_CONNECTION_POOL environment variable",
+              "connectionAge": "Configured via DB_CONNECTION_MAX_AGE environment variable (seconds)"
+            },
+            "resourceTracking": {
+              "poolSize": "Tracks connections per pool",
+              "totalConnections": "Monitors total active connections across all pools"
+            },
+            "maintenance": {
+              "automaticCleaning": "Removes expired connections during connect()",
+              "manualControl": "Provides clearPool() method for explicit cleanup"
+            }
           },
           "errorHandling": {
             "getError": "Returns detailed error message",
@@ -904,7 +922,10 @@
         "DB_CHARSET": "Database charset",
         "DB_USER": "Database username",
         "DB_PASSWORD": "Database password",
-        "QUERY_LIMIT": "Default query limit"
+        "QUERY_LIMIT": "Default query limit",
+        "MIN_DB_CONNECTION_POOL": "Minimum connections per pool",
+        "MAX_DB_CONNECTION_POOL": "Maximum connections per pool",
+        "DB_CONNECTION_MAX_AGE": "Maximum connection age in seconds"
       },
       "authentication": {
         "TOKEN_SECRET": "JWT secret key",
@@ -962,6 +983,18 @@
         "options": {
           "ATTR_PERSISTENT": true,
           "ATTR_EMULATE_PREPARES": false
+        },
+        "advancedFeatures": {
+          "parameterPooling": "Groups connections by database parameters",
+          "connectionExpiration": "Time-based connection aging system",
+          "healthChecking": "Validates connections before reuse",
+          "resourceTracking": "Monitors total and per-pool connection counts",
+          "autoCleanup": "Automatically removes stale connections"
+        },
+        "environmentConfiguration": {
+          "MIN_DB_CONNECTION_POOL": "Minimum connections to maintain per pool",
+          "MAX_DB_CONNECTION_POOL": "Maximum connections allowed per pool",
+          "DB_CONNECTION_MAX_AGE": "Maximum connection age in seconds (default: 3600)"
         }
       },
       "caching": {
