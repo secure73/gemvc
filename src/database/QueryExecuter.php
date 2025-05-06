@@ -17,18 +17,15 @@ class QueryExecuter
     private ?PDO $db = null;
     private bool $isConnected = false;
     private ?PdoConnection $connection = null;
-    private bool $usePooling = true;
+
 
     /**
      * Constructor initializes execution timer but doesn't establish a database connection
      * Connection is only established when needed for query execution
-     * 
-     * @param bool $usePooling Whether to use connection pooling (default: true)
      */
-    public function __construct(bool $usePooling = true)
+    public function __construct()
     {
         $this->startExecutionTime = microtime(true);
-        $this->usePooling = $usePooling;
     }
 
     /**
@@ -48,7 +45,7 @@ class QueryExecuter
     {
         // Only create connection if it doesn't exist or is not connected
         if ($this->db === null && !$this->isConnected) {
-            $this->connection = new PdoConnection($this->usePooling);
+            $this->connection = new PdoConnection();
             $this->db = $this->connection->connect();
             $this->error = $this->connection->getError();
             $this->isConnected = $this->connection->isConnected();
@@ -75,17 +72,6 @@ class QueryExecuter
     public function isConnected(): bool
     {
         return $this->isConnected;
-    }
-
-    /**
-     * Set whether to use connection pooling
-     * 
-     * @param bool $usePooling True to use pooling, false to disable
-     * @return void
-     */
-    public function setUsePooling(bool $usePooling): void
-    {
-        $this->usePooling = $usePooling;
     }
 
     /**
@@ -216,7 +202,8 @@ class QueryExecuter
     }
 
     /**
-     * Release database resources and return connection to the pool if pooling is enabled
+     * Release database resources and return connection to the pool
+     * Connection pooling is managed by PdoConnection based on environment configuration
      * 
      * @return void
      */
@@ -227,8 +214,8 @@ class QueryExecuter
             $this->stsment = null;
         }
         
-        // Return the connection to the pool if we're using pooling
-        if ($this->usePooling && $this->connection !== null && $this->isConnected && $this->db !== null) {
+        // Return the connection to the pool
+        if ($this->connection !== null && $this->isConnected && $this->db !== null) {
             $this->connection->releaseConnection();
         }
         
