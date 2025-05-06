@@ -174,6 +174,130 @@ class QueryBuilder {
 }
 ```
 
+#### TableGenerator
+Automatically creates and modifies database tables from PHP objects using reflection.
+```php
+class TableGenerator extends QueryExecuter {
+    /**
+     * Creates a table from an object
+     * @param object $object The object to create a table from
+     * @param string|null $tableName Table name or null to use object's getTable() method
+     * @return bool Success status
+     */
+    public function createTableFromObject(object $object, string $tableName = null): bool
+    
+    /**
+     * Makes a column in an existing table unique
+     * @param string $tableName The table name
+     * @param string $columnName The column to make unique
+     * @param bool $dropExistingIndex Whether to drop existing indexes
+     * @return bool Success status
+     */
+    public function makeColumnUnique(string $tableName, string $columnName, bool $dropExistingIndex = true): bool
+    
+    /**
+     * Creates a composite unique constraint
+     * @param string $tableName The table name
+     * @param array $columnNames Array of column names to make unique together
+     * @param string|null $indexName Optional custom index name
+     * @param bool $dropExistingIndexes Whether to drop existing indexes
+     * @return bool Success status
+     */
+    public function makeColumnsUniqueTogether(string $tableName, array $columnNames, ?string $indexName = null, bool $dropExistingIndexes = true): bool
+    
+    /**
+     * Marks a property for indexing
+     * @param string $propertyName The property to index
+     * @param bool $unique Whether index should be unique
+     * @return self For method chaining
+     */
+    public function addIndex(string $propertyName, bool $unique = false): self
+    
+    /**
+     * Removes indexing from a property
+     * @param string $propertyName The property to remove indexing from
+     * @return self For method chaining
+     */
+    public function removeIndex(string $propertyName): self
+    
+    /**
+     * Sets custom SQL properties for a column
+     * @param string $propertyName The property name
+     * @param string $columnProperties The SQL properties to add
+     * @return self For method chaining
+     */
+    public function setColumnProperties(string $propertyName, string $columnProperties): self
+    
+    /**
+     * Makes a column NOT NULL
+     * @param string $propertyName The property name
+     * @return self For method chaining
+     */
+    public function setNotNull(string $propertyName): self
+    
+    /**
+     * Sets a default value for a column
+     * @param string $propertyName The property name
+     * @param mixed $defaultValue The default value
+     * @return self For method chaining
+     */
+    public function setDefault(string $propertyName, mixed $defaultValue): self
+    
+    /**
+     * Adds a CHECK constraint to a column
+     * @param string $propertyName The property name
+     * @param string $checkExpression The SQL expression for the check
+     * @return self For method chaining
+     */
+    public function addCheck(string $propertyName, string $checkExpression): self
+    
+    /**
+     * Removes a column from an existing table
+     * @param string $tableName The table name
+     * @param string $columnName The column to remove
+     * @return bool Success status
+     */
+    public function removeColumn(string $tableName, string $columnName): bool
+    
+    /**
+     * Updates an existing table based on changes in object properties
+     * @param object $object The object with updated properties
+     * @param string|null $tableName Table name or null to use object's getTable() method
+     * @param bool $removeExtraColumns Whether to remove columns that don't exist in the object
+     * @return bool Success status
+     */
+    public function updateTable(object $object, string $tableName = null, bool $removeExtraColumns = false): bool
+}
+```
+
+Type mapping:
+- PHP `int`/`integer` → SQL `INT(11)`
+- PHP `float`/`double` → SQL `DOUBLE`
+- PHP `bool`/`boolean` → SQL `TINYINT(1)`
+- PHP `string` → SQL `VARCHAR(255)`
+- PHP `datetime` → SQL `DATETIME`
+- PHP `array` → SQL `JSON`
+- Unknown types → SQL `TEXT`
+
+Special field handling:
+- Property named `id` → Auto-increment primary key
+- Properties ending with `_id` → `INT(11)` (for foreign keys)
+- Properties ending with `email` → `VARCHAR(320)` (max email length)
+
+Properties that are skipped:
+- Static properties
+- Properties that start with underscore (_)
+- Constants (read-only public properties in PHP 8.1+)
+
+Key features:
+- **PHP to SQL Type Mapping**: Automatically maps PHP types to appropriate SQL column types
+- **Property Filtering**: Skips properties that shouldn't be database columns (static, underscore-prefixed, constants)
+- **Special Field Handling**: Automatic handling for ID fields, foreign keys, and email addresses
+- **Index Management**: Support for regular and unique indexes, including composite indexes
+- **Column Constraints**: Support for NOT NULL, DEFAULT values, and CHECK constraints
+- **Transaction Support**: All operations wrapped in transactions for atomicity
+- **Schema Management**: Ability to update existing tables by adding new columns, modifying changed columns, and removing deleted columns
+
 ### 2. HTTP Layer
 
 #### Request
@@ -725,6 +849,63 @@ $updated = QueryBuilder::update('users')
     ->run($pdoQuery);
 ```
 
+#### Table Generation Examples
+```php
+// Create a table from a User model
+class User {
+    public int $id;
+    public string $username;
+    public string $email;
+    public string $password;
+    public ?string $bio = null;
+    public bool $is_active = true;
+    public string $created_at;
+    
+    // Property to skip (won't be added to database)
+    private string $_tempData;
+    
+    // Get table name
+    public function getTable(): string {
+        return 'users';
+    }
+}
+
+// Basic table creation
+$generator = new TableGenerator();
+if ($generator->createTableFromObject(new User())) {
+    echo "Table created successfully!";
+}
+
+// Advanced table creation with constraints and indexes
+$generator = new TableGenerator();
+$generator
+    // Add indexes
+    ->addIndex('username', true)  // Unique index
+    ->addIndex('email', true)     // Unique index
+    ->addIndex('created_at')      // Regular index
+    
+    // Add constraints
+    ->setNotNull('username')
+    ->setNotNull('email')
+    ->setDefault('is_active', true)
+    ->setDefault('created_at', 'CURRENT_TIMESTAMP')
+    ->addCheck('username', 'LENGTH(username) >= 3')
+    
+    // Create the table
+    ->createTableFromObject(new User());
+
+// Add unique constraint to existing table
+$generator = new TableGenerator();
+$generator->makeColumnUnique('users', 'email');
+
+// Create composite unique constraint
+$generator = new TableGenerator();
+$generator->makeColumnsUniqueTogether(
+    'user_addresses', 
+    ['user_id', 'address_type']
+);
+```
+
 ### File Processing
 
 #### Secure File Handling
@@ -916,6 +1097,129 @@ class QueryBuilder {
     public static function insert(string $table): Insert
 }
 ```
+
+#### TableGenerator
+```php
+class TableGenerator extends QueryExecuter {
+    /**
+     * Creates a table from an object
+     * @param object $object The object to create a table from
+     * @param string|null $tableName Table name or null to use object's getTable() method
+     * @return bool Success status
+     */
+    public function createTableFromObject(object $object, string $tableName = null): bool
+    
+    /**
+     * Makes a column in an existing table unique
+     * @param string $tableName The table name
+     * @param string $columnName The column to make unique
+     * @param bool $dropExistingIndex Whether to drop existing indexes
+     * @return bool Success status
+     */
+    public function makeColumnUnique(string $tableName, string $columnName, bool $dropExistingIndex = true): bool
+    
+    /**
+     * Creates a composite unique constraint
+     * @param string $tableName The table name
+     * @param array $columnNames Array of column names to make unique together
+     * @param string|null $indexName Optional custom index name
+     * @param bool $dropExistingIndexes Whether to drop existing indexes
+     * @return bool Success status
+     */
+    public function makeColumnsUniqueTogether(string $tableName, array $columnNames, ?string $indexName = null, bool $dropExistingIndexes = true): bool
+    
+    /**
+     * Marks a property for indexing
+     * @param string $propertyName The property to index
+     * @param bool $unique Whether index should be unique
+     * @return self For method chaining
+     */
+    public function addIndex(string $propertyName, bool $unique = false): self
+    
+    /**
+     * Removes indexing from a property
+     * @param string $propertyName The property to remove indexing from
+     * @return self For method chaining
+     */
+    public function removeIndex(string $propertyName): self
+    
+    /**
+     * Sets custom SQL properties for a column
+     * @param string $propertyName The property name
+     * @param string $columnProperties The SQL properties to add
+     * @return self For method chaining
+     */
+    public function setColumnProperties(string $propertyName, string $columnProperties): self
+    
+    /**
+     * Makes a column NOT NULL
+     * @param string $propertyName The property name
+     * @return self For method chaining
+     */
+    public function setNotNull(string $propertyName): self
+    
+    /**
+     * Sets a default value for a column
+     * @param string $propertyName The property name
+     * @param mixed $defaultValue The default value
+     * @return self For method chaining
+     */
+    public function setDefault(string $propertyName, mixed $defaultValue): self
+    
+    /**
+     * Adds a CHECK constraint to a column
+     * @param string $propertyName The property name
+     * @param string $checkExpression The SQL expression for the check
+     * @return self For method chaining
+     */
+    public function addCheck(string $propertyName, string $checkExpression): self
+    
+    /**
+     * Removes a column from an existing table
+     * @param string $tableName The table name
+     * @param string $columnName The column to remove
+     * @return bool Success status
+     */
+    public function removeColumn(string $tableName, string $columnName): bool
+    
+    /**
+     * Updates an existing table based on changes in object properties
+     * @param object $object The object with updated properties
+     * @param string|null $tableName Table name or null to use object's getTable() method
+     * @param bool $removeExtraColumns Whether to remove columns that don't exist in the object
+     * @return bool Success status
+     */
+    public function updateTable(object $object, string $tableName = null, bool $removeExtraColumns = false): bool
+}
+```
+
+Type mapping:
+- PHP `int`/`integer` → SQL `INT(11)`
+- PHP `float`/`double` → SQL `DOUBLE`
+- PHP `bool`/`boolean` → SQL `TINYINT(1)`
+- PHP `string` → SQL `VARCHAR(255)`
+- PHP `datetime` → SQL `DATETIME`
+- PHP `array` → SQL `JSON`
+- Unknown types → SQL `TEXT`
+
+Special field handling:
+- Property named `id` → Auto-increment primary key
+- Properties ending with `_id` → `INT(11)` (for foreign keys)
+- Properties ending with `email` → `VARCHAR(320)` (max email length)
+
+Properties that are skipped:
+- Static properties
+- Properties that start with underscore (_)
+- Constants (read-only public properties in PHP 8.1+)
+
+Key features:
+- **PHP to SQL Type Mapping**: Automatically maps PHP types to appropriate SQL column types
+- **Property Filtering**: Skips properties that shouldn't be database columns (static, underscore-prefixed, constants)
+- **Special Field Handling**: Automatic handling for ID fields, foreign keys, and email addresses
+- **Index Management**: Support for regular and unique indexes, including composite indexes
+- **Column Constraints**: Support for NOT NULL, DEFAULT values, and CHECK constraints
+- **Transaction Support**: All operations wrapped in transactions for atomicity
+- **Schema Management**: Ability to update existing tables by adding new columns, modifying changed columns, and removing deleted columns
 
 ### HTTP Layer
 

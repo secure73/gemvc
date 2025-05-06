@@ -40,6 +40,46 @@
             }
           }
         },
+        "TableGenerator": {
+          "purpose": "Automatically creates database tables from PHP objects using reflection",
+          "keyMethods": ["createTableFromObject", "makeColumnUnique", "makeColumnsUniqueTogether", "addIndex", "setColumnProperties", "removeColumn", "updateTable"],
+          "features": {
+            "reflection": "Uses PHP reflection for dynamic property analysis",
+            "typeMapping": {
+              "phpToSql": "Maps PHP types to appropriate SQL column types",
+              "specialCases": {
+                "id": "AUTO_INCREMENT PRIMARY KEY",
+                "*_id": "INT(11) for foreign keys",
+                "*email": "VARCHAR(320) for email addresses"
+              }
+            },
+            "propertyFiltering": {
+              "static": "Skips static properties",
+              "underscore": "Skips properties starting with underscore (_)",
+              "constants": "Skips constants and read-only properties"
+            },
+            "indexManagement": {
+              "regular": "Support for adding regular indexes",
+              "unique": "Support for adding unique indexes",
+              "composite": "Support for creating unique constraints across multiple columns",
+              "automaticNaming": "Generates appropriate index names"
+            },
+            "columnProperties": {
+              "notNull": "Support for NOT NULL constraints",
+              "defaultValues": "Support for DEFAULT value specification",
+              "checkConstraints": "Support for CHECK constraints"
+            },
+            "transactionSupport": "Wraps operations in transactions for atomicity",
+            "fluentInterface": "Method chaining for intuitive configuration",
+            "schemaManagement": {
+              "addColumns": "Adds new columns to existing tables",
+              "modifyColumns": "Updates column definitions when types change",
+              "removeColumns": "Safely removes columns from tables",
+              "tableUpdates": "Compares object properties with existing table structure"
+            }
+          },
+          "example": "// Create a table with indexes and constraints\n$generator = new TableGenerator();\n$generator->addIndex('email', true)\n  ->setNotNull('username')\n  ->setDefault('status', 'active')\n  ->addCheck('age', 'age >= 18')\n  ->createTableFromObject(new User());\n\n// Update table schema when object changes\n$generator->updateTable(new User(), null, true);"
+        },
         "QueryBuilder": {
           "purpose": "Fluent SQL query construction with automatic security",
           "operations": ["select", "insert", "update", "delete"],

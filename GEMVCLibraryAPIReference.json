@@ -70,6 +70,99 @@
             "whereConditions": ["whereEqual", "whereLike", "whereBetween", "whereNull"]
           }
         },
+        "TableGenerator": {
+          "description": "Automatically creates database tables from PHP objects using reflection.",
+          "methods": {
+            "createTableFromObject": {
+              "description": "Creates a database table based on an object's properties.",
+              "parameters": ["object $object", "string|null $tableName"],
+              "returns": "bool",
+              "example": "$generator = new TableGenerator();\n$generator->createTableFromObject(new User());"
+            },
+            "makeColumnUnique": {
+              "description": "Makes a column in an existing table unique.",
+              "parameters": ["string $tableName", "string $columnName", "bool $dropExistingIndex"],
+              "returns": "bool",
+              "example": "$generator->makeColumnUnique('users', 'email');"
+            },
+            "makeColumnsUniqueTogether": {
+              "description": "Creates a composite unique constraint across multiple columns.",
+              "parameters": ["string $tableName", "array $columnNames", "string|null $indexName", "bool $dropExistingIndexes"],
+              "returns": "bool",
+              "example": "$generator->makeColumnsUniqueTogether('users', ['first_name', 'last_name']);"
+            },
+            "addIndex": {
+              "description": "Marks a property to be indexed in the database.",
+              "parameters": ["string $propertyName", "bool $unique"],
+              "returns": "self",
+              "example": "$generator->addIndex('email', true);"
+            },
+            "removeIndex": {
+              "description": "Removes indexing from a property.",
+              "parameters": ["string $propertyName"],
+              "returns": "self",
+              "example": "$generator->removeIndex('temporary_field');"
+            },
+            "setColumnProperties": {
+              "description": "Sets custom SQL properties for a column.",
+              "parameters": ["string $propertyName", "string $columnProperties"],
+              "returns": "self",
+              "example": "$generator->setColumnProperties('status', 'NOT NULL DEFAULT \"active\"');"
+            },
+            "setNotNull": {
+              "description": "Makes a column NOT NULL.",
+              "parameters": ["string $propertyName"],
+              "returns": "self",
+              "example": "$generator->setNotNull('username');"
+            },
+            "setDefault": {
+              "description": "Sets a default value for a column.",
+              "parameters": ["string $propertyName", "mixed $defaultValue"],
+              "returns": "self",
+              "example": "$generator->setDefault('created_at', 'CURRENT_TIMESTAMP');"
+            },
+            "addCheck": {
+              "description": "Adds a CHECK constraint to a column.",
+              "parameters": ["string $propertyName", "string $checkExpression"],
+              "returns": "self",
+              "example": "$generator->addCheck('age', 'age >= 18');"
+            },
+            "removeColumn": {
+              "description": "Removes a column from an existing table.",
+              "parameters": ["string $tableName", "string $columnName"],
+              "returns": "bool",
+              "example": "$generator->removeColumn('users', 'temporary_field');"
+            },
+            "updateTable": {
+              "description": "Updates an existing table based on changes in object properties.",
+              "parameters": ["object $object", "string|null $tableName", "bool $removeExtraColumns"],
+              "returns": "bool",
+              "example": "$generator->updateTable(new User(), null, true);"
+            }
+          },
+          "features": {
+            "reflection": "Uses PHP reflection to analyze object properties.",
+            "typeDetection": "Automatically detects property types and maps to SQL types.",
+            "propertyFiltering": "Skips static properties, underscore-prefixed properties, and constants.",
+            "indexManagement": "Support for regular and unique indexes including composite indexes.",
+            "columnConstraints": "Support for NOT NULL, DEFAULT values, and CHECK constraints.",
+            "transactions": "All operations wrapped in transactions for atomicity.",
+            "schemaUpdates": "Ability to update existing tables by adding, modifying, or removing columns."
+          },
+          "propertyTypes": {
+            "int/integer": "INT(11)",
+            "float/double": "DOUBLE",
+            "bool/boolean": "TINYINT(1)",
+            "string": "VARCHAR(255)",
+            "datetime": "DATETIME",
+            "array": "JSON"
+          },
+          "specialHandling": {
+            "id": "Auto-increment primary key",
+            "*_id": "Foreign key columns as INT(11)",
+            "*email": "Email columns as VARCHAR(320)"
+          }
+        },
         "QueryExecuter": {
           "description": "Executes SQL queries built by QueryBuilder.",
           "methods": {

@@ -15,6 +15,7 @@ Transform your PHP development with GEMVC - where security meets simplicity! Bui
   - [Dual Server Support](#-dual-server-support)
   - [Real-Time Communication](#-real-time-communication)
   - [Developer Experience](#-developer-experience)
+  - [Automatic Table Generator](#-automatic-table-generator)
 - [Core Features](#-core-features)
 - [Requirements](#-requirements)
 - [Perfect For](#-perfect-for)
@@ -143,7 +144,7 @@ class UserController {
 
 | Component | Description | Key Features |
 |-----------|-------------|-------------|
-| **Database** | SQL query building & execution | Type-safe queries, injection protection |
+| **Database** | SQL query building & execution | Type-safe queries, injection protection, table generation |
 | **HTTP** | Request/response handling | Validation, auth, WebSockets |
 | **Security** | Security features | Encryption, sanitization, protection |
 | **Helpers** | Utility classes | File, image, type handling |
@@ -292,6 +293,60 @@ $server->start();
 
 **Use Case:** Build real-time chat applications, notifications, or live dashboards with automatic scaling across servers.
 
+### 🏗️ Automatic Table Generator
+```php
+// Define your model with PHP properties
+class User {
+    public int $id;
+    public string $username;
+    public string $email;
+    public string $password;
+    public ?string $bio = null;
+    public bool $is_active = true;
+    public string $created_at;
+    
+    // Properties starting with _ are ignored
+    private string $_tempData;
+    
+    public function getTable(): string {
+        return 'users';
+    }
+}
+
+// Create database table with just a few lines!
+$generator = new TableGenerator();
+
+// Fluent interface for configuration
+$generator
+    // Add indexes
+    ->addIndex('username', true)  // Unique index
+    ->addIndex('email', true)     // Unique index
+    
+    // Add constraints
+    ->setNotNull('username')
+    ->setDefault('is_active', true)
+    ->setDefault('created_at', 'CURRENT_TIMESTAMP')
+    ->addCheck('username', 'LENGTH(username) >= 3')
+    
+    // Create the table with all configurations
+    ->createTableFromObject(new User());
+
+// Add a composite unique constraint
+$generator->makeColumnsUniqueTogether(
+    'user_addresses', 
+    ['user_id', 'address_type']
+);
+
+// Update table when model changes
+$generator = new TableGenerator();
+$generator->updateTable(new User(), null, true);  // true = remove columns no longer in object
+
+// Safely remove a specific column
+$generator->removeColumn('users', 'temporary_field');
+```
+
+**Use Case:** Automatically generate and maintain database tables from your PHP models with indexes, constraints, and validation, eliminating manual SQL schema creation and migration scripts.
+
 ---
 
 ### 👨‍💻 Developer Experience
@@ -364,6 +419,14 @@ return (new JsonResponse())->success($data)->show();
 - **WebSocket Protection**: Rate limiting and authentication
 - **Robust Error Handling**: Consistent error responses with appropriate status codes
 
+### 📊 Database & ORM Features
+- **Query Builder**: Intuitive database operations with automatic parameter binding
+- **Table Generator**: Create tables from PHP objects using reflection
+- **Schema Management**: Add indexes, constraints, and relationships
+- **Type Mapping**: Automatic conversion between PHP and SQL types
+- **Transaction Support**: All operations wrapped in transactions
+- **Column Constraints**: Support for NOT NULL, DEFAULT values, and CHECK constraints
+
 ### 📡 Real-Time Communication
 - **WebSocket Support**: Built-in OpenSwoole integration
 - **Channel Messaging**: Pub/Sub pattern for group communication
@@ -392,6 +455,7 @@ return (new JsonResponse())->success($data)->show();
 | Feature | Traditional Approach | GEMVC Approach |
 |---------|---------------------|----------------|
 | **Database Queries** | Manual SQL strings, manual binding | Type-safe QueryBuilder, automatic binding |
+| **Schema Management** | Manual SQL CREATE TABLE statements | Automatic table generation from PHP objects |
 | **Error Handling** | Inconsistent error responses | Standardized responses with proper status codes |
 | **Authentication** | Manual token parsing, unclear errors | Built-in JWT handling with specific error responses |
 | **WebSockets** | Manual implementation, no scaling | Ready-to-use handler with Redis scaling |
