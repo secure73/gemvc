@@ -16,6 +16,7 @@ Transform your PHP development with GEMVC - where security meets simplicity! Bui
   - [Real-Time Communication](#-real-time-communication)
   - [Developer Experience](#-developer-experience)
   - [Automatic Table Generator](#-automatic-table-generator)
+  - [Table Database Abstraction](#-table-database-abstraction)
 - [Core Features](#-core-features)
 - [Requirements](#-requirements)
 - [Perfect For](#-perfect-for)
@@ -45,11 +46,18 @@ composer require gemvc/library
 
 ### 1. Configure Your Magic
 ```env
+# OpenSwoole Configuration (optional)
+SWOOLE_MODE=true
+OPENSWOOLE_WORKERS=3
+
 # Database Configuration
 DB_HOST=localhost
+DB_PORT=3306
 DB_NAME=your_db
+DB_CHARSET=utf8mb4
 DB_USER=root
 DB_PASSWORD='yourPassword'
+QUERY_LIMIT=10
 
 # Database Connection Pool
 MIN_DB_CONNECTION_POOL=2
@@ -59,6 +67,19 @@ DB_CONNECTION_MAX_AGE=3600
 # Security Settings
 TOKEN_SECRET='your_secret'
 TOKEN_ISSUER='your_api'
+REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
+ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
+
+# URL Configuration
+SERVICE_IN_URL_SECTION=2
+METHOD_IN_URL_SECTION=3
+
+
+
+# WebSocket Settings (optional)
+WS_CONNECTION_TIMEOUT=300
+WS_MAX_MESSAGES_PER_MINUTE=60
+WS_HEARTBEAT_INTERVAL=30
 ```
 
 ### 2. Start Building
@@ -149,11 +170,43 @@ class UserController {
 
 | Component | Description | Key Features |
 |-----------|-------------|-------------|
-| **Database** | SQL query building & execution | Type-safe queries, injection protection, table generation |
+| **Database** | SQL query building & execution | Type-safe queries, injection protection, table generation, ORM capabilities |
 | **HTTP** | Request/response handling | Validation, auth, WebSockets |
 | **Security** | Security features | Encryption, sanitization, protection |
 | **Helpers** | Utility classes | File, image, type handling |
 | **WebSocket** | Real-time communication | Redis scaling, heartbeat, channels |
+
+## 🏗️ Architecture
+
+### Database Components Hierarchy
+
+```
+PdoConnection  ←  Connection pooling, database management
+    ↑
+    │ aggregation
+    │
+QueryExecuter  ←  SQL query execution, lazy database loading
+    ↑
+    │ extends
+    │
+PdoQuery       ←  Query operations (select, insert, update, delete)
+    ↑
+    │ extends
+    │
+Table          ←  Database abstraction layer, fluent interface
+```
+
+In this architecture:
+
+- **Table** extends **PdoQuery** to provide a fluent, object-oriented interface for working directly with database tables. It inherits all query capabilities while adding table-specific operations like insertSingleQuery, updateSingleQuery, and type mapping.
+
+- **PdoQuery** extends **QueryExecuter** to add higher-level database operations like SELECT, INSERT, UPDATE, and DELETE queries while inheriting the core query execution capabilities.
+
+- **QueryExecuter** aggregates **PdoConnection** to execute SQL queries while benefiting from connection pooling. It implements lazy loading, only establishing a database connection when actually needed for query execution.
+
+- **PdoConnection** manages database connections with advanced pooling features, including connection reuse, health verification, automatic expiration, and efficient resource tracking.
+
+This layered design allows each class to focus on a specific responsibility while building on the capabilities of its parent classes, resulting in a powerful and flexible database interaction system.
 
 ---
 
@@ -298,27 +351,123 @@ $server->start();
 
 **Use Case:** Build real-time chat applications, notifications, or live dashboards with automatic scaling across servers.
 
-### 🏗️ Automatic Table Generator
+### 📚 Table Database Abstraction
 ```php
-// Define your model with PHP properties
-class User {
+// Define a table class for database interaction
+// Note: This is NOT a Model layer (which will be added later)
+// This is a database abstraction layer for direct table operations
+class UserTable extends Table {
+    // Database table properties matching columns
     public int $id;
     public string $username;
     public string $email;
+    public string $password;
+    public bool $is_active = true;
+    public ?string $deleted_at = null;
+    
+    // Type mapping for database to PHP conversion
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool',
+        'deleted_at' => 'datetime'
+    ];
+    
+    // Required constructor specifying the table name
+    public function __construct() {
+        parent::__construct('users');
+    }
+    
+    // Custom database query methods
+    public function findByEmail(string $email): ?self {
+        return $this->select()
+            ->where('email', $email)
+            ->limit(1)
+            ->run()[0] ?? null;
+    }
+}
+
+// Database CRUD operations with fluent interface
+// Create a new database record
+$userTable = new UserTable();
+$userTable->username = 'john_doe';
+$userTable->email = 'john@example.com';
+$userTable->password = password_hash('secure123', PASSWORD_DEFAULT);
+$result = $userTable->insertSingleQuery();
+
+// Read records with fluent query building
+$activeUserRecords = (new UserTable())
+    ->select()
+    ->where('is_active', true)
+    ->whereNull('deleted_at')
+    ->whereBetween('created_at', date('Y-m-d', strtotime('-30 days')), date('Y-m-d'))
+    ->orderBy('username', true) // true = ascending order
+    ->run();
+
+// Update a record
+$userRecord = (new UserTable())->selectById(1);
+if ($userRecord) {
+    $userRecord->email = 'new.email@example.com';
+    $userRecord->updateSingleQuery();
+}
+
+// Soft delete (sets deleted_at timestamp)
+$userRecord->safeDeleteQuery();
+
+// Restore soft-deleted record
+$userRecord->restoreQuery();
+
+// Hard delete
+$userRecord->deleteSingleQuery();
+
+// Pagination
+$userTable = new UserTable();
+$userTable->setPage($_GET['page'] ?? 1);
+$userTable->limit(10);
+
+$records = $userTable
+    ->select()
+    ->where('is_active', true)
+    ->orderBy('created_at', false) // false = descending order
+    ->run();
+
+// Pagination metadata
+$pagination = [
+    'current_page' => $userTable->getCurrentPage(),
+    'total_pages' => $userTable->getCount(),
+    'total_records' => $userTable->getTotalCounts(),
+    'per_page' => $userTable->getLimit()
+];
+```
+
+**Use Case:** Work directly with database tables through a typed, fluent interface. The Table class provides database abstraction - a proper Model layer will be added in the future.
+
+### 🏗️ Automatic Table Generator
+```php
+// Define a class that extends Table
+class UserTable extends Table {
+    // Properties that match your database columns
+    public int $id;  // Will become INT(11) AUTO_INCREMENT PRIMARY KEY
+    public string $username;  // Will become VARCHAR(255)
+    public string $email;  // Will become VARCHAR(320)
     public string $password;
     public ?string $bio = null;
     public bool $is_active = true;
     public string $created_at;
     
-    // Properties starting with _ are ignored
-    private string $_tempData;
+    // Type mapping for automatic conversion
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool',
+        'created_at' => 'datetime'
+    ];
     
-    public function getTable(): string {
-        return 'users';
+    // Constructor passes table name to parent
+    public function __construct() {
+        parent::__construct('users');
     }
 }
 
-// Create database table with just a few lines!
+// Create database table from the Table-derived class
 $generator = new TableGenerator();
 
 // Fluent interface for configuration
@@ -333,8 +482,8 @@ $generator
     ->setDefault('created_at', 'CURRENT_TIMESTAMP')
     ->addCheck('username', 'LENGTH(username) >= 3')
     
-    // Create the table with all configurations
-    ->createTableFromObject(new User());
+    // Create the table - table name is already in the UserTable class
+    ->createTableFromObject(new UserTable());
 
 // Add a composite unique constraint
 $generator->makeColumnsUniqueTogether(
@@ -344,13 +493,13 @@ $generator->makeColumnsUniqueTogether(
 
 // Update table when model changes
 $generator = new TableGenerator();
-$generator->updateTable(new User(), null, true);  // true = remove columns no longer in object
+$generator->updateTable(new UserTable());  // Table name comes from the UserTable class
 
 // Safely remove a specific column
 $generator->removeColumn('users', 'temporary_field');
 ```
 
-**Use Case:** Automatically generate and maintain database tables from your PHP models with indexes, constraints, and validation, eliminating manual SQL schema creation and migration scripts.
+**Use Case:** Automatically generate and maintain database tables from your Table classes with indexes, constraints, and validation, eliminating manual SQL schema creation and migration scripts.
 
 ---
 
@@ -438,6 +587,7 @@ return (new JsonResponse())->success($data)->show();
 
 ### 📊 Database & ORM Features
 - **Query Builder**: Intuitive database operations with automatic parameter binding
+- **Table Class**: Database abstraction layer with typed properties and fluent query interface
 - **Table Generator**: Create tables from PHP objects using reflection
 - **Schema Management**: Add indexes, constraints, and relationships
 - **Type Mapping**: Automatic conversion between PHP and SQL types
@@ -472,6 +622,7 @@ return (new JsonResponse())->success($data)->show();
 | Feature | Traditional Approach | GEMVC Approach |
 |---------|---------------------|----------------|
 | **Database Queries** | Manual SQL strings, manual binding | Type-safe QueryBuilder, automatic binding |
+| **Table Interaction** | Manual object mapping to database | Typed Table class with automatic conversion |
 | **Schema Management** | Manual SQL CREATE TABLE statements | Automatic table generation from PHP objects |
 | **Error Handling** | Inconsistent error responses | Standardized responses with proper status codes |
 | **Authentication** | Manual token parsing, unclear errors | Built-in JWT handling with specific error responses |

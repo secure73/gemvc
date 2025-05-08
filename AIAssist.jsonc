@@ -58,6 +58,92 @@
             }
           }
         },
+        "Table": {
+          "purpose": "ORM-like database abstraction with fluent query building",
+          "keyMethods": [
+            "insertSingleQuery", "updateSingleQuery", "deleteByIdQuery", "safeDeleteQuery", 
+            "restoreQuery", "select", "where", "whereOr", "whereBetween", "whereNull", 
+            "whereNotNull", "run", "selectById", "skipCount"
+          ],
+          "constructor": {
+            "parameters": "string $tableName (required)",
+            "validation": "Throws InvalidArgumentException if tableName is empty"
+          },
+          "features": {
+            "ormCapabilities": {
+              "hydration": "Auto-maps database columns to object properties",
+              "typeCasting": "Converts database values to appropriate PHP types",
+              "propertyValidation": "Validates required properties before operations"
+            },
+            "fluentInterface": {
+              "methodChaining": "All query building methods return $this",
+              "readableQueries": "Natural language-like syntax for building queries",
+              "conditionalBuilding": "Progressive query construction with intuitive methods"
+            },
+            "pagination": {
+              "pageNavigation": "setPage(), getCurrentPage(), getCount() methods",
+              "limitControl": "limit() and noLimit()/all() methods",
+              "countSupport": "Automatic counts with getTotalCounts()"
+            },
+            "softDeletion": {
+              "safeDelete": "Sets deleted_at timestamp instead of removing rows",
+              "restore": "Clears deleted_at to restore soft-deleted records",
+              "activeFlag": "Automatically manages is_active flag if present"
+            },
+            "joinSupport": {
+              "joinTypes": "INNER, LEFT, RIGHT joins supported",
+              "multipleJoins": "Chain multiple join clauses",
+              "conditionSupport": "Full support for complex ON conditions"
+            },
+            "typeSafety": {
+              "phpTypes": "PHP 8 type declarations throughout the class",
+              "nullSafety": "Consistent null|type return declarations",
+              "typeMapping": "Configurable _type_map for database-to-PHP conversion"
+            },
+            "performanceOptimizations": {
+              "skipCount": "Optional disabling of COUNT queries for performance",
+              "propertyFiltering": "Skips _underscore properties in database operations",
+              "parameterBinding": "Secure parameter binding with sensible naming"
+            }
+          },
+          "errorHandling": {
+            "validation": "Property existence validation",
+            "inputChecks": "Parameter validation with meaningful error messages",
+            "queryFailures": "Detailed error messages with table name context",
+            "nullReturn": "Returns null and sets error message on failures"
+          },
+          "typeMapping": {
+            "mechanism": "Protected $_type_map property for column-to-type mapping",
+            "supportedTypes": {
+              "int": "Casts to PHP integer with (int)",
+              "float": "Casts to PHP float with (float)",
+              "bool": "Casts to PHP boolean with (bool)",
+              "datetime": "Creates PHP DateTime object from string"
+            },
+            "example": [
+              "protected array $_type_map = [",
+              "    'id' => 'int',",
+              "    'is_active' => 'bool',",
+              "    'created_at' => 'datetime'",
+              "];"
+            ]
+          },
+          "whereConditions": {
+            "basic": "where(column, value) for equality",
+            "null": "whereNull(column) and whereNotNull(column)",
+            "like": "whereLike(column, value) with % after value",
+            "likeLast": "whereLikeLast(column, value) with % before value",
+            "between": "whereBetween(column, lower, higher)",
+            "or": "whereOr(column, value) or orWhere(column, value) for OR conditions"
+          },
+          "pagination": {
+            "paging": "setPage(pageNumber) for pagination",
+            "counting": "getCount() for total pages, getTotalCounts() for total records",
+            "currentPage": "getCurrentPage() returns 1-based page number",
+            "limits": "getLimit() returns rows per page"
+          },
+          "inheritance": "Extends PdoQuery for database connectivity"
+        },
         "TableGenerator": {
           "purpose": "Automatically creates database tables from PHP objects using reflection",
           "keyMethods": ["createTableFromObject", "makeColumnUnique", "makeColumnsUniqueTogether", "addIndex", "setColumnProperties", "removeColumn", "updateTable"],
@@ -1120,6 +1206,10 @@
       "complexQuery": {
         "code": "QueryBuilder::select('u.id', 'u.name', 'p.profile')\n  ->from('users', 'u')\n  ->leftJoin('profiles p ON p.user_id = u.id')\n  ->whereEqual('status', 'active')\n  ->whereBetween('created_at', $start, $end)\n  ->orderBy('u.name')\n  ->limit(10)\n  ->run($pdoQuery)",
         "explanation": "Complex query with joins, conditions, and pagination"
+      },
+      "tableClassUsage": {
+        "code": "// Define a table-specific class\nclass UserTable extends Table {\n  public int $id;\n  public string $username;\n  public string $email;\n  public bool $is_active = true;\n  public ?string $deleted_at = null;\n  \n  protected array $_type_map = [\n    'id' => 'int',\n    'is_active' => 'bool',\n    'deleted_at' => 'datetime'\n  ];\n  \n  public function __construct() {\n    parent::__construct('users');\n  }\n  \n  // Custom finder method\n  public function findByEmail(string $email): ?self {\n    return $this->select()\n      ->where('email', $email)\n      ->limit(1)\n      ->run()[0] ?? null;\n  }\n}\n\n// Create a new user\n$user = new UserTable();\n$user->username = 'jsmith';\n$user->email = 'john@example.com';\n$user->insertSingleQuery();\n\n// Query with fluent interface\n$activeUsers = (new UserTable())\n  ->select()\n  ->where('is_active', true)\n  ->whereNull('deleted_at')\n  ->whereBetween('created_at', date('Y-m-d', strtotime('-30 days')), date('Y-m-d'))\n  ->orderBy('username', true)\n  ->run();",
+        "explanation": "Demonstrates Table class inheritance, ORM capabilities, type mapping, and fluent query building"
       }
     },
     "security": {
@@ -1169,6 +1259,10 @@
     "ImageHelper": {
       "extends": "FileHelper",
       "shared": ["move", "copy", "delete", "encrypt", "decrypt"]
+    },
+    "Table": {
+      "extends": "PdoQuery",
+      "shared": ["selectQuery", "insertQuery", "updateQuery", "deleteQuery", "getError", "setError"]
     },
     "QueryBuilder": {
       "implements": "QueryBuilderInterface",

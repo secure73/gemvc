@@ -286,6 +286,125 @@
         "SqlEnumCondition": {
           "description": "Defines constants for SQL conditions.",
           "constants": ["Equal", "Bigger", "Less", "Like", "IsNull", "NotNull"]
+        },
+        "Table": {
+          "description": "Base table class providing ORM capabilities and fluent query building",
+          "methods": {
+            "__construct": {
+              "description": "Initialize a new Table instance",
+              "parameters": ["string $tableName"],
+              "returns": "void",
+              "example": "$table = new UserTable('users');"
+            },
+            "insertSingleQuery": {
+              "description": "Inserts a single row into the database table",
+              "returns": "null|static",
+              "example": "$user->insertSingleQuery();"
+            },
+            "updateSingleQuery": {
+              "description": "Updates a record based on its ID property",
+              "returns": "null|static",
+              "example": "$user->updateSingleQuery();"
+            },
+            "deleteByIdQuery": {
+              "description": "Deletes a record by ID",
+              "parameters": ["int $id"],
+              "returns": "null|int",
+              "example": "$table->deleteByIdQuery(1);"
+            },
+            "safeDeleteQuery": {
+              "description": "Marks a record as deleted (soft delete)",
+              "returns": "null|static",
+              "example": "$user->safeDeleteQuery();"
+            },
+            "restoreQuery": {
+              "description": "Restores a soft-deleted record",
+              "returns": "null|static",
+              "example": "$user->restoreQuery();"
+            },
+            "select": {
+              "description": "Starts building a SELECT query",
+              "parameters": ["string|null $columns"],
+              "returns": "self",
+              "example": "$table->select('id, name, email');"
+            },
+            "where": {
+              "description": "Adds a basic WHERE equality condition",
+              "parameters": ["string $column", "mixed $value"],
+              "returns": "self",
+              "example": "$table->where('is_active', true);"
+            },
+            "whereOr": {
+              "description": "Adds a WHERE condition using OR operator",
+              "parameters": ["string $column", "mixed $value"],
+              "returns": "self",
+              "example": "$table->whereOr('role', 'admin');"
+            },
+            "whereBetween": {
+              "description": "Adds a BETWEEN condition",
+              "parameters": ["string $columnName", "int|string|float $lowerBand", "int|string|float $higherBand"],
+              "returns": "self",
+              "example": "$table->whereBetween('created_at', '2023-01-01', '2023-12-31');"
+            },
+            "whereNull": {
+              "description": "Adds a WHERE IS NULL condition",
+              "parameters": ["string $column"],
+              "returns": "self",
+              "example": "$table->whereNull('deleted_at');"
+            },
+            "whereNotNull": {
+              "description": "Adds a WHERE IS NOT NULL condition",
+              "parameters": ["string $column"],
+              "returns": "self",
+              "example": "$table->whereNotNull('email');"
+            },
+            "run": {
+              "description": "Executes a SELECT query and returns results",
+              "returns": "null|array",
+              "example": "$users = $table->select()->where('is_active', true)->run();"
+            },
+            "selectById": {
+              "description": "Selects a single row by ID",
+              "parameters": ["int $id"],
+              "returns": "null|static",
+              "example": "$user = $table->selectById(1);"
+            },
+            "skipCount": {
+              "description": "Disables count subqueries for performance optimization",
+              "returns": "self",
+              "example": "$table->skipCount()->select()->run();"
+            },
+            "setPage": {
+              "description": "Sets the current page for pagination",
+              "parameters": ["int $page"],
+              "returns": "void",
+              "example": "$table->setPage(2);"
+            },
+            "getCount": {
+              "description": "Gets the number of pages from the last query",
+              "returns": "int",
+              "example": "$totalPages = $table->getCount();"
+            },
+            "getTotalCounts": {
+              "description": "Gets the total number of records from the last query",
+              "returns": "int",
+              "example": "$totalRecords = $table->getTotalCounts();"
+            }
+          },
+          "features": {
+            "ormCapabilities": "Maps database rows to PHP objects and vice versa",
+            "fluentInterface": "Method chaining for readable query construction",
+            "pagination": "Automatic result counting and page calculation",
+            "softDelete": "Support for both hard and soft deletion with restore capability",
+            "typeSafety": "PHP 8 type declarations with automatic type mapping/conversion",
+            "performanceOptimizations": "Optional count query skipping for better performance"
+          },
+          "typeMapping": {
+            "int": "Converts to PHP integer",
+            "float": "Converts to PHP float",
+            "bool": "Converts to PHP boolean",
+            "datetime": "Creates a PHP DateTime object"
+          }
         }
       }
     },

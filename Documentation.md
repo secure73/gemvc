@@ -216,6 +216,244 @@ This system is particularly beneficial in high-concurrency environments and when
 - Ensures database resource efficiency
 - Automatically handles stale connections
 
+#### Table
+The Table class provides a comprehensive Object-Relational Mapping (ORM) layer with fluent query building capabilities. It extends the database abstraction through PdoQuery and offers a robust foundation for defining table-specific model classes.
+
+```php
+class Table extends PdoQuery {
+    /**
+     * Initialize a new Table instance
+     * @param string $tableName Database table name (required)
+     * @throws \InvalidArgumentException if table name is empty
+     */
+    public function __construct(string $tableName)
+    
+    /**
+     * Inserts a single row into the database table
+     * @return null|static The current instance with inserted id or null on failure
+     */
+    public function insertSingleQuery(): null|static
+    
+    /**
+     * Updates a record based on its ID property
+     * @return null|static Current instance or null on failure
+     */
+    public function updateSingleQuery(): null|static
+    
+    /**
+     * Deletes a record by ID
+     * @param int $id Record ID to delete
+     * @return null|int ID of deleted record or null on failure
+     */
+    public function deleteByIdQuery(int $id): null|int
+    
+    /**
+     * Marks a record as deleted (soft delete)
+     * @return null|static Current instance or null on failure
+     */
+    public function safeDeleteQuery(): null|static
+    
+    /**
+     * Restores a soft-deleted record
+     * @return null|static Current instance or null on failure
+     */
+    public function restoreQuery(): null|static
+    
+    /**
+     * Starts building a SELECT query
+     * @param string|null $columns Columns to select (defaults to *)
+     * @return self For method chaining
+     */
+    public function select(string $columns = null): self
+    
+    /**
+     * Adds a WHERE condition
+     * @param string $column Column name
+     * @param mixed $value Value to match
+     * @return self For method chaining
+     */
+    public function where(string $column, mixed $value): self
+    
+    /**
+     * Adds a WHERE condition using OR operator
+     * @param string $column Column name
+     * @param mixed $value Value to match
+     * @return self For method chaining
+     */
+    public function whereOr(string $column, mixed $value): self
+    
+    /**
+     * Executes a SELECT query and returns results
+     * @return array<static>|null Array of model instances or null on failure
+     */
+    public function run(): null|array
+    
+    /**
+     * Selects a single row by ID
+     * @param int $id Record ID to select
+     * @return null|static Found instance or null if not found
+     */
+    public function selectById(int $id): null|static
+    
+    /**
+     * Disables count subqueries for performance optimization
+     * @return self For method chaining
+     */
+    public function skipCount(): self
+}
+```
+
+##### Key Features
+
+1. **ORM Capabilities**
+   - Maps database rows to PHP objects and vice versa
+   - Automated property hydration from query results
+   - Type casting through configurable type mapping system
+
+2. **Fluent Query Building**
+   - Method chaining for readable query construction
+   - Comprehensive WHERE clause options
+   - JOIN support with multiple join types
+
+3. **Built-in Pagination**
+   - Automatic result counting and page calculation
+   - Page navigation methods
+   - Configurable page sizes
+
+4. **Soft Delete Pattern**
+   - Support for both hard and soft deletion
+   - Restore capability for soft-deleted records
+   - Integration with `is_active` status flags
+
+5. **Type Safety**
+   - PHP 8 type declarations for parameters and return values
+   - Type mapping system for database to PHP type conversion
+   - Support for date/time, boolean, and numeric type conversion
+
+6. **Performance Optimizations**
+   - Connection pooling through inheritance from PdoQuery
+   - Optional count query skipping for better performance
+   - Efficient query building with parameter binding
+
+##### Type Mapping System
+The Table class includes a protected `$_type_map` array property that enables automatic type conversion between database values and PHP types:
+
+```php
+protected array $_type_map = [
+    'id' => 'int',
+    'is_active' => 'bool',
+    'created_at' => 'datetime'
+];
+```
+
+Supported type conversions:
+- `'int'` → Converts to PHP integer
+- `'float'` → Converts to PHP float  
+- `'bool'` → Converts to PHP boolean
+- `'datetime'` → Creates a PHP DateTime object
+
+##### Usage Pattern
+
+Creating a table-specific model class:
+
+```php
+class UserTable extends Table
+{
+    public int $id;
+    public string $username;
+    public string $email;
+    public ?string $deleted_at = null;
+    public bool $is_active = true;
+    
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool',
+        'deleted_at' => 'datetime'
+    ];
+    
+    public function __construct()
+    {
+        parent::__construct('users');
+    }
+    
+    // Custom methods for this specific table
+    public function findByUsername(string $username): ?self
+    {
+        return $this->select()
+            ->where('username', $username)
+            ->limit(1)
+            ->run()[0] ?? null;
+    }
+}
+```
+
+Basic CRUD operations:
+
+```php
+// Create a new user
+$user = new UserTable();
+$user->username = 'johndoe';
+$user->email = 'john@example.com';
+$user->is_active = true;
+$user->insertSingleQuery();
+
+// Retrieve a user by ID
+$user = (new UserTable())->selectById(1);
+
+// Update a user
+$user->email = 'newemail@example.com';
+$user->updateSingleQuery();
+
+// Delete a user (soft delete)
+$user->safeDeleteQuery();
+
+// Restore a soft-deleted user
+$user->restoreQuery();
+
+// Hard delete a user
+$user->deleteSingleQuery();
+```
+
+Complex queries:
+
+```php
+// Find active users created in the last week
+$activeUsers = (new UserTable())
+    ->select()
+    ->where('is_active', true)
+    ->whereBetween('created_at', date('Y-m-d', strtotime('-7 days')), date('Y-m-d'))
+    ->orderBy('created_at', false) // Descending order
+    ->limit(20)
+    ->run();
+
+// Find users with admin-like permissions
+$adminUsers = (new UserTable())
+    ->select()
+    ->where('role', 'admin')
+    ->whereOr('role', 'superuser')
+    ->whereOr('has_admin_access', true)
+    ->run();
+```
+
+Pagination example:
+
+```php
+$userTable = new UserTable();
+$userTable->setPage($_GET['page'] ?? 1);
+$userTable->limit(10);
+
+$users = $userTable
+    ->select()
+    ->where('is_active', true)
+    ->orderBy('username')
+    ->run();
+
+// Pagination metadata
+$totalUsers = $userTable->getTotalCounts();
+$totalPages = $userTable->getCount();
+$currentPage = $userTable->getCurrentPage();
+```
+
 #### QueryBuilder
 Provides fluent interface for building SQL queries.
 ```php
@@ -960,6 +1198,111 @@ $updated = QueryBuilder::update('users')
     ->run($pdoQuery);
 ```
 
+#### Table Class Examples
+
+The Table class provides a more object-oriented approach to database interactions with built-in ORM capabilities:
+
+```php
+// Define a table-specific class
+class UserTable extends Table
+{
+    public int $id;
+    public string $username;
+    public string $email;
+    public string $password;
+    public bool $is_active = true;
+    public ?string $deleted_at = null;
+    
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool',
+        'deleted_at' => 'datetime'
+    ];
+    
+    public function __construct()
+    {
+        parent::__construct('users');
+    }
+    
+    // Custom methods for user-specific operations
+    public function findByEmail(string $email): ?self
+    {
+        return $this->select()
+            ->where('email', $email)
+            ->limit(1)
+            ->run()[0] ?? null;
+    }
+    
+    public function deactivateExpiredUsers(int $daysInactive): int
+    {
+        $threshold = date('Y-m-d', strtotime("-{$daysInactive} days"));
+        
+        return $this->updateQuery(
+            "UPDATE {$this->getTable()} SET is_active = 0 
+             WHERE last_login < :threshold AND is_active = 1",
+            [':threshold' => $threshold]
+        ) ?? 0;
+    }
+}
+
+// Create a new user
+$user = new UserTable();
+$user->username = 'newuser';
+$user->email = 'user@example.com';
+$user->password = password_hash('secure123', PASSWORD_DEFAULT);
+$result = $user->insertSingleQuery();
+
+// Fetch user by ID with type conversion
+$user = (new UserTable())->selectById(123);
+if ($user) {
+    // $user->id is automatically an integer
+    // $user->is_active is automatically a boolean
+    // $user->deleted_at is automatically a DateTime object or null
+    
+    echo "User: {$user->username} (Created: {$user->created_at->format('Y-m-d')})";
+}
+
+// Complex query with fluent interface
+$recentActiveUsers = (new UserTable())
+    ->select()
+    ->where('is_active', true)
+    ->whereNull('deleted_at')
+    ->whereBetween('created_at', 
+        date('Y-m-d', strtotime('-30 days')),
+        date('Y-m-d')
+    )
+    ->orderBy('created_at', false) // Descending order
+    ->limit(20)
+    ->run();
+
+// Working with pagination
+$page = $_GET['page'] ?? 1;
+$userTable = new UserTable();
+$userTable->setPage($page);
+$userTable->limit(15);
+
+$users = $userTable
+    ->select('id, username, email, created_at')
+    ->where('is_active', true)
+    ->orderBy('username', true) // Ascending order
+    ->run();
+
+// Pagination metadata
+$pagination = [
+    'current_page' => $userTable->getCurrentPage(),
+    'total_pages' => $userTable->getCount(),
+    'total_records' => $userTable->getTotalCounts(),
+    'per_page' => $userTable->getLimit()
+];
+
+// Performance optimization for large tables
+$activeCount = (new UserTable())
+    ->skipCount() // Skip the COUNT query for better performance
+    ->select('COUNT(*) as count')
+    ->where('is_active', true)
+    ->run();
+```
+
 #### Table Generation Examples
 ```php
 // Create a table from a User model
@@ -1187,6 +1530,83 @@ class PdoConnection {
      * @return string|null Error message or null
      */
     public function getError(): null|string
+}
+```
+
+#### Table
+```php
+class Table extends PdoQuery {
+    /**
+     * Initialize a new Table instance
+     * @param string $tableName Database table name (required)
+     * @throws \InvalidArgumentException if table name is empty
+     */
+    public function __construct(string $tableName)
+    
+    /**
+     * Inserts a single row into the database table
+     * @return null|static The current instance with inserted id or null on failure
+     */
+    public function insertSingleQuery(): null|static
+    
+    /**
+     * Updates a record based on its ID property
+     * @return null|static Current instance or null on failure
+     */
+    public function updateSingleQuery(): null|static
+    
+    /**
+     * Deletes a record by ID
+     * @param int $id Record ID to delete
+     * @return null|int ID of deleted record or null on failure
+     */
+    public function deleteByIdQuery(int $id): null|int
+    
+    /**
+     * Marks a record as deleted (soft delete)
+     * @return null|static Current instance or null on failure
+     */
+    public function safeDeleteQuery(): null|static
+    
+    /**
+     * Restores a soft-deleted record
+     * @return null|static Current instance or null on failure
+     */
+    public function restoreQuery(): null|static
+    
+    /**
+     * Starts building a SELECT query
+     * @param string|null $columns Columns to select (defaults to *)
+     * @return self For method chaining
+     */
+    public function select(string $columns = null): self
+    
+    /**
+     * Adds a WHERE condition
+     * @param string $column Column name
+     * @param mixed $value Value to match
+     * @return self For method chaining
+     */
+    public function where(string $column, mixed $value): self
+    
+    /**
+     * Executes a SELECT query and returns results
+     * @return array<static>|null Array of model instances or null on failure
+     */
+    public function run(): null|array
+    
+    /**
+     * Selects a single row by ID
+     * @param int $id Record ID to select
+     * @return null|static Found instance or null if not found
+     */
+    public function selectById(int $id): null|static
+    
+    /**
+     * Disables count subqueries for performance optimization
+     * @return self For method chaining
+     */
+    public function skipCount(): self
 }
 ```
 
