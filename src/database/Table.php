@@ -20,6 +20,9 @@ class Table extends PdoQuery
     /** @var bool Whether to apply limits to the query */
     private bool $_no_limit = false;
     
+    /** @var bool Whether to skip count queries for performance */
+    private bool $_skip_count = false;
+    
     /** @var array<string,mixed> Query parameter bindings */
     private array $_binds = [];
     
@@ -44,11 +47,24 @@ class Table extends PdoQuery
     /** @var array<string> JOIN clauses */
     private array $_joins = [];
 
+    /** @var string Table name specified in constructor */
+    private string $_table_name;
+    
+    /** @var array Type mapping for property casting */
+    protected array $_type_map = [];
+
     /**
      * Initialize a new Table instance
+     * 
+     * @param string $tableName Database table name (required)
      */
-    public function __construct()
+    public function __construct(string $tableName)
     {
+        if (empty($tableName)) {
+            throw new \InvalidArgumentException("Table name cannot be empty");
+        }
+        
+        $this->_table_name = $tableName;
         $this->_limit = (isset($_ENV['QUERY_LIMIT']) && is_numeric($_ENV['QUERY_LIMIT'])) 
             ? (int)$_ENV['QUERY_LIMIT'] 
             : 10;
@@ -64,12 +80,6 @@ class Table extends PdoQuery
      */
     protected function validateProperties(array $properties): bool 
     {
-        $table = $this->getTable();
-        if (!$table) {
-            $this->setError('Table name is not set in function getTable()');
-            return false;
-        }
-
         foreach ($properties as $property) {
             if (!property_exists($this, $property)) {
                 $this->setError("Property '{$property}' is not set in table");
@@ -119,26 +129,16 @@ class Table extends PdoQuery
     public function updateSingleQuery(): null|static
     {
         if(!property_exists($this, 'id')){
-            $this->setError("Property 'id' is not exists in object ");
+            $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($this->id < 1) {
             $this->setError("ID must be a positive integer for update in {$this->getTable()}");
             return null;
         }
-        $id = $this->id;
         
-        $arrayBind = [];
-        $query = "UPDATE {$this->getTable()} SET ";
-        
-        foreach ($this as $key => $value) {
-            $query .= " {$key} = :{$key},";
-            $arrayBind[":{$key}"] = $value;
-        }
-        
-        $query = rtrim($query, ',');
-        $query .= ' WHERE id = :id';
-        $arrayBind[':id'] = $id;
+        // Use the existing buildUpdateQuery method instead of manually building the query
+        [$query, $arrayBind] = $this->buildUpdateQuery('id', $this->id);
         
         $result = $this->updateQuery($query, $arrayBind);
         
@@ -159,7 +159,7 @@ class Table extends PdoQuery
     public function deleteByIdQuery(int $id): null|int
     {
         if(!property_exists($this, 'id')){
-            $this->setError("Property 'id' is not exists in object ");
+            $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($id < 1) {
@@ -184,16 +184,16 @@ class Table extends PdoQuery
     public function safeDeleteQuery(): null|static
     {
         if(!property_exists($this, 'id')){
-            $this->setError("Property 'id' is not exists in object ");
+            $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("id must be a positive integer for update in {$this->getTable()}");
+            $this->setError("ID must be a positive integer for update in {$this->getTable()}");
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
         if(!$valid){
-            $this->setError("for safe delete deleted_at must be existed in Database table and object must have deleted_at property");
+            $this->setError("For safe delete, deleted_at must exist in the Database table and object");
             return null;
         }
         $id = $this->id;
@@ -210,7 +210,11 @@ class Table extends PdoQuery
             return null;
         }
         $this->deleted_at = date('Y-m-d H:i:s');
-        $this->is_active = 0;
+        
+        // Only set is_active if the property exists
+        if (property_exists($this, 'is_active')) {
+            $this->is_active = 0;
+        }
         
         return $this;
     }
@@ -223,16 +227,16 @@ class Table extends PdoQuery
     public function restoreQuery(): null|static
     {
         if(!property_exists($this, 'id')){
-            $this->setError("Property 'id' is not exists in object ");
+            $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("id must be a positive integer for update in {$this->getTable()}");
+            $this->setError("ID must be a positive integer for update in {$this->getTable()}");
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
         if(!$valid){
-            $this->setError("for safe delete deleted_at must be existed in Database table and object must have deleted_at property");
+            $this->setError("For restore operation, deleted_at must exist in the Database table and object");
             return null;
         }
         $id = $this->id;
@@ -241,7 +245,7 @@ class Table extends PdoQuery
         $result = $this->updateQuery($query, [':id' => $id]);
         
         if (!$result  || $this->getError()) {
-            $this->setError("Error in safeDelete operation: " . $this->getError());
+            $this->setError("Error in restore operation: " . $this->getError());
             return null;
         }
         $this->deleted_at = null;       
@@ -257,11 +261,11 @@ class Table extends PdoQuery
     public function deleteSingleQuery(): null|int
     {
         if(!property_exists($this, 'id')){
-            $this->setError("Property 'id' is not exists in object ");
+            $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("id must be a positive integer for update in {$this->getTable()}");
+            $this->setError("ID must be a positive integer for update in {$this->getTable()}");
             return null;
         }
         return $this->removeConditionalQuery('id', $this->id);
@@ -504,6 +508,42 @@ class Table extends PdoQuery
             
         return $this;
     }
+
+    /**
+     * Adds a WHERE condition using OR operator (if not the first condition)
+     * 
+     * Note: If this is the first condition in the query, it behaves like a regular WHERE
+     * since there's no previous condition to join with OR.
+     * 
+     * @param string $column Column name
+     * @param mixed $value Value to match
+     * @return self For method chaining
+     */
+    public function whereOr(string $column, mixed $value): self
+    {
+        if (count($this->_arr_where) == 0) {
+            // If this is the first condition, use WHERE instead of OR
+            return $this->where($column, $value);
+        }
+        
+        $paramName = $column . '_or_' . count($this->_arr_where);
+        $this->_arr_where[] = " OR {$column} = :{$paramName} ";
+        $this->_binds[':' . $paramName] = $value;
+        return $this;
+    }
+    
+    /**
+     * Alias for whereOr() for backward compatibility
+     * 
+     * @deprecated Use whereOr() instead for clearer semantics
+     * @param string $column Column name
+     * @param mixed $value Value to match
+     * @return self For method chaining
+     */
+    public function orWhere(string $column, mixed $value): self
+    {
+        return $this->whereOr($column, $value);
+    }
     
     /*
      * =============================================
@@ -565,7 +605,10 @@ class Table extends PdoQuery
      */
     public function activateQuery(int $id): null|int
     {
-        $this->validateProperties(['is_active']);
+        if (!$this->validateProperties(['is_active'])) {
+            $this->setError('is_active column is not present in the table');
+            return null;
+        }
 
         if ($id < 1) {
             $this->setError('ID must be a positive integer');
@@ -593,7 +636,10 @@ class Table extends PdoQuery
      */
     public function deactivateQuery(int $id): null|int
     {
-        $this->validateProperties(['is_active']);
+        if (!$this->validateProperties(['is_active'])) {
+            $this->setError('is_active column is not present in the table');
+            return null;
+        }
 
         if ($id < 1) {
             $this->setError('ID must be a positive integer');
@@ -736,13 +782,13 @@ class Table extends PdoQuery
      */
 
     /**
-     * Must be implemented by child classes to specify the table name
+     * Get the database table name
      * 
      * @return string Table name
      */
     public function getTable(): string
     {
-        return '';
+        return $this->_table_name;
     }
 
     /**
@@ -784,7 +830,37 @@ class Table extends PdoQuery
     protected function fetchRow(array $row): void
     {
         foreach ($row as $key => $value) {
-            $this->$key = $value;
+            if (property_exists($this, $key)) {
+                $this->$key = $this->castValue($key, $value);
+            }
+        }
+    }
+    
+    /**
+     * Cast database value to appropriate PHP type
+     * 
+     * @param string $property Property name
+     * @param mixed $value Database value
+     * @return mixed Properly typed value
+     */
+    protected function castValue(string $property, mixed $value): mixed
+    {
+        if (!isset($this->_type_map[$property])) {
+            return $value;
+        }
+        
+        $type = $this->_type_map[$property];
+        switch ($type) {
+            case 'int':
+                return (int)$value;
+            case 'float':
+                return (float)$value;
+            case 'bool':
+                return (bool)$value;
+            case 'datetime':
+                return new \DateTime($value);
+            default:
+                return $value;
         }
     }
     
@@ -895,9 +971,14 @@ class Table extends PdoQuery
         $joinClause = implode(' ', $this->_joins);
         $whereClause = $this->whereMaker();
 
-        $this->_query = $this->_query .
-            " , (SELECT COUNT(*) FROM {$this->getTable()} $joinClause $whereClause) AS _total_count " .
-            "FROM {$this->getTable()} $joinClause $whereClause ";
+        if ($this->_skip_count) {
+            $this->_query = $this->_query . 
+                "FROM {$this->getTable()} $joinClause $whereClause ";
+        } else {
+            $this->_query = $this->_query .
+                " , (SELECT COUNT(*) FROM {$this->getTable()} $joinClause $whereClause) AS _total_count " .
+                "FROM {$this->getTable()} $joinClause $whereClause ";
+        }
 
         if (!$this->_no_limit) {
             $this->_query .= $this->_orderBy . " LIMIT {$this->_limit} OFFSET {$this->_offset} ";
@@ -934,17 +1015,24 @@ class Table extends PdoQuery
     /**
      * Hydrates model instances from query results
      * 
+     * Also calculates total count and page count if skipCount is not used
+     * 
      * @param array<mixed> $queryResult Query results
      * @return array<static> Hydrated model instances
      */
     private function hydrateResults(array $queryResult): array
     {
         $object_result = [];
-        $this->_total_count = (int)$queryResult[0]['_total_count'];
-        $this->_count_pages = round($this->_total_count / $this->_limit);
+        
+        if (!$this->_skip_count && !empty($queryResult)) {
+            $this->_total_count = (int)($queryResult[0]['_total_count'] ?? 0);
+            $this->_count_pages = $this->_limit > 0 ? ceil($this->_total_count / $this->_limit) : 1;
+        }
         
         foreach ($queryResult as $item) {
-            unset($item['_total_count']);
+            if (!$this->_skip_count) {
+                unset($item['_total_count']);
+            }
             $instance = new $this();
             if (is_array($item)) {
                 $instance->fetchRow($item);
