@@ -1,0 +1,237 @@
+{
+  "framework": {
+    "name": "GEMVC Framework",
+    "version": "5.9.14",
+    "extends": "GEMVC Library v3.27.8",
+    "architecture": "layered-microservice",
+    "phpVersion": ">=8.0",
+    "aiSupport": {
+      "cursor": true,
+      "copilot": true,
+      "codeium": true
+    },
+    "libraryIntegration": {
+      "path": "vendor/gemvc/library",
+      "documentation": {
+        "main": "Documentation.md",
+        "aiAssist": "AIAssist.jsonc",
+        "apiReference": "GEMVCLibraryAPIReference.json"
+      },
+      "components": {
+        "http": "HTTP handling",
+        "helper": "Utility functions",
+        "database": "Database operations",
+        "email": "Email functionality"
+      }
+    },
+    "cli": {
+      "enabled": true,
+      "commands": {
+        "create:service": {
+          "description": "Creates a complete service with CRUD operations",
+          "usage": "vendor/bin/gemvc create:service ServiceName",
+          "generates": {
+            "service": {
+              "path": "app/api/{ServiceName}.php",
+              "extends": "ApiService",
+              "methods": {
+                "create": {
+                  "http": "POST",
+                  "validation": ["name: string", "description: string"]
+                },
+                "read": {
+                  "http": "GET",
+                  "params": ["id: int"]
+                },
+                "update": {
+                  "http": "POST",
+                  "validation": ["id: int", "name: string", "description: string"]
+                },
+                "delete": {
+                  "http": "POST",
+                  "validation": ["id: int"]
+                },
+                "list": {
+                  "http": "GET",
+                  "features": ["filtering", "sorting", "pagination"]
+                }
+              }
+            },
+            "controller": {
+              "path": "app/controller/{ServiceName}Controller.php",
+              "extends": "Controller",
+              "features": ["type-safe mapping", "CRUD operations"]
+            },
+            "model": {
+              "path": "app/model/{ServiceName}Model.php",
+              "extends": "{ServiceName}Table",
+              "features": ["data logic", "response formatting"]
+            },
+            "table": {
+              "path": "app/table/{ServiceName}Table.php",
+              "extends": "CRUDTable",
+              "properties": {
+                "id": "int",
+                "name": "string",
+                "description": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "requirements": {
+      "php": ">=8.0",
+      "library": ">=3.27.8",
+      "phpstan": "level 9"
+    }
+  },
+
+  "layers": {
+    "service": "Authentication and validation layer",
+    "controller": "Business logic layer",
+    "model": "Data logic and response layer",
+    "table": "Database interaction layer"
+  },
+
+  "patterns": {
+    "request": {
+      "flow": "Frontend → Service → Controller → Model → Table",
+      "validation": {
+        "service": "Input validation",
+        "controller": "Business rules",
+        "model": "Data integrity"
+      }
+    },
+    "response": {
+      "flow": "Table → Model → Controller → Service → Frontend",
+      "types": {
+        "JsonResponse": "Direct API response",
+        "object": "Further processing",
+        "primitive": "Simple returns"
+      }
+    }
+  },
+
+  "bestPractices": {
+    "services": [
+      "Always extend ApiService or AuthService",
+      "Validate inputs first",
+      "Use authorization before logic"
+    ],
+    "controllers": [
+      "Only called by Services",
+      "Use mapPost for data binding",
+      "Return JsonResponse"
+    ],
+    "models": [
+      "Use underscore for non-DB props",
+      "Implement proper traits",
+      "Type-safe properties"
+    ]
+  },
+
+  "bootstrap": {
+    "initialization": {
+      "location": "index.php",
+      "required": {
+        "autoload": "vendor/autoload.php",
+        "environment": "app/.env",
+        "components": [
+          "Gemvc\\Core\\Bootstrap",
+          "Gemvc\\Http\\ApacheRequest",
+          "Gemvc\\Http\\NoCors"
+        ]
+      },
+      "dependencies": {
+        "symfony/dotenv": "Environment variable loading"
+      }
+    },
+    "sequence": [
+      "CORS configuration",
+      "Environment loading",
+      "Request initialization",
+      "Framework bootstrap"
+    ]
+  },
+
+  "ApiService": {
+    "methods": {
+      "authorize": {
+        "parameters": [{"name": "roles", "type": "array<string>"}],
+        "returns": "bool",
+        "throws": ["AuthorizationException"],
+        "examples": ["..."]
+      }
+    }
+  },
+
+  "exceptions": {
+    "ValidationException": {
+      "when": "Input validation fails",
+      "properties": ["errors", "message"],
+      "handling": "example code"
+    }
+  },
+
+  "traits": {
+    "CreateTrait": {
+      "methods": ["create", "createWithValidation"],
+      "properties": ["required", "optional"],
+      "usage": "example code",
+      "combinations": ["with other traits"]
+    }
+  },
+
+  "examples": {
+    "requests": {
+      "create": {
+        "endpoint": "/api/users/create",
+        "method": "POST",
+        "body": {"name": "string", "email": "string"},
+        "headers": {"Authorization": "Bearer ..."}
+      }
+    },
+    "responses": {
+      "success": {"code": 200, "body": {"...": "..."}},
+      "validation": {"code": 422, "body": {"...": "..."}},
+      "error": {"code": 500, "body": {"...": "..."}}
+    },
+    "fullCycle": {
+      "request": {
+        "url": "/api/users/create",
+        "method": "POST",
+        "headers": {},
+        "body": {}
+      },
+      "processing": {
+        "service": "code example",
+        "controller": "code example",
+        "model": "code example"
+      },
+      "response": {
+        "success": {},
+        "error": {}
+      }
+    }
+  },
+
+  "lifecycle": {
+    "request": {
+      "stages": [
+        {
+          "name": "Bootstrap",
+          "class": "Bootstrap",
+          "methods": ["initialize", "route"],
+          "example": "code example"
+        },
+        {
+          "name": "Service",
+          "validations": ["input", "auth"],
+          "example": "code example"
+        }
+        // ... other stages
+      ]
+    }
+  }
+}

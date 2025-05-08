@@ -10,12 +10,18 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "GemLibrary\\": "src/",
+            "Gemvc\\": "src/",
             "Gemvc\\Database\\": "src/database/",
             "Gemvc\\Database\\Query\\": "src/database/query/",
             "Gemvc\\Email\\": "src/email/",
             "Gemvc\\Helper\\": "src/helper/",
-            "Gemvc\\Http\\": "src/http/"
+            "Gemvc\\Http\\": "src/http/",
+            "Gemvc\\Core\\": "src/core/",
+            "Gemvc\\Traits\\": "src/traits/",
+            "Gemvc\\Traits\\Table\\": "src/traits/table/",
+            "Gemvc\\Traits\\Model\\": "src/traits/model/",
+            "Gemvc\\Traits\\Controller\\": "src/traits/controller/",
+            "Gemvc\\CLI\\": "src/CLI/"
         },
         "files": [
             "src/database/SqlEnumCondition.php"

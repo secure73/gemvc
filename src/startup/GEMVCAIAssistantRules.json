@@ -1,0 +1,304 @@
+{
+  "aiAssistant": {
+    "name": "GEMVC AI Assistant",
+    "version": "1.0.0",
+    "framework": "GEMVC Framework v5.9.14",
+    "library": "GEMVC Library v3.27.8",
+    "purpose": "Guide AI assistants in providing accurate and secure GEMVC framework assistance",
+    
+    "learningProcess": {
+      "restricted": true,
+      "importance": "high",
+      "order": [
+        {
+          "step": 1,
+          "name": "Study Working Examples",
+          "location": "/app",
+          "description": "First examine working examples in /app folder to understand implementation patterns",
+          "files": [
+            "/app/api/*.php",
+            "/app/controller/*.php",
+            "/app/model/*.php",
+            "/app/table/*.php"
+          ],
+          "purpose": "Understand real-world implementation patterns and conventions"
+        },
+        {
+          "step": 2,
+          "name": "Read Framework Documentation",
+          "location": "README.md",
+          "description": "Study the main README.md for framework overview and basic concepts",
+          "purpose": "Understand framework structure and basic concepts"
+        },
+        {
+          "step": 3,
+          "name": "Study AI Assistant Rules",
+          "location": "GEMVCAIAssistantRules.json",
+          "description": "Review AI assistant rules for framework-specific guidelines",
+          "purpose": "Understand framework-specific rules and conventions"
+        },
+        {
+          "step": 4,
+          "name": "Framework and Library Documentation",
+          "location": [
+            "/vendor/gemvc/framework/Documentation.md",
+            "/vendor/gemvc/library/Documentation.md"
+          ],
+          "description": "Study detailed framework and library documentation",
+          "purpose": "Deep understanding of framework and library capabilities"
+        }
+      ],
+      "restrictions": {
+        "mustFollowOrder": true,
+        "noImplementationBeforeUnderstanding": true,
+        "verifyAgainstExamples": true,
+        "strictPatternFollowing": true
+      }
+    },
+    
+    "corePrinciples": {
+      "security": "Always prioritize security in suggestions",
+      "typeSafety": "Enforce strict type checking and PHPStan level 9 compatibility",
+      "layeredArchitecture": "Respect the framework's layered architecture",
+      "bestPractices": "Follow GEMVC's established patterns and conventions"
+    },
+
+    "architectureRules": {
+      "layers": {
+        "service": {
+          "location": "/app/api",
+          "responsibilities": [
+            "Input validation",
+            "Authentication",
+            "Authorization",
+            "Request routing"
+          ],
+          "mustExtend": ["ApiService", "AuthService"],
+          "validationOrder": [
+            "Authentication first",
+            "Input validation second",
+            "Business logic last"
+          ]
+        },
+        "controller": {
+          "location": "/app/controller",
+          "responsibilities": [
+            "Business logic",
+            "Data processing",
+            "Response formatting"
+          ],
+          "mustExtend": "Controller",
+          "access": "Only through Service layer"
+        },
+        "model": {
+          "location": "/app/model",
+          "mustExtend": "Relevant Class in /app/table",
+          "no need to extend CRUDTable or Table": true,
+          "responsibilities": [
+            "Data structure",
+            "Validation rules",
+            "Relationships"
+          ],
+          "naming": {
+            "nonDbProperties": "Must start with underscore",
+            "typeDeclarations": "Required for all properties"
+          }
+        },
+        "table": {
+          "location": "/app/table",
+          "responsibilities": [
+            "Database operations",
+            "CRUD functionality",
+            "Query building"
+          ],
+          "mustExtend": ["Table", "CRUDTable"]
+        }
+      }
+    },
+
+    "securityRules": {
+      "authentication": {
+        "class": "Gemvc\\Core\\Auth",
+        "tokenValidation": "Automatic 403 response for invalid tokens",
+        "userAccess": "Always use $auth->token->user_id (not id)",
+        "companyContext": "Validate company_id when required"
+      },
+      "inputValidation": {
+        "methods": {
+          "basic": "validatePosts() for email and basic types",
+          "string": "validateStringPosts() for length constraints"
+        },
+        "format": {
+          "email": "['email'=>'email']",
+          "string": "['field'=>'min|max']"
+        }
+      },
+      "postParameters": {
+        "setting": "Use array syntax: $request->post['key'] = $value",
+        "forbidden": "Never use setPost() method"
+      }
+    },
+
+    "responseRules": {
+      "format": {
+        "structure": {
+          "response_code": "HTTP status code",
+          "message": "Status message",
+          "count": "Number of items",
+          "service_message": "Detailed message",
+          "data": "Response payload"
+        },
+        "statusCodes": {
+          "200": "success",
+          "201": "created",
+          "204": "successButNoContentToShow",
+          "209": "updated",
+          "210": "deleted",
+          "400": "badRequest",
+          "401": "unauthorized",
+          "403": "forbidden",
+          "404": "notFound",
+          "422": "unprocessableEntity",
+          "500": "internalError"
+        }
+      }
+    },
+
+    "documentationRules": {
+      "mockResponses": {
+        "required": "For all API endpoints",
+        "structure": "Must match actual response format",
+        "annotations": {
+          "hidden": "Required for internal methods",
+          "return": "Must specify JsonResponse"
+        }
+      },
+      "comments": {
+        "required": "For all public methods",
+        "format": "PHPDoc with type hints",
+        "examples": "Include practical usage"
+      }
+    },
+
+    "errorHandling": {
+      "validation": {
+        "response": "422 Unprocessable Entity",
+        "format": "Include detailed error messages"
+      },
+      "authentication": {
+        "response": "403 Forbidden",
+        "message": "Clear security-related message"
+      },
+      "notFound": {
+        "response": "404 Not Found",
+        "message": "Resource not available"
+      }
+    },
+
+    "bestPractices": {
+      "codeStyle": {
+        "typeHints": "Required for all methods and properties",
+        "returnTypes": "Must specify JsonResponse for API methods",
+        "naming": "Consistent with framework conventions"
+      },
+      "security": {
+        "input": "Always validate before processing",
+        "authentication": "Check first in protected endpoints",
+        "authorization": "Verify permissions before operations"
+      },
+      "performance": {
+        "database": "Use connection pooling",
+        "queries": "Optimize with proper indexes",
+        "resources": "Clean up after operations"
+      }
+    },
+
+    "environmentSetup": {
+      "required": {
+        "php": ">=7.4",
+        "extensions": ["pdo", "openssl", "gd"],
+        "composer": "For dependency management"
+      },
+      "configuration": {
+        "location": "app/.env",
+        "required": [
+          "DB_HOST",
+          "DB_NAME",
+          "DB_USER",
+          "DB_PASSWORD",
+          "TOKEN_SECRET",
+          "TOKEN_ISSUER"
+        ]
+      }
+    },
+
+    "specialCommands": {
+      "documentAPI": {
+        "trigger": ["document API", "document it"],
+        "action": "Generate API documentation using GEMVC's auto-documentation system",
+        "process": {
+          "location": "/app/api",
+          "exclude": ["__construct", "hidden methods"],
+          "include": ["public methods with mockResponse"],
+          "steps": [
+            "Scan all files in /app/api",
+            "Identify public methods with mockResponse",
+            "Update mockResponse methods if needed",
+            "Ensure each public method has corresponding mockResponse",
+            "Verify mockResponse follows GEMVC response format",
+            "Check for proper PHPDoc comments",
+            "Validate authentication requirements in mockResponse"
+          ],
+          "documentationRules": {
+            "required": [
+              "Endpoint path",
+              "HTTP method",
+              "Authentication requirements",
+              "Input validation rules",
+              "Response format",
+              "Example request/response",
+              "Error scenarios"
+            ],
+            "format": {
+              "endpoint": "/api/{service}/{method}",
+              "method": "HTTP method (GET/POST/PUT/DELETE)",
+              "auth": "Required/Not required",
+              "validation": "Input validation rules",
+              "response": "Standard GEMVC response format",
+              "errors": "Possible error responses"
+            },
+            "mockResponse": {
+              "required": "For all public methods",
+              "structure": {
+                "response_code": "HTTP status code",
+                "message": "Status message",
+                "count": "Number of items",
+                "service_message": "Detailed message",
+                "data": "Response payload"
+              },
+              "annotations": {
+                "@hidden": "Required for mockResponse method",
+                "@return": "Must specify array<mixed>"
+              }
+            }
+          }
+        },
+        "output": {
+          "format": "Markdown",
+          "sections": [
+            "Overview",
+            "Authentication",
+            "Endpoints",
+            "Request/Response Examples",
+            "Error Handling"
+          ],
+          "generation": {
+            "source": "mockResponse methods",
+            "validation": "Must match actual response format",
+            "completeness": "All public methods must be documented"
+          }
+        }
+      }
+    }
+  }
+} 
