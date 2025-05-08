@@ -1033,7 +1033,7 @@ class Table extends PdoQuery
             if (!$this->_skip_count) {
                 unset($item['_total_count']);
             }
-            $instance = new $this();
+            $instance = new $this($this->getTable());
             if (is_array($item)) {
                 $instance->fetchRow($item);
             }
