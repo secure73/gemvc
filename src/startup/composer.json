@@ -3,7 +3,7 @@
     "description": "Super light Framework based on Gemvc Library",
     "type": "library",
     "require": {
-        "gemvc/framework": "^5.9"
+        "gemvc/library": "^4.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.10"
