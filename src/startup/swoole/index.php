@@ -1,5 +1,5 @@
 <?php
-//it is a server for swoole , replace index in apache
+//it is a server for swoole
 require_once 'vendor/autoload.php';
 
 use App\Core\SwooleBootstrap;
@@ -23,6 +23,8 @@ $server->set([
     'max_request' => $isDev ? 1 : 1000,
     'enable_coroutine' => true,
     'document_root' => __DIR__,
+    'enable_static_handler' => true,
+    'static_handler_locations' => ['/public', '/assets'], // Only serve files from these directories
 ]);
 
 // Store file hashes for hot reload
@@ -65,6 +67,18 @@ if ($isDev) {
 
 // Handle each request
 $server->on('request', function ($request, $response) {
+    // Block direct access to app directory
+    $path = parse_url($request->server['request_uri'], PHP_URL_PATH);
+    if (preg_match('#^/app/#', $path)) {
+        $response->status(403);
+        $response->end(json_encode([
+            'response_code' => 403,
+            'message' => 'Access Forbidden',
+            'data' => null
+        ]));
+        return;
+    }
+    
     try {
         // Apply CORS headers
         NoCors::NoCors();
@@ -104,5 +118,55 @@ $server->on('request', function ($request, $response) {
     }
 });
 
+/**
+ * Preload application files into memory for better performance
+ */
+function preloadFiles() {
+    echo "Preloading application files...\n";
+    $directories = [
+        'app/api',
+        'app/controller',
+        'app/model',
+        'app/core',
+        'app/http',
+        'app/table',
+        'vendor/gemvc'
+    ];
+    
+    $count = 0;
+    foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            echo "Directory not found: $dir\n";
+            continue;
+        }
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->getExtension() === 'php') {
+                try {
+                    require_once $file->getPathname();
+                    $count++;
+                } catch (\Throwable $e) {
+                    echo "Error loading file {$file->getPathname()}: {$e->getMessage()}\n";
+                }
+            }
+        }
+    }
+    
+    echo "Preloaded $count PHP files\n";
+}
+
+// Only preload files in production for better performance
+if (!$isDev) {
+    echo "Production mode detected. Preloading files...\n";
+    preloadFiles();
+} else {
+    echo "Development mode detected. Skipping preload for faster development cycles.\n";
+}
+
 // Start the server
+echo "Starting OpenSwoole server on 0.0.0.0:9501...\n";
 $server->start();
