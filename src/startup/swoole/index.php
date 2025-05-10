@@ -1,5 +1,13 @@
 <?php
-//it is a server for swoole
+/**
+ * OpenSwoole Server Entry Point for GEMVC Framework
+ *
+ * This file initializes and runs the OpenSwoole HTTP server for the GEMVC framework.
+ * It handles environment detection, server configuration, request handling,
+ * and performance optimizations like file preloading.
+ */
+
+// Required dependencies
 require_once 'vendor/autoload.php';
 
 use App\Core\SwooleBootstrap;
@@ -7,12 +15,21 @@ use Gemvc\Http\SwooleRequest;
 use Gemvc\Http\NoCors;
 use Symfony\Component\Dotenv\Dotenv;
 
+// ---------------------------
+// Environment Configuration
+// ---------------------------
+
 // Load environment variables
 $dotenv = new Dotenv();
 $dotenv->load(__DIR__.'/app/.env');
 
 // Development mode detection
 $isDev = getenv('APP_ENV') === 'development' || !getenv('APP_ENV');
+echo $isDev ? "Running in DEVELOPMENT mode\n" : "Running in PRODUCTION mode\n";
+
+// ---------------------------
+// Server Configuration
+// ---------------------------
 
 // Create OpenSwoole HTTP Server
 $server = new \OpenSwoole\HTTP\Server('0.0.0.0', 9501);
@@ -26,6 +43,58 @@ $server->set([
     'enable_static_handler' => true,
     'static_handler_locations' => ['/public', '/assets'], // Only serve files from these directories
 ]);
+
+// ---------------------------
+// Helper Functions
+// ---------------------------
+
+/**
+ * Preload application files into memory for better performance
+ * 
+ * @return int Number of files preloaded
+ */
+function preloadFiles(): int {
+    echo "Preloading application files...\n";
+    $directories = [
+        'app/api',
+        'app/controller',
+        'app/model',
+        'app/core',
+        'app/http',
+        'app/table',
+        'vendor/gemvc'
+    ];
+    
+    $count = 0;
+    foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            echo "Directory not found: $dir\n";
+            continue;
+        }
+        
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->getExtension() === 'php') {
+                try {
+                    require_once $file->getPathname();
+                    $count++;
+                } catch (\Throwable $e) {
+                    echo "Error loading file {$file->getPathname()}: {$e->getMessage()}\n";
+                }
+            }
+        }
+    }
+    
+    echo "Preloaded $count PHP files\n";
+    return $count;
+}
+
+// ---------------------------
+// Development Mode Features
+// ---------------------------
 
 // Store file hashes for hot reload
 $fileHashes = [];
@@ -65,7 +134,26 @@ if ($isDev) {
     });
 }
 
-// Handle each request
+// ---------------------------
+// Worker Event Callbacks
+// ---------------------------
+
+// Worker start event
+$server->on('workerStart', function($server, $workerId) {
+    echo "Worker #$workerId started\n";
+});
+
+// Worker stop event (graceful shutdown)
+$server->on('workerStop', function($server, $workerId) {
+    echo "Worker #$workerId stopping...\n";
+    // Perform any needed cleanup here
+});
+
+// ---------------------------
+// Request Handling
+// ---------------------------
+
+// Handle each HTTP request
 $server->on('request', function ($request, $response) {
     // Block direct access to app directory
     $path = parse_url($request->server['request_uri'], PHP_URL_PATH);
@@ -118,46 +206,9 @@ $server->on('request', function ($request, $response) {
     }
 });
 
-/**
- * Preload application files into memory for better performance
- */
-function preloadFiles() {
-    echo "Preloading application files...\n";
-    $directories = [
-        'app/api',
-        'app/controller',
-        'app/model',
-        'app/core',
-        'app/http',
-        'app/table',
-        'vendor/gemvc'
-    ];
-    
-    $count = 0;
-    foreach ($directories as $dir) {
-        if (!is_dir($dir)) {
-            echo "Directory not found: $dir\n";
-            continue;
-        }
-        
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
-        );
-        
-        foreach ($iterator as $file) {
-            if ($file->getExtension() === 'php') {
-                try {
-                    require_once $file->getPathname();
-                    $count++;
-                } catch (\Throwable $e) {
-                    echo "Error loading file {$file->getPathname()}: {$e->getMessage()}\n";
-                }
-            }
-        }
-    }
-    
-    echo "Preloaded $count PHP files\n";
-}
+// ---------------------------
+// Server Startup
+// ---------------------------
 
 // Only preload files in production for better performance
 if (!$isDev) {

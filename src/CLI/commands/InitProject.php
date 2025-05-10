@@ -27,6 +27,9 @@ class InitProject extends Command
             // Copy startup files to project root
             $this->copyStartupFiles();
             
+            // Create global command wrapper
+            $this->createGlobalCommand();
+            
             $this->success("GEMVC project initialized successfully!");
         } catch (\Exception $e) {
             $this->error($e->getMessage());
@@ -52,6 +55,14 @@ class InitProject extends Command
             } else {
                 $this->info("Directory already exists: {$directory}");
             }
+        }
+        
+        // Create bin directory if it doesn't exist
+        if (!is_dir($this->basePath . '/bin')) {
+            if (!@mkdir($this->basePath . '/bin', 0755, true)) {
+                throw new \RuntimeException("Failed to create directory: {$this->basePath}/bin");
+            }
+            $this->info("Created directory: {$this->basePath}/bin");
         }
     }
     
@@ -191,5 +202,113 @@ EOT;
         }
         
         throw new \RuntimeException("Could not determine package path");
+    }
+    
+    /**
+     * Create a global command wrapper
+     */
+    private function createGlobalCommand()
+    {
+        $this->info("Setting up global command...");
+        
+        // Create a local wrapper script in the project's bin directory
+        $wrapperPath = $this->basePath . '/bin/gemvc';
+        $vendorBinPath = './vendor/bin/gemvc';
+        
+        $wrapperContent = <<<EOT
+#!/usr/bin/env php
+<?php
+// Forward to the vendor binary
+require __DIR__ . '/../vendor/bin/gemvc';
+EOT;
+        
+        if (!file_put_contents($wrapperPath, $wrapperContent)) {
+            $this->warning("Failed to create local wrapper script: {$wrapperPath}");
+            return;
+        }
+        
+        // Make it executable
+        chmod($wrapperPath, 0755);
+        $this->info("Created local command wrapper: {$wrapperPath}");
+        
+        // Create Windows batch file
+        $batPath = $this->basePath . '/bin/gemvc.bat';
+        $batContent = <<<EOT
+@echo off
+php "%~dp0gemvc" %*
+EOT;
+        
+        if (file_put_contents($batPath, $batContent)) {
+            $this->info("Created Windows batch file: {$batPath}");
+        }
+        
+        // On Windows, suggest adding the bin directory to PATH
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $this->write("\nFor global access on Windows:\n", 'blue');
+            $this->write("  1. Add this directory to your PATH: " . realpath($this->basePath . '/bin') . "\n", 'white');
+            $this->write("  2. Then you can run 'gemvc' from any location\n\n", 'white');
+            return;
+        }
+        
+        // For Unix/Linux/Mac systems
+        // Ask if the user wants to create a global symlink
+        echo "Would you like to create a global 'gemvc' command? (y/N): ";
+        $handle = fopen("php://stdin", "r");
+        $line = fgets($handle);
+        fclose($handle);
+        
+        if (strtolower(trim($line)) !== 'y') {
+            $this->info("Skipped global command setup");
+            $this->write("\nYou can still use the command with:\n", 'blue');
+            $this->write("  php vendor/bin/gemvc [command]\n", 'white');
+            $this->write("  OR\n", 'white');
+            $this->write("  php bin/gemvc [command]\n\n", 'white');
+            return;
+        }
+        
+        // Try to create a global symlink
+        $success = false;
+        $globalPaths = ['/usr/local/bin', '/usr/bin', getenv('HOME') . '/.local/bin'];
+        
+        foreach ($globalPaths as $globalPath) {
+            if (is_dir($globalPath) && is_writable($globalPath)) {
+                $globalBinPath = $globalPath . '/gemvc';
+                
+                // Check if it already exists
+                if (file_exists($globalBinPath)) {
+                    echo "Command already exists at {$globalBinPath}. Overwrite? (y/N): ";
+                    $handle = fopen("php://stdin", "r");
+                    $line = fgets($handle);
+                    fclose($handle);
+                    
+                    if (strtolower(trim($line)) !== 'y') {
+                        $this->info("Skipped global command setup");
+                        continue;
+                    }
+                    
+                    // Remove existing symlink or file
+                    @unlink($globalBinPath);
+                }
+                
+                // Create the symlink
+                try {
+                    $realPath = realpath($wrapperPath);
+                    if (symlink($realPath, $globalBinPath)) {
+                        $this->success("Created global command: {$globalBinPath}");
+                        $success = true;
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    // Continue to next path
+                }
+            }
+        }
+        
+        if (!$success) {
+            $this->warning("Could not create global command. You may need root privileges.");
+            $this->write("\nManual setup: \n", 'blue');
+            $this->write("  1. Run: sudo ln -s " . realpath($wrapperPath) . " /usr/local/bin/gemvc\n", 'white');
+            $this->write("  2. Make it executable: sudo chmod +x /usr/local/bin/gemvc\n\n", 'white');
+        }
     }
 } 

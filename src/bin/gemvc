@@ -68,6 +68,16 @@ try {
             $handler->execute();
             break;
 
+        case 'setup':
+            if (empty($args[0])) {
+                echo "\033[31mError: Platform type required\033[0m\n";
+                echo "Usage: gemvc setup [apache|swoole]\n";
+                exit(1);
+            }
+            $handler = new \Gemvc\CLI\Commands\Setup($args);
+            $handler->execute();
+            break;
+
         case 'create:service':
             if (empty($args[0])) {
                 echo "\033[31mError: Service name required\033[0m\n";
@@ -82,9 +92,10 @@ try {
         default:
             echo "GEMVC Framework CLI v1.0.0\n\n";
             echo "Available commands:\n";
-            echo "  init                       Initialize GEMVC project structure\n";
+            echo "  init                          Initialize GEMVC project structure\n";
+            echo "  setup [apache|swoole]         Configure project for Apache or OpenSwoole\n";
             echo "  create:service <ServiceName>  Create a new service\n";
-            echo "  --help                       Show this help message\n";
+            echo "  --help                        Show this help message\n";
             exit(0);
     }
 } catch (\Exception $e) {
