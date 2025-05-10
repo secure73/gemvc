@@ -142,11 +142,20 @@ The framework provides different validation methods for different types of input
 
 #### Authentication
 ```php
-// Auth class automatically handles invalid tokens
-$auth = new Auth($this->request);
-// If token is invalid, execution stops with 403 response
-// If token is valid, you can safely access user data
-$this->request->post['id'] = $auth->token->user_id;
+// Request class automatically handles authentication
+if (!$request->auth()) {
+    // This code won't execute if authentication fails because
+    // the Request class will set an error response automatically
+}
+
+// Role-based authentication
+if (!$request->auth(['admin', 'editor'])) {
+    // This code won't execute if authentication fails
+}
+
+// User information
+$userId = $request->userId();   // Returns user ID or null with error response
+$userRole = $request->userRole(); // Returns role or null with error response
 ```
 
 #### Basic Validation
@@ -368,3 +377,8 @@ When working with AI assistants, follow these guidelines:
 - [GEMVC Library API Reference](vendor/gemvc/library/GEMVCLibraryAPIReference.json)
 - [GEMVC Library AI Assist](vendor/gemvc/library/AIAssist.jsonc)
 - [GEMVC AI Assistant Rules](GEMVCAIAssistantRules.json)
+
+use Gemvc\Http\Request;        // Request handling and authentication
+use Gemvc\Http\Response;       // Response generation
+use Gemvc\Http\JsonResponse;   // JSON API responses
+use Gemvc\Table\Table;         // Database operations

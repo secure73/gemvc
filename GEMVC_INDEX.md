@@ -54,7 +54,8 @@
   - Provides validation, filtering, and authentication
   - Supports type-safe value extraction
   - Implements schema validation for request data
-  - Handles JWT token management
+  - Handles JWT token management and role-based authorization
+  - Provides built-in authentication methods (auth, userId, userRole)
 
 - **ApacheRequest.php**: Apache/Nginx HTTP request adapter
   - Specializes Request for traditional PHP environments
@@ -138,6 +139,11 @@
   - Executes appropriate service/controller methods
   - Handles errors with proper HTTP responses
 
+- **SwooleBootstrap.php**: Swoole application bootstrap
+  - Adapted version of Bootstrap for OpenSwoole
+  - Returns responses instead of using die()
+  - Maintains same functionality with Swoole compatibility
+
 - **Controller.php**: Base controller functionality
   - Provides request handling and error management
   - Implements pagination, filtering, and sorting
@@ -149,6 +155,11 @@
   - Implements validation methods for request data
   - Provides error handling and response formatting
   - Includes mock response support for documentation
+
+- **SwooleApiService.php**: Swoole API service base class
+  - Adapted version of ApiService for OpenSwoole
+  - Returns responses instead of using die()
+  - Maintains same functionality with Swoole compatibility
 
 - **Runner.php**: Command execution system
   - Processes CLI commands
@@ -185,6 +196,16 @@
   - Generates controller, model, and table classes
   - Implements common CRUD operations
   - Creates proper directory structure
+
+- **InitProject.php**: Project initialization command
+  - Creates basic directory structure
+  - Sets up configuration files
+  - Configures global CLI command wrapper
+
+- **Setup.php**: Platform configuration command
+  - Sets up environment for specific platforms (Apache/Swoole)
+  - Copies platform-specific files and configurations
+  - Configures environment settings for the chosen platform
 
 - **Migrate.php**: Database migration command
   - Executes database migrations
@@ -285,4 +306,9 @@ Client WebSocket → OpenSwoole → SwooleWebSocketHandler → [Redis for scalin
 ### CLI Flow
 ```
 Terminal → Command Entry Point → Command → Runner → Database/File Operations
+```
+
+### Authentication Flow
+```
+Client Request → Request.auth() → JWT Validation → userRole()/userId() → Role-based Access
 ``` 

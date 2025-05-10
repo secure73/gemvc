@@ -270,7 +270,7 @@ if (!$request->auth()) {
 // 2. Role-based authorization in one line
 if (!$request->auth(['admin', 'system_manager'])) {
     // Already sets 403 response with specific role error
-    //in this case only admin or system_manager user can perform this action!
+    // In this case only admin or system_manager user can perform this action!
     return $request->returnResponse();
 }
 
@@ -282,9 +282,6 @@ if (!$request->auth(['admin', 'system_manager'])) {
 // 4. Type-safe user information access with validation
 $userId = $request->userId(); // Returns int or null with proper error response
 $userRole = $request->userRole(); // Returns string or null with proper error response
-
-// 5. Manual token management when needed
-$token = $request->getJwtToken();
 ```
 
 **Use Case:** Implement secure, role-based API authentication with minimal boilerplate code.
@@ -311,13 +308,29 @@ $response = processUser($request->request);
 $response->show(); // Output JSON
 
 // --- OPENSWOOLE HIGH-PERFORMANCE SERVER ---
-$server = new \Swoole\HTTP\Server('0.0.0.0', 8080);
-$server->on('request', function($swooleRequest, $swooleResponse) {
+// In index.php (Swoole server startup)
+$server = new \OpenSwoole\HTTP\Server('0.0.0.0', 9501);
+
+// Set server configurations
+$server->set([
+    'worker_num' => 4,
+    'max_request' => 1000,
+    'enable_coroutine' => true,
+    'document_root' => __DIR__,
+    'enable_static_handler' => true
+]);
+
+// Handle each request
+$server->on('request', function ($request, $response) {
     // Same code, different environment!
-    $request = new SwooleRequest($swooleRequest);
-    $response = processUser($request->request);
-    $swooleResponse->end($response->toJson());
+    $webserver = new SwooleRequest($request);
+    $bootstrap = new SwooleBootstrap($webserver->request);
+    $jsonResponse = $bootstrap->processRequest();
+    
+    $response->header('Content-Type', 'application/json');
+    $response->end($jsonResponse->toJson());
 });
+
 $server->start();
 ```
 
@@ -326,7 +339,7 @@ $server->start();
 ### 🔄 Real-Time Communication
 ```php
 // Set up WebSocket server with advanced features
-$server = new \Swoole\WebSocket\Server('0.0.0.0', 9501);
+$server = new \OpenSwoole\WebSocket\Server('0.0.0.0', 9501);
 
 // Initialize handler with scalability options
 $handler = new SwooleWebSocketHandler([
@@ -530,7 +543,7 @@ $user = $request->mapPostToObject(new User(), ['username', 'email', 'first_name'
 return (new JsonResponse())->success($data)->show();
 ```
 
-#### 🤖 AI-Ready Framework
+#### �� AI-Ready Framework
 - **Dual AI Support**: 
   - `AIAssist.jsonc`: Real-time AI coding assistance
   - `GEMVCLibraryAPIReference.json`: Comprehensive API documentation
@@ -575,7 +588,8 @@ return (new JsonResponse())->success($data)->show();
 - **OpenSwoole Support**: High-performance asynchronous server
 - **Unified Request Interface**: Same code, different environments
 - **Server-Specific Optimizations**: Get the best from each platform
-- **Zero Code Changes**: Deploy to any environment without rewriting
+- **Platform-specific Components**: SwooleBootstrap and SwooleApiService for Swoole compatibility
+- **CLI Platform Selection**: Easy switching between Apache and Swoole with `gemvc setup [apache|swoole]`
 
 ### 🛡️ Security Features
 - **Input Sanitization**: Automatic XSS prevention
@@ -608,6 +622,7 @@ return (new JsonResponse())->success($data)->show();
 - **Image Handling**: WebP conversion and optimization
 - **Type System**: Comprehensive validation
 - **Value Extraction**: Type-safe methods for validated data access
+- **CLI Tools**: Command-line utilities for project setup and service generation
 
 ### ⚡ Performance
 - **Connection Pooling**: Smart database connections
@@ -616,6 +631,7 @@ return (new JsonResponse())->success($data)->show();
 - **Query Optimization**: Built-in performance features
 - **WebSocket Efficiency**: Optimized for high-concurrency applications
 - **Async Operations**: Non-blocking I/O with OpenSwoole
+- **File Preloading**: Production mode file preloading for Swoole
 
 ### 📊 Feature Comparison
 
@@ -629,6 +645,7 @@ return (new JsonResponse())->success($data)->show();
 | **WebSockets** | Manual implementation, no scaling | Ready-to-use handler with Redis scaling |
 | **File Handling** | Manual validation, no encryption | Built-in validation, one-line encryption |
 | **Server Support** | Either Apache OR Swoole | Same code on BOTH platforms |
+| **Platform Selection** | Manual configuration | Simple CLI command: `gemvc setup [apache|swoole]` |
 
 ---
 

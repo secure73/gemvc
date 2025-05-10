@@ -710,7 +710,7 @@ class Request {
 ```
 
 ##### Authentication and Authorization
-The Request class provides built-in JWT-based authentication with improved error handling:
+Authentication in GEMVC is now fully integrated into the Request class, providing streamlined JWT-based authentication and authorization with improved error handling.
 
 ```php
 // Simple authentication
@@ -727,6 +727,25 @@ if (!$request->auth(['admin', 'editor'])) {
 $userId = $request->userId();  // Will return null and set appropriate error responses if JWT token is missing, invalid, or user_id is not set
 $userRole = $request->userRole(); // Will return null and set appropriate error responses with proper HTTP status codes
 ```
+
+Key authentication methods in the Request class:
+
+```php
+// Authentication & Authorization
+public function auth(array $authRules=null): bool                   // Authenticate and authorize request
+public function userRole(): null|string                             // Get authenticated user's role
+public function userId(): null|int                                  // Get authenticated user's ID
+```
+
+The Request class handles:
+- JWT token validation and parsing
+- User identity verification
+- Role-based access control
+- Appropriate HTTP status codes for auth failures (401, 403)
+- Detailed error messages for troubleshooting
+- Automatic response generation for auth failures
+
+This integrated approach simplifies authentication workflow and ensures consistent error handling throughout your application.
 
 ##### Error Handling
 The Request class now provides centralized error handling through the `setErrorResponse` method:

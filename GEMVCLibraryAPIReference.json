@@ -621,7 +621,7 @@
           },
           "features": {
             "validation": "Schema-based validation with support for required and optional fields.",
-            "authentication": "JWT-based authentication with role verification.",
+            "authentication": "Integrated JWT-based authentication with role verification and token handling.",
             "objectMapping": "Maps request data to PHP objects with selective field mapping.",
             "pagination": "Support for page_number and per_page parameters.",
             "filtering": "Support for filter_by and find_like parameters.",

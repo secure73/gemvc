@@ -1,1322 +1,378 @@
 {
-  "library": {
-    "name": "GEMVC Library",
-    "version": "3.27.8",
-    "author": "Ali Khorsandfard <ali.khorsandfard@gmail.com>",
-    "github": "https://github.com/secure73/gemvc",
+  "framework": {
+    "name": "GEMVC Framework",
+    "version": "5.9.14",
+    "extends": "GEMVC Library v3.27.8",
+    "architecture": "layered-microservice",
     "phpVersion": ">=8.0",
-    "requiredExtensions": ["pdo", "openssl", "gd"],
-    "architecture": "microservice-based RESTful API Library"
-  },
-
-  "coreComponents": {
-    "database": {
-      "mainClasses": {
-        "PdoConnection": {
-          "purpose": "Database connection management with connection pooling",
-          "keyMethods": ["connect", "isConnected", "db", "releaseConnection", "cleanExpiredConnections"],
-          "errorPatterns": {
-            "connectionFailed": "Database connection not established",
-            "invalidCredentials": "SQLSTATE[28000]",
-            "connectionLost": "MySQL server has gone away"
-          },
-          "connectionOptions": {
-            "persistent": true,
-            "errorMode": "PDO::ERRMODE_EXCEPTION",
-            "charset": "UTF-8"
-          },
-          "connectionPooling": {
-            "parameterBased": "Groups connections by database parameters",
-            "agingSystem": "Expires connections based on configurable maximum age",
-            "healthVerification": "Tests connections before reuse with SELECT 1",
-            "poolSizing": {
-              "minPoolSize": "Configured via MIN_DB_CONNECTION_POOL environment variable",
-              "maxPoolSize": "Configured via MAX_DB_CONNECTION_POOL environment variable",
-              "connectionAge": "Configured via DB_CONNECTION_MAX_AGE environment variable (seconds)"
-            },
-            "resourceTracking": {
-              "poolSize": "Tracks connections per pool",
-              "totalConnections": "Monitors total active connections across all pools"
-            },
-            "maintenance": {
-              "automaticCleaning": "Removes expired connections during connect()",
-              "manualControl": "Provides clearPool() method for explicit cleanup"
-            }
-          },
-          "errorHandling": {
-            "getError": "Returns detailed error message",
-            "isConnected": "Connection state verification",
-            "pdoExceptions": {
-              "connectionTimeout": "SQLSTATE[HY000] [2002]",
-              "accessDenied": "SQLSTATE[28000]",
-              "serverGone": "SQLSTATE[HY000] [2006]"
-            },
-            "customErrors": {
-              "notConnected": "Database connection not established",
-              "invalidCredentials": "Invalid database credentials",
-              "connectionLost": "Connection lost during operation"
-            }
-          }
+    "aiSupport": {
+      "cursor": true,
+      "copilot": true,
+      "codeium": true
+    },
+    "libraryIntegration": {
+      "path": "vendor/gemvc/library",
+      "documentation": {
+        "main": "Documentation.md",
+        "aiAssist": "AIAssist.jsonc",
+        "apiReference": "GEMVCLibraryAPIReference.json"
+      },
+      "components": {
+        "http": "HTTP handling",
+        "helper": "Utility functions",
+        "database": "Database operations",
+        "email": "Email functionality"
+      }
+    },
+    "platformSupport": {
+      "apache": {
+        "enabled": true,
+        "components": ["Bootstrap", "ApacheRequest"],
+        "configuration": "app/.env",
+        "startup": "index.php"
+      },
+      "swoole": {
+        "enabled": true,
+        "components": ["SwooleBootstrap", "SwooleRequest", "SwooleApiService"],
+        "configuration": "app/.env (SWOOLE_MODE=true)",
+        "startup": "index.php",
+        "docker": {
+          "compose": "docker-compose.yml",
+          "dockerfile": "Dockerfile"
+        }
+      }
+    },
+    "cli": {
+      "enabled": true,
+      "commands": {
+        "init": {
+          "description": "Initialize project structure",
+          "usage": "vendor/bin/gemvc init",
+          "features": [
+            "Create directory structure",
+            "Set up configuration files",
+            "Configure global CLI command wrapper"
+          ]
         },
-        "Table": {
-          "purpose": "ORM-like database abstraction with fluent query building",
-          "keyMethods": [
-            "insertSingleQuery", "updateSingleQuery", "deleteByIdQuery", "safeDeleteQuery", 
-            "restoreQuery", "select", "where", "whereOr", "whereBetween", "whereNull", 
-            "whereNotNull", "run", "selectById", "skipCount"
-          ],
-          "constructor": {
-            "parameters": "string $tableName (required)",
-            "validation": "Throws InvalidArgumentException if tableName is empty"
-          },
-          "features": {
-            "ormCapabilities": {
-              "hydration": "Auto-maps database columns to object properties",
-              "typeCasting": "Converts database values to appropriate PHP types",
-              "propertyValidation": "Validates required properties before operations"
-            },
-            "fluentInterface": {
-              "methodChaining": "All query building methods return $this",
-              "readableQueries": "Natural language-like syntax for building queries",
-              "conditionalBuilding": "Progressive query construction with intuitive methods"
-            },
-            "pagination": {
-              "pageNavigation": "setPage(), getCurrentPage(), getCount() methods",
-              "limitControl": "limit() and noLimit()/all() methods",
-              "countSupport": "Automatic counts with getTotalCounts()"
-            },
-            "softDeletion": {
-              "safeDelete": "Sets deleted_at timestamp instead of removing rows",
-              "restore": "Clears deleted_at to restore soft-deleted records",
-              "activeFlag": "Automatically manages is_active flag if present"
-            },
-            "joinSupport": {
-              "joinTypes": "INNER, LEFT, RIGHT joins supported",
-              "multipleJoins": "Chain multiple join clauses",
-              "conditionSupport": "Full support for complex ON conditions"
-            },
-            "typeSafety": {
-              "phpTypes": "PHP 8 type declarations throughout the class",
-              "nullSafety": "Consistent null|type return declarations",
-              "typeMapping": "Configurable _type_map for database-to-PHP conversion"
-            },
-            "performanceOptimizations": {
-              "skipCount": "Optional disabling of COUNT queries for performance",
-              "propertyFiltering": "Skips _underscore properties in database operations",
-              "parameterBinding": "Secure parameter binding with sensible naming"
-            }
-          },
-          "errorHandling": {
-            "validation": "Property existence validation",
-            "inputChecks": "Parameter validation with meaningful error messages",
-            "queryFailures": "Detailed error messages with table name context",
-            "nullReturn": "Returns null and sets error message on failures"
-          },
-          "typeMapping": {
-            "mechanism": "Protected $_type_map property for column-to-type mapping",
-            "supportedTypes": {
-              "int": "Casts to PHP integer with (int)",
-              "float": "Casts to PHP float with (float)",
-              "bool": "Casts to PHP boolean with (bool)",
-              "datetime": "Creates PHP DateTime object from string"
-            },
-            "example": [
-              "protected array $_type_map = [",
-              "    'id' => 'int',",
-              "    'is_active' => 'bool',",
-              "    'created_at' => 'datetime'",
-              "];"
-            ]
-          },
-          "whereConditions": {
-            "basic": "where(column, value) for equality",
-            "null": "whereNull(column) and whereNotNull(column)",
-            "like": "whereLike(column, value) with % after value",
-            "likeLast": "whereLikeLast(column, value) with % before value",
-            "between": "whereBetween(column, lower, higher)",
-            "or": "whereOr(column, value) or orWhere(column, value) for OR conditions"
-          },
-          "pagination": {
-            "paging": "setPage(pageNumber) for pagination",
-            "counting": "getCount() for total pages, getTotalCounts() for total records",
-            "currentPage": "getCurrentPage() returns 1-based page number",
-            "limits": "getLimit() returns rows per page"
-          },
-          "inheritance": "Extends PdoQuery for database connectivity"
+        "setup": {
+          "description": "Configure platform-specific environment",
+          "usage": "vendor/bin/gemvc setup [apache|swoole]",
+          "features": [
+            "Copy platform-specific files",
+            "Configure environment settings",
+            "Set up Docker files for Swoole"
+          ]
         },
-        "TableGenerator": {
-          "purpose": "Automatically creates database tables from PHP objects using reflection",
-          "keyMethods": ["createTableFromObject", "makeColumnUnique", "makeColumnsUniqueTogether", "addIndex", "setColumnProperties", "removeColumn", "updateTable"],
-          "features": {
-            "reflection": "Uses PHP reflection for dynamic property analysis",
-            "typeMapping": {
-              "phpToSql": "Maps PHP types to appropriate SQL column types",
-              "specialCases": {
-                "id": "AUTO_INCREMENT PRIMARY KEY",
-                "*_id": "INT(11) for foreign keys",
-                "*email": "VARCHAR(320) for email addresses"
-              }
-            },
-            "propertyFiltering": {
-              "static": "Skips static properties",
-              "underscore": "Skips properties starting with underscore (_)",
-              "constants": "Skips constants and read-only properties"
-            },
-            "indexManagement": {
-              "regular": "Support for adding regular indexes",
-              "unique": "Support for adding unique indexes",
-              "composite": "Support for creating unique constraints across multiple columns",
-              "automaticNaming": "Generates appropriate index names"
-            },
-            "columnProperties": {
-              "notNull": "Support for NOT NULL constraints",
-              "defaultValues": "Support for DEFAULT value specification",
-              "checkConstraints": "Support for CHECK constraints"
-            },
-            "transactionSupport": "Wraps operations in transactions for atomicity",
-            "fluentInterface": "Method chaining for intuitive configuration",
-            "schemaManagement": {
-              "addColumns": "Adds new columns to existing tables",
-              "modifyColumns": "Updates column definitions when types change",
-              "removeColumns": "Safely removes columns from tables",
-              "tableUpdates": "Compares object properties with existing table structure"
-            }
-          },
-          "example": "// Create a table with indexes and constraints\n$generator = new TableGenerator();\n$generator->addIndex('email', true)\n  ->setNotNull('username')\n  ->setDefault('status', 'active')\n  ->addCheck('age', 'age >= 18')\n  ->createTableFromObject(new User());\n\n// Update table schema when object changes\n$generator->updateTable(new User(), null, true);"
-        },
-        "QueryBuilder": {
-          "purpose": "Fluent SQL query construction with automatic security",
-          "operations": ["select", "insert", "update", "delete"],
-          "features": {
-            "parameterBinding": "Automatic type-safe parameter binding",
-            "joinSupport": ["leftJoin", "innerJoin"],
-            "conditions": ["whereEqual", "whereLike", "whereBetween", "whereNull"]
-          },
-          "example": {
-            "select": "QueryBuilder::select('id', 'name')->from('users')->whereEqual('status', 'active')"
-          },
-          "whereConditions": {
-            "whereEqual": "Exact match with type detection",
-            "whereLike": "Pattern matching with % wildcards",
-            "whereBetween": "Range comparison",
-            "whereNull": "NULL check",
-            "whereNotNull": "NOT NULL check",
-            "whereLess": "< comparison",
-            "whereLessEqual": "<= comparison",
-            "whereBigger": "> comparison",
-            "whereBiggerEqual": ">= comparison"
-          },
-          "orderingOptions": {
-            "orderBy": "Column sorting",
-            "first": "First n records",
-            "last": "Last n records"
-          },
-          "resultFormats": {
-            "array": "Default array result",
-            "json": "JSON formatted result with pretty print",
-            "object": "stdClass object result"
-          },
-          "joinTypes": {
-            "leftJoin": "Clears any innerJoin",
-            "innerJoin": "Clears any leftJoin",
-            "mutualExclusive": "Cannot mix join types"
-          }
-        },
-        "QueryExecuter": {
-          "purpose": "Low-level query execution with lazy database connection loading",
-          "features": {
-            "lazyDatabaseConnection": {
-              "description": "Establishes database connections only when needed for queries",
-              "benefits": {
-                "resourceEfficiency": "No connections created until actually required",
-                "modelInstantiation": "Table and model classes can be instantiated without database connections",
-                "connectionPooling": "More efficient use of database connections"
-              },
-              "implementation": {
-                "ensureConnection": "Private method to establish connection when needed",
-                "connectionTiming": "Connected only during query/execute operations"
-              }
-            },
-            "parameterBinding": "Automatic type detection",
-            "executionTracking": {
-              "timing": {
-                "startTime": "microtime(true) in constructor",
-                "endTime": "Set after execute() or on error",
-                "getExecutionTime": "Returns milliseconds * 1000 or -1 if never executed"
-              },
-              "results": {
-                "affectedRows": "Integer count of affected rows",
-                "lastInsertId": "String ID of last insert",
-                "fetchModes": {
-                  "fetchAll": "PDO::FETCH_ASSOC array",
-                  "fetchAllObjects": "PDO::FETCH_OBJ array",
-                  "fetchAllClass": "Custom class mapping",
-                  "fetchColumn": "Single column value"
+        "create:service": {
+          "description": "Creates a complete service with CRUD operations",
+          "usage": "vendor/bin/gemvc create:service ServiceName",
+          "generates": {
+            "service": {
+              "path": "app/api/{ServiceName}.php",
+              "extends": "ApiService",
+              "methods": {
+                "create": {
+                  "http": "POST",
+                  "validation": ["name: string", "description: string"]
+                },
+                "read": {
+                  "http": "GET",
+                  "params": ["id: int"]
+                },
+                "update": {
+                  "http": "POST",
+                  "validation": ["id: int", "name: string", "description: string"]
+                },
+                "delete": {
+                  "http": "POST",
+                  "validation": ["id: int"]
+                },
+                "list": {
+                  "http": "GET",
+                  "features": ["filtering", "sorting", "pagination"]
                 }
               }
             },
-            "resourceManagement": {
-              "autoCleanup": "Destructor ensures connections are closed",
-              "secure": "Method to explicitly release resources"
+            "controller": {
+              "path": "app/controller/{ServiceName}Controller.php",
+              "extends": "Controller",
+              "features": ["type-safe mapping", "CRUD operations"]
             },
-            "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
-          }
-        },
-        "SqlEnumCondition": {
-          "purpose": "SQL condition constants",
-          "values": {
-            "Equal": " = ",
-            "Bigger": " > ",
-            "Less": " < ",
-            "BiggerEqual": " >= ",
-            "LessEqual": " =< ",
-            "IsNull": " IS NULL ",
-            "NotNull": "IS NOT NULL",
-            "Not": " != ",
-            "Like": " LIKE ",
-            "Descending": " DESC ",
-            "Ascending": " ASC ",
-            "Between": " BETWEEN "
-          }
-        }
-      },
-      "queryTypes": {
-        "Select": {
-          "features": {
-            "resultFormats": {
-              "array": "fetchAll() with FETCH_ASSOC",
-              "object": "fetchAllObjects() with FETCH_OBJ",
-              "json": "json() with JSON_PRETTY_PRINT",
-              "class": "fetchAllClass() with custom class mapping"
+            "model": {
+              "path": "app/model/{ServiceName}Model.php",
+              "extends": "{ServiceName}Table",
+              "features": ["data logic", "response formatting"]
             },
-            "timing": "Query execution time tracking",
-            "pagination": "offset() and limit() support"
-          }
-        },
-        "Insert": {
-          "features": {
-            "columnMapping": "Automatic column-value binding",
-            "returnValue": "Last inserted ID"
-          }
-        },
-        "Update": {
-          "features": {
-            "setValue": "Type-safe value setting",
-            "returnValue": "Affected rows count",
-            "validation": "No changes detection"
-          }
-        },
-        "Delete": {
-          "features": {
-            "safeguards": "Where clause required",
-            "returnValue": "Affected rows count"
-          }
-        }
-      }
-    },
-
-    "http": {
-      "mainClasses": {
-        "ApacheRequest": {
-          "purpose": "Request handling and sanitization",
-          "securityFeatures": [
-            "Input sanitization",
-            "XSS prevention",
-            "Request method validation"
-          ],
-          "supportedMethods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
-          "sanitizationRules": {
-            "headers": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
-            "queryString": "FILTER_SANITIZE_URL",
-            "postData": "Recursive sanitization"
-          }
-        },
-        "JsonResponse": {
-          "purpose": "Standardized API response formatting",
-          "statusCodes": {
-            "200": "success",
-            "201": "created",
-            "204": "successButNoContentToShow()",
-            "209": "updated()",
-            "210": "deleted",
-            "400": "badRequest",
-            "401": "unauthorized",
-            "403": "forbidden",
-            "404": "notFound",
-            "415": "unsupportedMediaType()",
-            "422": "unprocessableEntity()",
-            "500": "internalError"
-          },
-          "responseFormat": {
-            "response_code": "HTTP status code",
-            "message": "Standard HTTP message",
-            "service_message": "Custom message",
-            "count": "Optional result count",
-            "data": "Response payload"
-          }
-        },
-        "ApiCall": {
-          "purpose": "External API communication",
-          "methods": ["get", "post", "put"],
-          "features": [
-            "Authorization header support",
-            "File upload handling",
-            "Custom headers",
-            "Error tracking"
-          ],
-          "curlOptions": {
-            "CURLOPT_RETURNTRANSFER": true,
-            "CURLOPT_USERAGENT": "gemserver",
-            "CURLOPT_HTTPHEADER": ["Content-Type: application/json"],
-            "fileUpload": {
-              "multipart": true,
-              "CURLFile": "Secure file handling"
-            }
-          },
-          "errorTracking": {
-            "httpCode": "Response status tracking",
-            "curlError": "Detailed error messages",
-            "responseBody": "Raw response capture"
-          }
-        },
-        "Request": {
-          "purpose": "Comprehensive HTTP request management with validation and authentication",
-          "properties": {
-            "requestedUrl": "Sanitized URL",
-            "requestMethod": "Validated HTTP method",
-            "userMachine": "User agent info",
-            "remoteAddress": "Client IP",
-            "queryString": "Raw query string",
-            "authorizationHeader": "Auth header data",
-            "post": "POST data",
-            "get": "GET data",
-            "put": "PUT data",
-            "patch": "PATCH data",
-            "files": "Uploaded files",
-            "isAuthenticated": "Authentication status flag",
-            "isAuthorized": "Authorization status flag",
-            "error": "Error message if validation fails",
-            "response": "JsonResponse object for error states"
-          },
-          "methods": {
-            "auth": "Authentication with optional role-based authorization",
-            "userRole": "Returns authenticated user's role as string or null with improved error handling",
-            "userId": "Returns authenticated user's ID as int or null with improved error handling",
-            "definePostSchema": "Schema-based POST data validation",
-            "defineGetSchema": "Schema-based GET data validation",
-            "definePutSchema": "Schema-based PUT data validation",
-            "definePatchSchema": "Schema-based PATCH data validation",
-            "validateStringPosts": "String length validation with min/max constraints",
-            "mapPostToObject": "Maps POST data to object properties",
-            "mapPutToObject": "Maps PUT data to object properties",
-            "forwardPost": "Forward request to remote API endpoint",
-            "filterable": "Processes filter_by query parameters",
-            "findable": "Processes find_like query parameters",
-            "sortable": "Processes sort_by and sort_by_asc parameters",
-            "setPageNumber": "Sets pagination page number",
-            "setPerPage": "Sets items per page count",
-            "returnResponse": "Returns error response if validation fails",
-            "intValuePost": "Gets validated integer from POST data",
-            "floatValuePost": "Gets validated float from POST data",
-            "intValueGet": "Gets validated integer from GET data",
-            "floatValueGet": "Gets validated float from GET data",
-            "setErrorResponse": "Centralized error handling with appropriate status codes"
-          },
-          "validationFeatures": {
-            "schemaValidation": "Support for required and optional fields",
-            "typeChecking": "Integration with TypeChecker",
-            "stringValidation": "Length and format validation with min/max constraints",
-            "pagination": "Page number and per-page validation",
-            "sorting": "Field-based sorting validation",
-            "filtering": "Type-safe field filtering"
-          },
-          "errorHandling": {
-            "centralized": "setErrorResponse method for consistent responses",
-            "statusCodes": [400, 401, 403, 422],
-            "messageFormatting": "Array-based error collection with implode",
-            "responseMapping": "match() expression for appropriate response types"
-          },
-          "objectMapping": {
-            "automaticMapping": "Maps request data directly to object properties",
-            "selectiveMapping": "Manual mapping with field selection",
-            "typeConversion": "String to native type conversion",
-            "namingConsistency": "Consistent camelCase naming (manualArray)"
-          }
-        },
-        "SwooleWebSocketHandler": {
-          "purpose": "Real-time WebSocket communication manager for OpenSwoole",
-          "requirements": ["OpenSwoole extension", "Redis extension (optional)"],
-          "properties": {
-            "connections": "Active WebSocket connection tracking",
-            "channels": "Messaging channel subscription registry",
-            "messageCounters": "Rate limiting counters",
-            "connectionTimeout": "Time before inactive connections are closed (default: 300s)",
-            "maxMessagesPerMinute": "Rate limiting threshold (default: 60 messages)",
-            "heartbeatInterval": "Time between ping messages (default: 30s)",
-            "useRedis": "Whether Redis is used for multi-server scaling",
-            "redis": "Redis connection instance",
-            "redisPrefix": "Prefix for Redis keys"
-          },
-          "methods": {
-            "constructorConfig": "Initialization with optional configuration array",
-            "registerHeartbeat": "Setup heartbeat and cleanup timers with Swoole server",
-            "onOpen": "Handle new WebSocket connections",
-            "onMessage": "Process incoming WebSocket frames",
-            "onClose": "Handle connection closures and cleanup",
-            "handleSubscribe": "Process channel subscription requests",
-            "handleUnsubscribe": "Process channel unsubscription requests",
-            "handleMessage": "Process and broadcast channel messages",
-            "performHeartbeat": "Send ping messages to maintain connections",
-            "cleanupExpiredConnections": "Remove inactive connections",
-            "checkRateLimit": "Enforce message rate limits",
-            "updateLastActivity": "Track connection activity",
-            "initRedis": "Setup Redis connection with fallback",
-            "storeConnectionInRedis": "Store connection data in Redis",
-            "getConnectionFromRedis": "Retrieve connection data from Redis",
-            "getAllConnectionsFromRedis": "Get all active connections from Redis",
-            "removeConnectionFromRedis": "Remove connection data from Redis",
-            "subscribeChannelRedis": "Handle channel subscription in Redis",
-            "unsubscribeChannelRedis": "Handle channel unsubscription in Redis",
-            "checkRateLimitRedis": "Rate limiting with Redis"
-          },
-          "features": {
-            "connectionManagement": {
-              "tracking": "Automatic connection state tracking",
-              "cleanup": "Inactive connection detection and removal",
-              "timeout": "Configurable inactivity thresholds",
-              "metadata": "Detailed connection information storage"
-            },
-            "rateLimiting": {
-              "perClient": "Per-connection message counting",
-              "timeWindow": "Sliding 60-second window for limits",
-              "throttling": "Automatic rejection of excess messages",
-              "fairImplementation": "Window-based limiting with reset"
-            },
-            "heartbeat": {
-              "pingPong": "Automatic ping/pong protocol implementation",
-              "detection": "Broken connection identification",
-              "interval": "Configurable timing",
-              "timeoutNotification": "Explicit notifications before disconnection"
-            },
-            "messaging": {
-              "pubSub": "Channel-based publisher/subscriber pattern",
-              "multiChannel": "Support for multiple channel subscriptions",
-              "targeting": "Filtered message delivery to specific clients",
-              "channelTracking": "Per-connection channel subscription tracking"
-            },
-            "scaling": {
-              "redis": "Optional Redis integration for horizontal scaling",
-              "connectionSharing": "Distributed connection tracking across servers",
-              "channelSharing": "Distributed subscription management",
-              "fallbackMode": "Graceful fallback to local storage if Redis unavailable",
-              "memoryManagement": "TTL-based key expiration to prevent leaks"
-            },
-            "requestIntegration": "Uses Request class for validation and authentication"
-          },
-          "errorHandling": {
-            "rateLimits": "Clear error messages for rate-limited clients",
-            "timeouts": "Graceful timeout notifications before disconnection",
-            "validation": "Request class schema validation for messages",
-            "redisErrors": "Graceful fallback if Redis connection fails"
-          },
-          "messageProtocol": {
-            "format": "JSON-based messaging protocol",
-            "clientActions": ["subscribe", "unsubscribe", "message", "pong"],
-            "serverActions": ["welcome", "ping", "message", "timeout"]
-          }
-        }
-      }
-    },
-
-    "security": {
-      "cryptography": {
-        "CryptHelper": {
-          "purpose": "Encryption and hashing operations",
-          "algorithms": {
-            "passwordHashing": "Argon2i",
-            "encryption": "AES-256-CBC",
-            "hmac": "SHA256"
-          },
-          "methods": {
-            "hashPassword": {
-              "purpose": "Secure password hashing",
-              "parameters": {
-                "password": "string",
-                "return": "string"
-              },
-              "returns": "string"
-            },
-            "passwordVerify": "Password verification",
-            "encryptString": "String encryption with HMAC",
-            "decryptString": "String decryption with HMAC verification"
-          },
-          "features": {
-            "name": {
-              "purpose": "Description",
-              "parameters": {},
-              "returns": "",
-              "examples": [],
-              "errors": []
-            }
-          }
-        }
-      },
-      "fileOperations": {
-        "FileHelper": {
-          "purpose": "Secure file operations",
-          "features": [
-            "Path traversal prevention",
-            "Encryption support",
-            "Base64 encoding/decoding",
-            "Secure file movement"
-          ],
-          "securityChecks": [
-            "Directory existence validation",
-            "Shell command injection prevention",
-            "File permission verification"
-          ],
-          "implementation_details": {
-            "name": {
-              "purpose": "Description",
-              "parameters": {},
-              "returns": "",
-              "examples": [],
-              "errors": []
-            }
-          }
-        }
-      },
-      "inputSanitization": {
-        "strategies": {
-          "headers": {
-            "method": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
-            "recursive": true
-          },
-          "files": {
-            "nameValidation": "/^[a-zA-Z0-9_.-]+$/",
-            "mimeValidation": "fileinfo extension"
-          }
-        },
-        "features": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      },
-      "encryption": {
-        "fileEncryption": {
-          "algorithm": "AES-256-CBC",
-          "keyDerivation": "SHA256",
-          "ivLength": 16,
-          "hmacAlgorithm": "SHA256",
-          "hmacPosition": "After IV, before ciphertext"
-        },
-        "features": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      }
-    },
-
-    "helpers": {
-      "ImageHelper": {
-        "purpose": "Image processing and security",
-        "mainFeatures": [
-          "WebP conversion",
-          "Quality optimization"
-        ],
-        "supportedFormats": ["JPEG", "PNG", "GIF", "WebP"],
-        "securityMeasures": [
-          "MIME type validation",
-          "Path traversal prevention",
-          "Size validation"
-        ],
-        "qualityControl": {
-          "jpeg": "1-100 quality scale",
-          "png": "0-9 compression level",
-          "webp": "0-100 quality scale"
-        },
-        "inheritance": "Shares core functionality with FileHelper",
-        "additionalSecurity": {
-          "mimeValidation": "getimagesize() verification",
-          "formatValidation": "Supported format checking",
-          "resolutionLimits": "Image dimension validation"
-        },
-        "implementation": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {}
-          }
-        },
-        "imageProcessing": {
-          "formats": {
-            "jpeg": {
-              "quality": "1-100 scale",
-              "default": 75
-            },
-            "png": {
-              "quality": "0-9 scale",
-              "default": 9
-            },
-            "webp": {
-              "quality": "0-100 scale",
-              "default": 80,
-              "lossless": "Optional for PNG conversion"
-            }
-          },
-          "validation": {
-            "gd": "Extension check",
-            "mime": "getimagesize verification",
-            "memory": "Resource cleanup"
-          }
-        }
-      },
-      "TypeChecker": {
-        "purpose": "Data type validation",
-        "supportedTypes": [
-          "string", "int", "float", "bool", "array",
-          "email", "url", "date", "datetime", "json",
-          "ip", "ipv4", "ipv6", "integer", "number",
-          "double", "boolean", "object", "callable",
-          "resource", "null"
-        ],
-        "validationOptions": {
-          "string": {
-            "minLength": "Minimum length check",
-            "maxLength": "Maximum length check",
-            "regex": "Pattern matching"
-          },
-          "number": {
-            "min": "Minimum value",
-            "max": "Maximum value"
-          },
-          "date": {
-            "format": "Custom format support",
-            "defaultFormat": "Y-m-d"
-          },
-          "datetime": {
-            "format": "Custom format support",
-            "defaultFormat": "Y-m-d H:i:s"
-          }
-        },
-        "options": {
-          "datetime": {
-            "defaultFormat": "Y-m-d H:i:s",
-            "customFormats": "Configurable"
-          },
-          "string": {
-            "regex": "Custom pattern matching",
-            "length": "Min/max validation"
-          },
-          "number": {
-            "range": "Min/max bounds",
-            "type": "Integer/float validation"
-          }
-        },
-        "errorHandling": "Returns boolean, no exceptions thrown",
-        "features": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      },
-      "StringHelper": {
-        "purpose": "String manipulation and validation",
-        "methods": {
-          "randomString": "Secure random string generation",
-          "makeWebName": {
-            "features": [
-              "UTF-8 support",
-              "European character handling",
-              "URL-safe conversion",
-              "Length limiting",
-              "Multiple dash prevention"
-            ],
-            "characterMappings": {
-              "umlauts": {"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"},
-              "accents": {"á": "a", "à": "a", "ã": "a", "...": "..."}
-            },
-            "implementation_details": {
-              "name": {
-                "purpose": "Description",
-                "parameters": {},
-                "returns": "",
-                "examples": [],
-                "errors": []
+            "table": {
+              "path": "app/table/{ServiceName}Table.php",
+              "extends": "CRUDTable",
+              "properties": {
+                "id": "int",
+                "name": "string",
+                "description": "string"
               }
             }
-          },
-          "safeURL": "URL validation and sanitization",
-          "safeEmail": "Email validation and normalization",
-          "capitalizeAfterSpace": "Capitalize words in string",
-          "sanitizedString": {
-            "purpose": "Input sanitization",
-            "pattern": "/^[a-zA-Z0-9_\\-\\/\\(\\);,.,äÄöÖüÜß  ]{1,255}$/",
-            "maxLength": 255
-          },
-          "implementation_details": {
-            "name": {
-              "purpose": "Description",
-              "parameters": {},
-              "returns": "",
-              "examples": [],
-              "errors": []
-            }
-          }
-        },
-        "implementation_details": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      },
-      "TypeHelper": {
-        "purpose": "Type utilities and conversions",
-        "methods": {
-          "justInt": "Integer validation",
-          "justIntPositive": "Positive integer validation",
-          "guid": "GUID generation using OpenSSL",
-          "timeStamp": "Unix timestamp formatting",
-          "getNonNullableProperties": "Object property analysis",
-          "getClassPublicFunctions": "Method reflection"
-        },
-        "features": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      },
-      "JsonHelper": {
-        "purpose": "JSON validation and processing",
-        "methods": {
-          "validateJsonStringReturnArray": "JSON to array conversion",
-          "validateJsonStringReturnObject": "JSON to object conversion",
-          "validateJson": "JSON string validation",
-          "encodeToJson": "Safe JSON encoding"
-        },
-        "features": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      },
-      "WebHelper": {
-        "purpose": "Web server detection",
-        "supportedServers": [
-          "Apache",
-          "swoole",
-          "nginx"
-        ],
-        "errorHandling": "Logs server detection failure to error_log"
-      }
-    },
-
-    "email": {
-      "GemSMTP": {
-        "purpose": "Secure email handling",
-        "features": [
-          "TLS support",
-          "File attachment validation",
-          "Content security",
-          "HTML sanitization",
-          {
-            "name": {
-              "purpose": "Description",
-              "parameters": {},
-              "returns": "",
-              "examples": [],
-              "errors": []
-            }
-          }
-        ],
-        "securityLimits": {
-          "maxFileSize": 10485760,
-          "maxContentSize": 26214400,
-          "maxRetries": 3,
-          "retryDelay": 2,
-          "allowedLanguages": ["en", "de", "fr", "es", "..."]
-        },
-        "contentSecurity": {
-          "blacklist": [
-            "<script", "javascript:", "data:",
-            "onclick", "expression("
-          ],
-          "sanitization": "HTML special chars encoding"
-        },
-        "sslConfiguration": {
-          "verifyPeer": true,
-          "verifyPeerName": true,
-          "allowSelfSigned": false,
-          "minTlsVersion": "TLSv1.2",
-          "disableCompression": true,
-          "sniEnabled": true,
-          "verifyDepth": 5
-        },
-        "retryMechanism": {
-          "maxAttempts": 3,
-          "delaySeconds": 2,
-          "exponentialBackoff": false
-        },
-        "contentValidation": {
-          "htmlRequired": "Must contain <html> tags",
-          "encodingCheck": "UTF-8 validation",
-          "sizeLimits": {
-            "subject": 998,
-            "attachment": "10MB",
-            "totalContent": "25MB"
-          }
-        },
-        "implementation_details": {
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
           }
         }
       }
     },
-
-    "ai": {
-      "ChatGptClient": {
-        "purpose": "OpenAI API integration",
-        "features": {
-          "authentication": "Bearer token support",
-          "endpoints": ["chat/completion"],
-          "messageFormatting": {
-            "system": "Context setting",
-            "user": "Query handling"
-          },
-          "name": {
-            "purpose": "Description",
-            "parameters": {},
-            "returns": "",
-            "examples": [],
-            "errors": []
-          }
-        }
-      }
+    "requirements": {
+      "php": ">=8.0",
+      "library": ">=3.27.8",
+      "phpstan": "level 9",
+      "openswoole": "optional for Swoole platform"
     }
   },
 
-  "errorHandling": {
-    "patterns": {
-      "database": {
-        "connection": "Check credentials and server status",
-        "query": "Validate query syntax and parameters",
-        "deadlock": "Implement retry mechanism"
-      },
-      "file": {
-        "permissions": "Verify directory permissions",
-        "existence": "Check file path validity",
-        "encryption": "Validate encryption key presence"
-      },
-      "http": {
-        "validation": "Check request payload format",
-        "authentication": "Verify token validity",
-        "authorization": "Check access rights"
+  "layers": {
+    "service": "Authentication and validation layer",
+    "controller": "Business logic layer",
+    "model": "Data logic and response layer",
+    "table": "Database interaction layer"
+  },
+
+  "patterns": {
+    "request": {
+      "flow": "Frontend → Service → Controller → Model → Table",
+      "validation": {
+        "service": "Input validation",
+        "controller": "Business rules",
+        "model": "Data integrity"
       }
     },
-    "responseStrategy": {
-      "client": "Return appropriate HTTP status with message",
-      "server": "Log error details, return generic message",
-      "security": "Log attempt, return 403 without details"
+    "response": {
+      "flow": "Table → Model → Controller → Service → Frontend",
+      "types": {
+        "JsonResponse": "Direct API response",
+        "object": "Further processing",
+        "primitive": "Simple returns"
+      }
     },
-    "database": {
-      "deadlockRetry": {
-        "attempts": 3,
-        "delay": "2 seconds"
-      },
-      "connectionTimeout": {
-        "default": "10 seconds",
-        "configurable": true
+    "authentication": {
+      "flow": "Request.auth() → JWT Validation → userRole()/userId() → Role-based Access",
+      "components": {
+        "Request": "Handles authentication and authorization directly",
+        "auth()": "Authenticates request and optionally checks roles",
+        "userRole()": "Returns authenticated user's role with enhanced error handling",
+        "userId()": "Returns authenticated user's ID with enhanced error handling"
       }
     }
   },
 
   "bestPractices": {
-    "security": [
-      "Always use parameterized queries",
-      "Validate file types before processing",
-      "Implement rate limiting",
-      "Use HTTPS for API calls"
+    "services": [
+      "Always extend ApiService (or SwooleApiService for Swoole)",
+      "Validate inputs first",
+      "Use Request.auth() for authentication"
     ],
-    "performance": [
-      "Implement connection pooling",
-      "Use prepared statements",
-      "Optimize file operations",
-      "Cache frequent queries"
+    "controllers": [
+      "Only called by Services",
+      "Use mapPost for data binding",
+      "Return JsonResponse"
     ],
-    "errorHandling": [
-      "Implement retry mechanisms",
-      "Log detailed errors",
-      "Return consistent error responses",
-      "Validate input early"
+    "models": [
+      "Use underscore for non-DB props",
+      "Implement proper traits",
+      "Type-safe properties"
+    ],
+    "authentication": [
+      "Always use Request.auth() for authentication",
+      "Check authentication before performing operations",
+      "Use proper role checks with Request.auth(['admin', 'editor'])",
+      "Handle Request.userId() and Request.userRole() return values properly"
     ]
   },
 
-  "commonUseCases": {
-    "authentication": {
-      "implementation": "Use CryptHelper for password handling",
-      "tokenManagement": "Implement in authorization header",
-      "sessionHandling": "Stateless with JWT recommended"
-    },
-    "fileUploads": {
-      "implementation": "Use FileHelper with encryption",
-      "validation": "Check MIME types and size limits",
-      "storage": "Implement secure path construction"
-    },
-    "apiEndpoints": {
-      "structure": "Use JsonResponse for consistency",
-      "validation": "Implement TypeChecker for inputs",
-      "security": "Apply input sanitization"
-    }
-  },
-
-  "environmentConfiguration": {
-    "required": {
-      "database": {
-        "DB_HOST": "Database host",
-        "DB_PORT": "Database port",
-        "DB_NAME": "Database name",
-        "DB_CHARSET": "Database charset",
-        "DB_USER": "Database username",
-        "DB_PASSWORD": "Database password",
-        "QUERY_LIMIT": "Default query limit",
-        "MIN_DB_CONNECTION_POOL": "Minimum connections per pool",
-        "MAX_DB_CONNECTION_POOL": "Maximum connections per pool",
-        "DB_CONNECTION_MAX_AGE": "Maximum connection age in seconds"
-      },
-      "authentication": {
-        "TOKEN_SECRET": "JWT secret key",
-        "TOKEN_ISSUER": "Token issuer name",
-        "REFRESH_TOKEN_VALIDATION_IN_SECONDS": "Refresh token lifetime",
-        "ACCESS_TOKEN_VALIDATION_IN_SECONDS": "Access token lifetime"
-      },
-      "routing": {
-        "SERVICE_IN_URL_SECTION": "Service route position",
-        "METHOD_IN_URL_SECTION": "Method route position"
-      }
-    }
-  },
-
-  "securityImplementations": {
-    "inputValidation": {
-      "request": "Multi-layer sanitization",
-      "files": "MIME and size validation",
-      "database": "Prepared statements"
-    },
-    "encryption": {
-      "symmetric": "AES-256-CBC with HMAC",
-      "passwords": "Argon2i hashing",
-      "files": "Encrypted storage"
-    },
-    "authentication": {
-      "tokens": "JWT with refresh mechanism",
-      "passwords": "Secure hashing and verification"
-    },
-    "shellCommands": {
-      "escapeshellarg": "Used in file operations",
-      "realpath": "Path traversal prevention",
-      "directoryValidation": "Existence and permission checks"
-    },
-    "sanitization": {
-      "headers": "FILTER_SANITIZE_FULL_SPECIAL_CHARS",
-      "urls": "FILTER_SANITIZE_URL",
-      "recursiveSanitization": "Nested array handling"
-    },
-    "implementation_details": {
-      "name": {
-        "purpose": "Description",
-        "parameters": {},
-        "returns": "",
-        "examples": [],
-        "errors": []
-      }
-    }
-  },
-
-  "performance": {
-    "database": {
-      "connectionPool": {
-        "persistent": true,
-        "options": {
-          "ATTR_PERSISTENT": true,
-          "ATTR_EMULATE_PREPARES": false
-        },
-        "advancedFeatures": {
-          "parameterPooling": "Groups connections by database parameters",
-          "connectionExpiration": "Time-based connection aging system",
-          "healthChecking": "Validates connections before reuse",
-          "resourceTracking": "Monitors total and per-pool connection counts",
-          "autoCleanup": "Automatically removes stale connections"
-        },
-        "environmentConfiguration": {
-          "MIN_DB_CONNECTION_POOL": "Minimum connections to maintain per pool",
-          "MAX_DB_CONNECTION_POOL": "Maximum connections allowed per pool",
-          "DB_CONNECTION_MAX_AGE": "Maximum connection age in seconds (default: 3600)"
+  "bootstrap": {
+    "initialization": {
+      "apache": {
+        "location": "index.php",
+        "required": {
+          "autoload": "vendor/autoload.php",
+          "environment": "app/.env",
+          "components": [
+            "Gemvc\\Core\\Bootstrap",
+            "Gemvc\\Http\\ApacheRequest",
+            "Gemvc\\Http\\NoCors"
+          ]
         }
       },
-      "caching": {
-        "preparedStatements": "Statement reuse",
-        "connectionPool": "Persistent connections"
-      }
-    },
-    "fileOperations": {
-      "imageProcessing": {
-        "webpConversion": {
-          "quality": "0-100 scale",
-          "lossless": "Optional for PNG conversion"
+      "swoole": {
+        "location": "index.php",
+        "required": {
+          "autoload": "vendor/autoload.php",
+          "environment": "app/.env",
+          "components": [
+            "App\\Core\\SwooleBootstrap",
+            "Gemvc\\Http\\SwooleRequest",
+            "Gemvc\\Http\\NoCors",
+            "OpenSwoole\\HTTP\\Server"
+          ]
         },
-        "memoryManagement": {
-          "imageDestroy": "Immediate resource release",
-          "streamProcessing": "Large file handling"
-        }
+        "features": [
+          "Hot reload in development mode",
+          "Connection pooling",
+          "File preloading in production mode",
+          "App directory access protection"
+        ]
       },
-      "caching": {
-        "bufferSize": "Optimal chunk size for operations",
-        "streamProcessing": "Memory-efficient handling"
+      "dependencies": {
+        "symfony/dotenv": "Environment variable loading",
+        "openswoole/openswoole": "OpenSwoole server (optional)"
+      }
+    },
+    "sequence": [
+      "CORS configuration",
+      "Environment loading",
+      "Request initialization",
+      "Framework bootstrap"
+    ]
+  },
+
+  "ApiService": {
+    "methods": {
+      "auth": {
+        "parameters": [{"name": "roles", "type": "array<string>|null"}],
+        "returns": "bool",
+        "description": "Authenticate request and optionally check roles",
+        "examples": [
+          "if (!$this->request->auth()) { return $this->request->returnResponse(); }",
+          "if (!$this->request->auth(['admin', 'editor'])) { return $this->request->returnResponse(); }"
+        ]
+      },
+      "validatePosts": {
+        "parameters": [{"name": "schema", "type": "array<string, string>"}],
+        "returns": "bool",
+        "description": "Validate POST data against schema",
+        "examples": ["$this->validatePosts(['email' => 'email', 'password' => 'string']);"]
       }
     }
   },
 
-  "integrationPatterns": {
-    "microservices": {
-      "authentication": {
-        "tokenBased": "JWT implementation",
-        "headerFormat": "Bearer {token}"
-      },
-      "communication": {
-        "json": "Standardized response format",
-        "statusCodes": "Consistent HTTP codes",
-        "errorHandling": "Uniform error responses"
-      }
+  "exceptions": {
+    "ValidationException": {
+      "when": "Input validation fails",
+      "properties": ["errors", "message"],
+      "handling": "example code"
     }
   },
 
-  "dependencies": {
-    "required": {
-      "firebase/php-jwt": {
-        "version": "^6.8",
-        "purpose": "JWT token handling"
-      },
-      "phpmailer/phpmailer": {
-        "version": "^6.8",
-        "purpose": "Email functionality base"
-      },
-      "symfony/dotenv": {
-        "version": "^7.0",
-        "purpose": "Environment configuration"
-      }
-    },
-    "development": {
-      "phpstan/phpstan": {
-        "version": "^2.1",
-        "purpose": "Static analysis tool"
-      }
-    }
-  },
-  "autoloading": {
-    "psr-4": {
-      "GemLibrary\\": "src/",
-      "Gemvc\\Database\\": "src/database/",
-      "Gemvc\\Database\\Query\\": "src/database/query/",
-      "Gemvc\\Email\\": "src/email/",
-      "Gemvc\\Helper\\": "src/helper/",
-      "Gemvc\\Http\\": "src/http/"
-    },
-    "files": ["src/database/SqlEnumCondition.php"]
-  },
-  "errorMapping": {
-    "database": {
-      "connectionErrors": {
-        "SQLSTATE[28000]": "Invalid credentials",
-        "SQLSTATE[HY000]": "Connection failed",
-        "2002": "Server not found",
-        "2006": "Server gone away"
-      },
-      "queryErrors": {
-        "23000": "Duplicate entry",
-        "42S02": "Table not found",
-        "42000": "Syntax error"
-      }
-    },
-    "file": {
-      "operations": {
-        "UPLOAD_ERR_INI_SIZE": "File exceeds upload_max_filesize",
-        "UPLOAD_ERR_NO_FILE": "No file uploaded",
-        "UPLOAD_ERR_PARTIAL": "Partial upload"
-      }
-    },
-    "http": {
-      "200": "success()",
-      "201": "created()",
-      "209": "updated()",
-      "210": "deleted()",
-      "400": "badRequest()",
-      "401": "unauthorized()",
-      "403": "forbidden()",
-      "404": "notFound()",
-      "500": "internalError()",
-      "clientErrors": {
-        "400": "badRequest() - Invalid request format",
-        "401": "unauthorized() - Missing or invalid authentication",
-        "403": "forbidden() - Insufficient permissions",
-        "404": "notFound() - Resource not available",
-        "406": "notAcceptable() - Unsupported response format",
-        "409": "conflict() - Resource state conflict",
-        "415": "unsupportedMediaType() - Invalid content type",
-        "422": "unprocessableEntity() - Validation failed"
-      },
-      "serverErrors": {
-        "500": "internalError() - Server processing error",
-        "503": "serviceUnavailable() - Temporary server issue"
-      }
+  "traits": {
+    "CreateTrait": {
+      "methods": ["create", "createWithValidation"],
+      "properties": ["required", "optional"],
+      "usage": "example code",
+      "combinations": ["with other traits"]
     }
   },
 
   "examples": {
-    "database": {
-      "complexQuery": {
-        "code": "QueryBuilder::select('u.id', 'u.name', 'p.profile')\n  ->from('users', 'u')\n  ->leftJoin('profiles p ON p.user_id = u.id')\n  ->whereEqual('status', 'active')\n  ->whereBetween('created_at', $start, $end)\n  ->orderBy('u.name')\n  ->limit(10)\n  ->run($pdoQuery)",
-        "explanation": "Complex query with joins, conditions, and pagination"
+    "requests": {
+      "create": {
+        "endpoint": "/api/users/create",
+        "method": "POST",
+        "body": {"name": "string", "email": "string"},
+        "headers": {"Authorization": "Bearer ..."}
+      }
+    },
+    "responses": {
+      "success": {"code": 200, "body": {"...": "..."}},
+      "validation": {"code": 422, "body": {"...": "..."}},
+      "error": {"code": 500, "body": {"...": "..."}}
+    },
+    "authentication": {
+      "basic": {
+        "service": "if (!$this->request->auth()) { return $this->request->returnResponse(); }",
+        "roleCheck": "if (!$this->request->auth(['admin'])) { return $this->request->returnResponse(); }",
+        "userId": "$userId = $this->request->userId(); // Returns null with 401 response if not authenticated",
+        "userRole": "$userRole = $this->request->userRole(); // Returns null with 401 response if not authenticated"
+      }
+    },
+    "fullCycle": {
+      "request": {
+        "url": "/api/users/create",
+        "method": "POST",
+        "headers": {},
+        "body": {}
       },
-      "tableClassUsage": {
-        "code": "// Define a table-specific class\nclass UserTable extends Table {\n  public int $id;\n  public string $username;\n  public string $email;\n  public bool $is_active = true;\n  public ?string $deleted_at = null;\n  \n  protected array $_type_map = [\n    'id' => 'int',\n    'is_active' => 'bool',\n    'deleted_at' => 'datetime'\n  ];\n  \n  public function __construct() {\n    parent::__construct('users');\n  }\n  \n  // Custom finder method\n  public function findByEmail(string $email): ?self {\n    return $this->select()\n      ->where('email', $email)\n      ->limit(1)\n      ->run()[0] ?? null;\n  }\n}\n\n// Create a new user\n$user = new UserTable();\n$user->username = 'jsmith';\n$user->email = 'john@example.com';\n$user->insertSingleQuery();\n\n// Query with fluent interface\n$activeUsers = (new UserTable())\n  ->select()\n  ->where('is_active', true)\n  ->whereNull('deleted_at')\n  ->whereBetween('created_at', date('Y-m-d', strtotime('-30 days')), date('Y-m-d'))\n  ->orderBy('username', true)\n  ->run();",
-        "explanation": "Demonstrates Table class inheritance, ORM capabilities, type mapping, and fluent query building"
-      }
-    },
-    "security": {
-      "fileEncryption": {
-        "code": "$file = new FileHelper($source, $destination);\n$file->secret = $encryptionKey;\n$file->moveAndEncrypt();",
-        "explanation": "Secure file movement with encryption"
-      }
-    },
-    "fullApiEndpoint": {
-      "code": [
-        "class UserController {",
-        "    public function create(ApacheRequest $request) {",
-        "        $data = $request->post;",
-        "        // Validation and processing",
-        "        return (new JsonResponse())->created($user);",
-        "    }",
-        "}"
-      ],
-      "explanation": "Complete API endpoint with request handling and response"
-    }
-  },
-
-  "integration": {
-    "microservices": {
-      "authentication": {
-        "flow": [
-          "Client sends credentials",
-          "Server validates using CryptHelper",
-          "JWT token generated",
-          "Token returned in JsonResponse",
-          "Subsequent requests use Authorization header"
-        ]
+      "processing": {
+        "service": "code example",
+        "controller": "code example",
+        "model": "code example"
       },
-      "fileHandling": {
-        "flow": [
-          "File uploaded through ApacheRequest",
-          "FileHelper validates and moves",
-          "Optional encryption applied",
-          "ImageHelper processes if image",
-          "Response includes file metadata"
-        ]
+      "response": {
+        "success": {},
+        "error": {}
       }
     }
   },
 
-  "classRelationships": {
-    "ImageHelper": {
-      "extends": "FileHelper",
-      "shared": ["move", "copy", "delete", "encrypt", "decrypt"]
-    },
-    "Table": {
-      "extends": "PdoQuery",
-      "shared": ["selectQuery", "insertQuery", "updateQuery", "deleteQuery", "getError", "setError"]
-    },
-    "QueryBuilder": {
-      "implements": "QueryBuilderInterface",
-      "required": ["run"]
+  "lifecycle": {
+    "request": {
+      "stages": [
+        {
+          "name": "Bootstrap",
+          "class": "Bootstrap or SwooleBootstrap",
+          "methods": ["initialize", "route", "processRequest"],
+          "example": "code example"
+        },
+        {
+          "name": "Service",
+          "validations": ["input", "auth"],
+          "example": "code example"
+        }
+        // ... other stages
+      ]
     }
   },
-
-  "versionControl": {
-    "stability": "stable",
-    "minimumStability": "stable",
-    "branches": {
-      "main": "Production ready code",
-      "develop": "Development branch"
-    },
-    "changelog": {
-      "3.27.8": {
-        "date": "2024-03-15",
-        "changes": [
-          "Added WebP support",
-          "Enhanced security features"
-        ]
-      }
-    }
-  },
-
-  "configurationTemplates": {
-    "env": {
-      "development": {
-        "template": ".env.development",
-        "settings": {}
+  
+  "swoole": {
+    "components": {
+      "SwooleBootstrap": {
+        "purpose": "Routes and processes requests in OpenSwoole environment",
+        "methods": {
+          "processRequest": "Processes HTTP request and returns JsonResponse"
+        }
       },
-      "production": {
-        "template": ".env.production",
-        "settings": {}
-      }
-    }
-  },
-
-  "fileLocations": {
-    "sourceCode": {
-      "path": "src/",
-      "directories": {
-        "database": "src/database/",
-        "http": "src/http/",
-        "email": "src/email/",
-        "helper": "src/helper/"
+      "SwooleApiService": {
+        "purpose": "Base class for API services in OpenSwoole environment",
+        "methods": {
+          "validatePosts": "Safe validation method that returns error response",
+          "validateStringPosts": "Safe string validation that returns error response"
+        }
+      },
+      "SwooleRequest": {
+        "purpose": "Adapts Swoole request to GEMVC Request"
+      },
+      "SwooleWebSocketHandler": {
+        "purpose": "Manages WebSocket connections with advanced features",
+        "features": [
+          "Connection management with timeout detection",
+          "Rate limiting with sliding window",
+          "Heartbeat mechanism with ping/pong",
+          "Channel-based messaging (pub/sub)",
+          "Redis integration for horizontal scaling"
+        ]
       }
     },
-    "documentation": {
-      "path": "./",
-      "files": {
-        "aiAssist": "AIAssist.jsonc",
-        "documentation": "Documentation.md",
-        "readme": "README.md"
+    "server": {
+      "configuration": {
+        "worker_num": "Number of worker processes",
+        "max_request": "Maximum requests per worker",
+        "enable_coroutine": "Enables coroutines for concurrency",
+        "document_root": "Root directory for static files",
+        "enable_static_handler": "Enables static file serving",
+        "static_handler_locations": "Directories for static files"
+      },
+      "features": {
+        "hotReload": "Automatic code reloading in development",
+        "preloading": "File preloading for performance in production",
+        "securityProtection": "Prevents direct access to app directory"
+      },
+      "docker": {
+        "compose": "Multi-container setup with MySQL",
+        "healthChecks": "Database connectivity verification",
+        "networking": "Custom bridge network"
       }
     }
   }
