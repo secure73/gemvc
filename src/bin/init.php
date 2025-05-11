@@ -96,6 +96,11 @@ class NonInteractiveInit
             // Copy startup files to project root
             $this->copyStartupFiles();
             
+            // Create modular Swoole structure if needed
+            if ($this->platformType === 'swoole') {
+                $this->createModularSwooleStructure();
+            }
+            
             // Secure bin directory in .htaccess for Apache
             if ($this->platformType === 'apache') {
                 $this->secureBinDirectory();
@@ -166,8 +171,54 @@ class NonInteractiveInit
             }
         }
         
-        // Common configuration for all platforms
-        $envContent = <<<EOT
+        if ($this->platformType === 'swoole') {
+            // Specific .env content for Swoole platform
+            $envContent = <<<'EOT'
+# App Enviroment development or production
+APP_ENV=development
+
+# OpenSwoole Configuration
+SWOOLE_MODE=true
+OPENSWOOLE_WORKERS=3
+OPEN_SWOOLE_ACCEPT_REQUEST='0.0.0.0'
+OPEN_SWOOLE_ACCPT_PORT=9501
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=your_db
+DB_CHARSET=utf8mb4
+DB_USER=root
+DB_PASSWORD=''
+QUERY_LIMIT=10
+
+# Database Connection Pool
+MIN_DB_CONNECTION_POOL=2
+#because each worker create its own pool , the MAX_DB_CONNECTION_POOL number shall not be very high!, 
+#each connection cost something between 5 to 10 MB from RAM
+MAX_DB_CONNECTION_POOL=5
+DB_CONNECTION_MAX_AGE=3600
+
+# Security Settings
+TOKEN_SECRET='your_secret'
+TOKEN_ISSUER='your_api'
+REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
+ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
+
+# URL Configuration
+SERVICE_IN_URL_SECTION=2
+METHOD_IN_URL_SECTION=3
+
+
+
+# WebSocket Settings
+WS_CONNECTION_TIMEOUT=300
+WS_MAX_MESSAGES_PER_MINUTE=60
+WS_HEARTBEAT_INTERVAL=30
+EOT;
+        } else {
+            // Common configuration for Apache platform
+            $envContent = <<<'EOT'
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=3306
@@ -191,21 +242,6 @@ ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
 # URL Configuration
 SERVICE_IN_URL_SECTION=2
 METHOD_IN_URL_SECTION=3
-EOT;
-        
-        // Add Swoole configuration only if using Swoole platform
-        if ($this->platformType === 'swoole') {
-            $envContent .= <<<EOT
-
-
-# OpenSwoole Configuration
-SWOOLE_MODE=true
-OPENSWOOLE_WORKERS=3
-
-# WebSocket Settings
-WS_CONNECTION_TIMEOUT=300
-WS_MAX_MESSAGES_PER_MINUTE=60
-WS_HEARTBEAT_INTERVAL=30
 EOT;
         }
         
@@ -367,51 +403,98 @@ EOT;
     }
     
     /**
-     * Secure bin directory in .htaccess file
+     * Secure bin directory to prevent direct access
      */
     protected function secureBinDirectory()
     {
-        $htaccessPath = $this->basePath . '/.htaccess';
-        
-        if (!file_exists($htaccessPath)) {
-            echo "Warning: .htaccess file not found. Bin directory not secured.\n";
-            return;
+        // Create bin directory if it doesn't exist
+        $binDir = $this->basePath . '/bin';
+        if (!is_dir($binDir)) {
+            if (!@mkdir($binDir, 0755, true)) {
+                echo "Warning: Failed to create directory: {$binDir}\n";
+                return;
+            }
         }
-        
-        $htaccessContent = file_get_contents($htaccessPath);
-        
-        // Check if the bin directory is already secured
-        if (strpos($htaccessContent, '<Directory "bin">') !== false) {
-            echo "Bin directory already secured in .htaccess\n";
-            return;
-        }
-        
-        // Find where to insert the bin directory protection
-        $vendorDirective = '<Directory "vendor">';
-        $binDirective = <<<EOT
+
+        // For Apache platform, add protection to .htaccess
+        if ($this->platformType === 'apache') {
+            $htaccessPath = $this->basePath . '/.htaccess';
+            
+            if (!file_exists($htaccessPath)) {
+                echo "Warning: .htaccess file not found. Creating a basic .htaccess file.\n";
+                
+                $basicHtaccess = <<<EOT
+<Directory "vendor">
+    Require all denied
+</Directory>
+
+EOT;
+                file_put_contents($htaccessPath, $basicHtaccess);
+            }
+            
+            $htaccessContent = file_get_contents($htaccessPath);
+            
+            // Check if the bin directory is already secured
+            if (strpos($htaccessContent, '<Directory "bin">') !== false) {
+                echo "Bin directory already secured in .htaccess\n";
+            } else {
+                // Find where to insert the bin directory protection
+                $vendorDirective = '<Directory "vendor">';
+                $binDirective = <<<EOT
 
 <Directory "bin">
     Require all denied
 </Directory>
 EOT;
-        
-        if (strpos($htaccessContent, $vendorDirective) !== false) {
-            // Add bin directory protection after vendor directory protection
-            $htaccessContent = str_replace(
-                "</Directory>\n",
-                "</Directory>\n" . $binDirective,
-                $htaccessContent
-            );
-        } else {
-            // Add bin directory protection at the end
-            $htaccessContent .= $binDirective . "\n";
+                
+                if (strpos($htaccessContent, $vendorDirective) !== false) {
+                    // Add bin directory protection after vendor directory protection
+                    $htaccessContent = str_replace(
+                        "</Directory>\n",
+                        "</Directory>\n" . $binDirective,
+                        $htaccessContent
+                    );
+                } else {
+                    // Add bin directory protection at the end
+                    $htaccessContent .= $binDirective . "\n";
+                }
+                
+                // Update the .htaccess file
+                if (file_put_contents($htaccessPath, $htaccessContent)) {
+                    echo "Secured bin directory in .htaccess\n";
+                } else {
+                    echo "Warning: Failed to update .htaccess file\n";
+                }
+            }
         }
         
-        // Update the .htaccess file
-        if (file_put_contents($htaccessPath, $htaccessContent)) {
-            echo "Secured bin directory in .htaccess\n";
+        // For both platforms, add an index.php file to bin directory that prevents direct access
+        $indexBlocker = <<<'EOT'
+<?php
+// Prevent direct access to bin directory
+http_response_code(403);
+echo json_encode([
+    'response_code' => 403,
+    'message' => 'Access Forbidden',
+    'data' => null
+]);
+exit;
+EOT;
+
+        $indexPath = $binDir . '/index.php';
+        if (file_put_contents($indexPath, $indexBlocker)) {
+            echo "Added protection index.php to bin directory\n";
         } else {
-            echo "Warning: Failed to update .htaccess file\n";
+            echo "Warning: Failed to create protection index.php in bin directory\n";
+        }
+
+        // Also create .htaccess in the bin directory itself as an additional layer of protection
+        $binHtaccess = "Require all denied\n";
+        $binHtaccessPath = $binDir . '/.htaccess';
+        if (file_put_contents($binHtaccessPath, $binHtaccess)) {
+            echo "Created .htaccess in bin directory for additional protection\n";
+        } else {
+            echo "Warning: Failed to create .htaccess in bin directory\n";
         }
     }
     
@@ -474,6 +557,352 @@ EOT;
         } else {
             echo "Vendor directory already excluded in .gitignore\n";
         }
+    }
+    
+    /**
+     * Create a modular file structure for Swoole
+     * 
+     * This creates a modular directory structure for Swoole with environment variables
+     * 
+     * @return void
+     */
+    protected function createModularSwooleStructure()
+    {
+        if ($this->platformType !== 'swoole') {
+            return;
+        }
+        
+        echo "Creating modular Swoole structure...\n";
+        
+        // Create the server directory for Swoole modules
+        $serverDir = $this->basePath . '/server';
+        if (!is_dir($serverDir)) {
+            mkdir($serverDir, 0755, true);
+        }
+        
+        // Create subdirectories for organization
+        $dirs = ['config', 'handlers', 'utils'];
+        foreach ($dirs as $dir) {
+            $path = $serverDir . '/' . $dir;
+            if (!is_dir($path)) {
+                mkdir($path, 0755, true);
+            }
+        }
+        
+        // Create a simplified index.php
+        $simpleIndex = <<<'EOT'
+<?php
+/**
+ * OpenSwoole Server Entry Point for GEMVC Framework
+ *
+ * This is the main entry point for the OpenSwoole server.
+ * The actual server logic is organized into modular files in the /server directory.
+ */
+
+// Load the server bootstrap
+require_once __DIR__ . '/server/bootstrap.php';
+
+// Start the server
+\Server\Bootstrap::start();
+EOT;
+
+        file_put_contents($this->basePath . '/index.php', $simpleIndex);
+        echo "Created simplified index.php\n";
+
+        // Create bootstrap.php
+        $bootstrap = <<<'EOT'
+<?php
+
+namespace Server;
+
+// Load configuration and component files
+require_once __DIR__ . '/config/server.php';
+require_once __DIR__ . '/utils/helpers.php';
+require_once __DIR__ . '/handlers/request.php';
+require_once __DIR__ . '/handlers/worker.php';
+
+/**
+ * Server Bootstrap
+ * 
+ * This class initializes and starts the OpenSwoole server.
+ */
+class Bootstrap
+{
+    /**
+     * Start the server
+     */
+    public static function start()
+    {
+        // Check for OpenSwoole or regular Swoole extension
+        if (!extension_loaded('openswoole') && !extension_loaded('swoole')) {
+            throw new \Exception('Neither OpenSwoole nor Swoole extensions are installed. Please install one with: pecl install openswoole');
+        }
+
+        // Required dependencies
+        require_once 'vendor/autoload.php';
+
+        // Load environment variables
+        $dotenv = new \Symfony\Component\Dotenv\Dotenv();
+        $dotenv->load(__DIR__ . '/../app/.env');
+
+        // Development mode detection
+        $isDev = getenv('APP_ENV') === 'development' || !getenv('APP_ENV');
+        echo $isDev ? "Running in DEVELOPMENT mode\n" : "Running in PRODUCTION mode\n";
+
+        // Define the server class based on available extension
+        if (extension_loaded('openswoole')) {
+            $serverClass = '\OpenSwoole\HTTP\Server';
+            $timerClass = '\OpenSwoole\Timer';
+        } else {
+            $serverClass = '\Swoole\HTTP\Server';
+            $timerClass = '\Swoole\Timer';
+        }
+
+        // Get server IP and port from environment variables with fallbacks
+        $serverHost = getenv('OPEN_SWOOLE_ACCEPT_REQUEST') ?: '0.0.0.0';
+        $serverPort = (int)(getenv('OPEN_SWOOLE_ACCPT_PORT') ?: 9501);
+
+        // Create HTTP Server
+        $server = new $serverClass($serverHost, $serverPort);
+        echo "Server configured to listen on {$serverHost}:{$serverPort}\n";
+
+        // Apply server configuration from environment settings
+        $workers = (int)(getenv('OPENSWOOLE_WORKERS') ?: ($isDev ? 1 : 4));
+        
+        // Set server configurations
+        $server->set([
+            'worker_num' => $workers,
+            'max_request' => $isDev ? 1 : 1000,
+            'enable_coroutine' => true,
+            'document_root' => __DIR__ . '/..',  // Project root
+            'enable_static_handler' => true,
+            'static_handler_locations' => ['/public', '/assets'], // Only serve files from these directories
+        ]);
+
+        // Register event handlers
+        Handlers\registerWorkerEvents($server, $isDev, $timerClass);
+        Handlers\registerRequestHandler($server);
+
+        // Only preload files in production for better performance
+        if (!$isDev) {
+            echo "Production mode detected. Preloading files...\n";
+            Utils\preloadFiles();
+        } else {
+            echo "Development mode detected. Skipping preload for faster development cycles.\n";
+        }
+
+        // Start the server
+        echo "Starting OpenSwoole server on {$serverHost}:{$serverPort}...\n";
+        $server->start();
+    }
+}
+EOT;
+
+        file_put_contents($serverDir . '/bootstrap.php', $bootstrap);
+        echo "Created server/bootstrap.php\n";
+
+        // Create worker handlers
+        $workerHandlers = <<<'EOT'
+<?php
+
+namespace Server\Handlers;
+
+/**
+ * Register worker-related event handlers
+ * 
+ * @param mixed $server The Swoole server instance
+ * @param bool $isDev Whether in development mode
+ * @param string $timerClass The timer class to use
+ * @return void
+ */
+function registerWorkerEvents($server, bool $isDev, $timerClass): void
+{
+    // Store file hashes for hot reload
+    $fileHashes = [];
+
+    // Enable hot reload in development mode
+    if ($isDev) {
+        // Setup a file watcher that runs every second
+        $timerClass::tick(1000, function() use (&$fileHashes, $server) {
+            $dirs = ['app/api', 'app/controller', 'app/model', 'app/core', 'app/http', 'app/table'];
+            $changed = false;
+            
+            foreach ($dirs as $dir) {
+                if (!is_dir($dir)) continue;
+                
+                $files = glob("$dir/*.php");
+                foreach ($files as $file) {
+                    $currentHash = md5_file($file);
+                    if (!isset($fileHashes[$file]) || $fileHashes[$file] !== $currentHash) {
+                        echo "[Hot Reload] File changed: $file\n";
+                        $fileHashes[$file] = $currentHash;
+                        $changed = true;
+                    }
+                }
+            }
+            
+            if ($changed) {
+                echo "[Hot Reload] Reloading workers...\n";
+                $server->reload(); // Reload all worker processes
+            }
+        });
+    }
+
+    // Worker start event
+    $server->on('workerStart', function($server, $workerId) use ($isDev) {
+        echo "Worker #$workerId started\n";
+        
+        // Clear opcache on worker start in development mode (if enabled)
+        if ($isDev && function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+    });
+
+    // Worker stop event (graceful shutdown)
+    $server->on('workerStop', function($server, $workerId) {
+        echo "Worker #$workerId stopping...\n";
+        // Perform any needed cleanup here
+    });
+}
+EOT;
+
+        file_put_contents($serverDir . '/handlers/worker.php', $workerHandlers);
+        echo "Created server/handlers/worker.php\n";
+
+        // Create request handler
+        $requestHandler = <<<'EOT'
+<?php
+
+namespace Server\Handlers;
+
+use App\Core\SwooleBootstrap;
+use Gemvc\Http\SwooleRequest;
+use Gemvc\Http\NoCors;
+
+/**
+ * Register the main request handler
+ * 
+ * @param mixed $server The Swoole server instance
+ * @return void
+ */
+function registerRequestHandler($server): void
+{
+    $server->on('request', function ($request, $response) {
+        // Block direct access to app directory
+        $path = parse_url($request->server['request_uri'], PHP_URL_PATH);
+        if (preg_match('#^/app/#', $path)) {
+            $response->status(403);
+            $response->end(json_encode([
+                'response_code' => 403,
+                'message' => 'Access Forbidden',
+                'data' => null
+            ]));
+            return;
+        }
+        
+        try {
+            // Apply CORS headers
+            NoCors::NoCors();
+            
+            // Create GEMVC request from Swoole request
+            $webserver = new SwooleRequest($request);
+            
+            // Process the request
+            $bootstrap = new SwooleBootstrap($webserver->request);
+            $jsonResponse = $bootstrap->processRequest();
+            
+            // Capture the response using output buffering
+            ob_start();
+            $jsonResponse->show();
+            $jsonContent = ob_get_clean();
+            
+            // Set content type header
+            $response->header('Content-Type', 'application/json');
+            
+            // Send the JSON response
+            $response->end($jsonContent);
+            
+        } catch (\Throwable $e) {
+            // Handle any exceptions
+            $errorResponse = [
+                'response_code' => 500,
+                'message' => 'Internal Server Error',
+                'service_message' => $e->getMessage(),
+                'data' => null
+            ];
+            
+            // Set content type header
+            $response->header('Content-Type', 'application/json');
+            
+            // Send the error response
+            $response->end(json_encode($errorResponse));
+        }
+    });
+}
+EOT;
+
+        file_put_contents($serverDir . '/handlers/request.php', $requestHandler);
+        echo "Created server/handlers/request.php\n";
+
+        // Create helper functions
+        $helpers = <<<'EOT'
+<?php
+
+namespace Server\Utils;
+
+/**
+ * Utility functions for the Swoole server
+ */
+
+/**
+ * Preload application files into memory for better performance
+ * 
+ * @return int Number of files preloaded
+ */
+function preloadFiles(): int {
+    echo "Preloading application files...\n";
+    $directories = [
+        'app/api',
+        'app/controller',
+        'app/model',
+        'app/core',
+        'app/http',
+        'app/table',
+        'vendor/gemvc'
+    ];
+    
+    $count = 0;
+    foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            echo "Directory not found: $dir\n";
+            continue;
+        }
+        
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->getExtension() === 'php') {
+                try {
+                    require_once $file->getPathname();
+                    $count++;
+                } catch (\Throwable $e) {
+                    echo "Error loading file {$file->getPathname()}: {$e->getMessage()}\n";
+                }
+            }
+        }
+    }
+    
+    echo "Preloaded $count PHP files\n";
+    return $count;
+}
+EOT;
+
+        file_put_contents($serverDir . '/utils/helpers.php', $helpers);
+        echo "Created server/utils/helpers.php\n";
+
+        echo "Modular Swoole structure created successfully!\n";
     }
     
     protected function determineProjectRoot(): string
