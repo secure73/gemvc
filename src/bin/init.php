@@ -158,10 +158,7 @@ class NonInteractiveInit
             }
         }
         
-        // Set swoole mode based on platform type
-        $swooleMode = $this->platformType === 'swoole' ? 'true' : 'false';
-        
-        // Always create or overwrite the .env file
+        // Common configuration for all platforms
         $envContent = <<<EOT
 # Database Configuration
 DB_HOST=localhost
@@ -186,16 +183,23 @@ ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
 # URL Configuration
 SERVICE_IN_URL_SECTION=2
 METHOD_IN_URL_SECTION=3
+EOT;
+        
+        // Add Swoole configuration only if using Swoole platform
+        if ($this->platformType === 'swoole') {
+            $envContent .= <<<EOT
 
-# OpenSwoole Configuration (optional)
-SWOOLE_MODE={$swooleMode}
+
+# OpenSwoole Configuration
+SWOOLE_MODE=true
 OPENSWOOLE_WORKERS=3
 
-# WebSocket Settings (optional)
+# WebSocket Settings
 WS_CONNECTION_TIMEOUT=300
 WS_MAX_MESSAGES_PER_MINUTE=60
 WS_HEARTBEAT_INTERVAL=30
 EOT;
+        }
         
         if (!file_put_contents($envPath, $envContent)) {
             die("Error: Failed to create .env file: {$envPath}\n");
