@@ -35,18 +35,48 @@
 
 - **QueryBuilder.php**: SQL query builder
   - Provides a fluent interface for building SQL queries
-  - Interfaces with the QueryExecuter for execution
+  - Creates instances of query classes (Select, Insert, Update, Delete)
+  - Maintains reference to the last executed query for error retrieval
+  - Provides getError() method for consistent error handling
+
+- **QueryBuilderInterface.php**: Interface for query classes
+  - Defines run() method for executing queries
+  - Defines getError() method for retrieving error messages
 
 - **SqlEnumCondition.php**: Enumeration for SQL condition types
   - Defines standard SQL conditions for query building
 
 ### Query Components (src/database/query/)
 - **Insert.php**: Insert query building
+  - Builds INSERT SQL statements with fluent interface
+  - Supports columns() and values() methods
+  - Returns last inserted ID
+  - Implements QueryBuilderInterface
+
 - **Select.php**: Select query building
+  - Builds SELECT SQL statements with fluent interface
+  - Supports from(), where(), orderBy(), limit() methods
+  - Provides join functionality (innerJoin, leftJoin)
+  - Includes JSON output capability
+  - Implements QueryBuilderInterface
+
 - **Update.php**: Update query building 
+  - Builds UPDATE SQL statements with fluent interface
+  - Supports set() and where() methods
+  - Returns affected rows count
+  - Implements QueryBuilderInterface
+
 - **Delete.php**: Delete query building
+  - Builds DELETE SQL statements with fluent interface
+  - Supports where() conditions
+  - Returns affected rows count
+  - Implements QueryBuilderInterface
+
 - **WhereTrait.php**: Where clause functionality
+  - Provides where condition building for query classes
+
 - **LimitTrait.php**: Pagination limit functionality
+  - Provides limit and offset functionality for Select queries
 
 ## 2. HTTP Components (src/http/)
 
@@ -228,6 +258,10 @@
   - Manages record deletion
   - Provides standardized delete functionality
 
+- **DeactivateTrait.php**: Deactivation operations
+  - Implements deactivation methods
+  - Handles deactivation response formatting
+
 - **IdTrait.php**: ID-based operations
   - Implements record retrieval by ID
   - Handles validation for ID parameters
@@ -251,6 +285,10 @@
 - **ListObjectTrait.php**: Object listing
   - Specialized listing for object collections
   - Object-oriented approach to listing
+
+- **ListObjectTrashTrait.php**: Object trash listing
+  - Lists soft-deleted objects
+  - Provides trash management for objects
 
 - **ListTrashTrait.php**: Trash listing
   - Lists soft-deleted records
@@ -286,11 +324,30 @@
   - Provides endpoints for trash viewing and management
   - Implements trash-related operations
 
-## 8. Architecture Summary
+## 8. Startup Components (src/startup/)
+
+- **apache/**: Apache-specific startup files
+  - Contains initialization files for Apache server environment
+
+- **swoole/**: Swoole-specific startup files
+  - Contains initialization files for OpenSwoole server environment
+
+## 9. Binary Components (src/bin/)
+
+- **gemvc**: Command-line entry point
+  - Provides CLI command execution
+  - Entry point for framework commands
+
+## 10. Architecture Summary
 
 ### Database Flow
 ```
 Request → Controller → Table/QueryBuilder → PdoQuery → QueryExecuter → PdoConnection → MySQL/MariaDB
+```
+
+### Query Builder Flow
+```
+QueryBuilder → Select/Insert/Update/Delete (implements QueryBuilderInterface) → PdoQuery → QueryExecuter
 ```
 
 ### HTTP Request Flow

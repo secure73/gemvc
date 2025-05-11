@@ -159,6 +159,274 @@
     }
   },
 
+  "database": {
+    "queryBuilder": {
+      "description": "A fluent interface for building SQL queries without writing raw SQL",
+      "classes": {
+        "QueryBuilder": {
+          "description": "Main entry point for creating database queries",
+          "methods": {
+            "select": {
+              "parameters": [{"name": "columns", "type": "string..."}],
+              "returns": "Select",
+              "description": "Creates a new SELECT query with the specified columns"
+            },
+            "insert": {
+              "parameters": [{"name": "table", "type": "string"}],
+              "returns": "Insert",
+              "description": "Creates a new INSERT query for the specified table"
+            },
+            "update": {
+              "parameters": [{"name": "table", "type": "string"}],
+              "returns": "Update",
+              "description": "Creates a new UPDATE query for the specified table"
+            },
+            "delete": {
+              "parameters": [{"name": "table", "type": "string"}],
+              "returns": "Delete",
+              "description": "Creates a new DELETE query for the specified table"
+            },
+            "getError": {
+              "parameters": [],
+              "returns": "string|null",
+              "description": "Returns the error message from the last executed query"
+            }
+          }
+        },
+        "Select": {
+          "description": "Builds SELECT queries with a fluent interface",
+          "methods": {
+            "from": {
+              "parameters": [
+                {"name": "table", "type": "string"},
+                {"name": "alias", "type": "string|null"}
+              ],
+              "returns": "self",
+              "description": "Specifies the table to select from with optional alias"
+            },
+            "where": {
+              "parameters": [
+                {"name": "column", "type": "string"},
+                {"name": "operator", "type": "string"},
+                {"name": "value", "type": "mixed"}
+              ],
+              "returns": "self",
+              "description": "Adds a WHERE condition to the query"
+            },
+            "orderBy": {
+              "parameters": [
+                {"name": "column", "type": "string"},
+                {"name": "descending", "type": "bool|null"}
+              ],
+              "returns": "self",
+              "description": "Adds an ORDER BY clause to the query"
+            },
+            "limit": {
+              "parameters": [
+                {"name": "limit", "type": "int"},
+                {"name": "offset", "type": "int|null"}
+              ],
+              "returns": "self",
+              "description": "Limits the number of results returned"
+            },
+            "leftJoin": {
+              "parameters": [{"name": "join", "type": "string..."}],
+              "returns": "self",
+              "description": "Adds LEFT JOIN clauses to the query"
+            },
+            "innerJoin": {
+              "parameters": [{"name": "join", "type": "string..."}],
+              "returns": "self",
+              "description": "Adds INNER JOIN clauses to the query"
+            },
+            "run": {
+              "parameters": [],
+              "returns": "array|false",
+              "description": "Executes the SELECT query and returns the results"
+            },
+            "json": {
+              "parameters": [],
+              "returns": "string|false",
+              "description": "Executes the query and returns results as JSON"
+            },
+            "getError": {
+              "parameters": [],
+              "returns": "string|null",
+              "description": "Returns the error message if the query failed"
+            }
+          }
+        },
+        "Insert": {
+          "description": "Builds INSERT queries with a fluent interface",
+          "methods": {
+            "columns": {
+              "parameters": [{"name": "columns", "type": "string..."}],
+              "returns": "self",
+              "description": "Specifies the columns to insert into"
+            },
+            "values": {
+              "parameters": [{"name": "values", "type": "mixed..."}],
+              "returns": "self",
+              "description": "Specifies the values to insert"
+            },
+            "run": {
+              "parameters": [],
+              "returns": "int|false",
+              "description": "Executes the INSERT query and returns the last insert ID"
+            },
+            "getError": {
+              "parameters": [],
+              "returns": "string|null",
+              "description": "Returns the error message if the query failed"
+            }
+          }
+        },
+        "Update": {
+          "description": "Builds UPDATE queries with a fluent interface",
+          "methods": {
+            "set": {
+              "parameters": [
+                {"name": "column", "type": "string"},
+                {"name": "value", "type": "mixed"}
+              ],
+              "returns": "self",
+              "description": "Sets a column value to update"
+            },
+            "where": {
+              "parameters": [
+                {"name": "column", "type": "string"},
+                {"name": "operator", "type": "string"},
+                {"name": "value", "type": "mixed"}
+              ],
+              "returns": "self",
+              "description": "Adds a WHERE condition to the query"
+            },
+            "run": {
+              "parameters": [],
+              "returns": "int|false",
+              "description": "Executes the UPDATE query and returns the number of affected rows"
+            },
+            "getError": {
+              "parameters": [],
+              "returns": "string|null",
+              "description": "Returns the error message if the query failed"
+            }
+          }
+        },
+        "Delete": {
+          "description": "Builds DELETE queries with a fluent interface",
+          "methods": {
+            "where": {
+              "parameters": [
+                {"name": "column", "type": "string"},
+                {"name": "operator", "type": "string"},
+                {"name": "value", "type": "mixed"}
+              ],
+              "returns": "self",
+              "description": "Adds a WHERE condition to the query"
+            },
+            "run": {
+              "parameters": [],
+              "returns": "int|false",
+              "description": "Executes the DELETE query and returns the number of affected rows"
+            },
+            "getError": {
+              "parameters": [],
+              "returns": "string|null",
+              "description": "Returns the error message if the query failed"
+            }
+          }
+        }
+      },
+      "interface": {
+        "QueryBuilderInterface": {
+          "description": "Interface implemented by all query classes",
+          "methods": {
+            "run": {
+              "description": "Executes the query and returns the result",
+              "returns": "mixed"
+            },
+            "getError": {
+              "description": "Returns the error message if the query failed",
+              "returns": "string|null"
+            }
+          }
+        }
+      },
+      "examples": {
+        "select": [
+          "// Basic select",
+          "$users = $queryBuilder->select('id', 'name')",
+          "    ->from('users')",
+          "    ->where('status', '=', 'active')",
+          "    ->run();",
+          "",
+          "// With error handling",
+          "$users = $queryBuilder->select('id', 'name')",
+          "    ->from('users')",
+          "    ->run();",
+          "if ($users === false) {",
+          "    echo $queryBuilder->getError();",
+          "}"
+        ],
+        "insert": [
+          "// Basic insert",
+          "$id = $queryBuilder->insert('users')",
+          "    ->columns('name', 'email')",
+          "    ->values('John Doe', 'john@example.com')",
+          "    ->run();",
+          "",
+          "// With error handling",
+          "$id = $queryBuilder->insert('users')",
+          "    ->columns('name', 'email')",
+          "    ->values('John Doe', 'john@example.com')",
+          "    ->run();",
+          "if ($id === false) {",
+          "    echo $queryBuilder->getError();",
+          "}"
+        ],
+        "update": [
+          "// Basic update",
+          "$affected = $queryBuilder->update('users')",
+          "    ->set('status', 'inactive')",
+          "    ->where('last_login', '<', '2023-01-01')",
+          "    ->run();",
+          "",
+          "// With error handling",
+          "$affected = $queryBuilder->update('users')",
+          "    ->set('status', 'inactive')",
+          "    ->where('last_login', '<', '2023-01-01')",
+          "    ->run();",
+          "if ($affected === false) {",
+          "    echo $queryBuilder->getError();",
+          "}"
+        ],
+        "delete": [
+          "// Basic delete",
+          "$affected = $queryBuilder->delete('users')",
+          "    ->where('status', '=', 'inactive')",
+          "    ->run();",
+          "",
+          "// With error handling",
+          "$affected = $queryBuilder->delete('users')",
+          "    ->where('status', '=', 'inactive')",
+          "    ->run();",
+          "if ($affected === false) {",
+          "    echo $queryBuilder->getError();",
+          "}"
+        ]
+      },
+      "bestPractices": [
+        "Always check the return value of run() for false to detect errors",
+        "Use getError() on the QueryBuilder to retrieve error messages",
+        "Chain the run() method at the end for concise operation",
+        "Store query objects in variables when you need to reuse them or perform multiple operations",
+        "Use QueryBuilder for all database operations to maintain consistent SQL structure",
+        "Prefer parameterized queries with where() over raw SQL to prevent SQL injection"
+      ]
+    }
+  },
+
   "bestPractices": {
     "services": [
       "Always extend ApiService (or SwooleApiService for Swoole)",
