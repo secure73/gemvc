@@ -14,6 +14,7 @@ namespace Gemvc\Database\Query;
 
 use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
+use Gemvc\Database\QueryBuilder;
 
 class Update  implements QueryBuilderInterface
 {
@@ -44,6 +45,16 @@ class Update  implements QueryBuilderInterface
      * @var array<string>
      */
     private array $whereConditions = [];
+    
+    /**
+     * Store the last error message
+     */
+    private ?string $_lastError = null;
+    
+    /**
+     * Reference to the query builder that created this update query
+     */
+    private ?QueryBuilder $queryBuilder = null;
 
     public function __construct(string $table)
     {
@@ -67,13 +78,38 @@ class Update  implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(PdoQuery $pdoQuery): int|false
+    /**
+     * Set the query builder reference
+     */
+    public function setQueryBuilder(QueryBuilder $queryBuilder): self
     {
+        $this->queryBuilder = $queryBuilder;
+        return $this;
+    }
+
+    public function run(): int|false
+    {
+        $pdoQuery = new PdoQuery();
         $query = $this->__toString();
         $result = $pdoQuery->updateQuery($query, $this->arrayBindValues);
         if(!$result) {
-            return false;
+            $this->_lastError = $pdoQuery->getError();
         }
+        
+        // Register this query with the builder for error tracking
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+        
         return $result;
     }
+    
+    /**
+     * Get the last error message if any
+     */
+    public function getError(): ?string
+    {
+        return $this->_lastError;
+    }
+
 }

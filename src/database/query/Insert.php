@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
+use Gemvc\Database\QueryBuilder;
 
 class Insert implements QueryBuilderInterface
 {
@@ -46,10 +47,26 @@ class Insert implements QueryBuilderInterface
      */
     private $keyValue = [];
 
+    private ?string $_lastError = null;
+    
+    /**
+     * Reference to the query builder that created this insert query
+     */
+    private ?QueryBuilder $queryBuilder = null;
+
     public function __construct(string $table)
     {
         $this->_table = $table;
         $this->_query = '';
+    }
+
+    /**
+     * Set the query builder reference
+     */
+    public function setQueryBuilder(QueryBuilder $queryBuilder): self
+    {
+        $this->queryBuilder = $queryBuilder;
+        return $this;
     }
 
     public function __toString(): string
@@ -84,10 +101,27 @@ class Insert implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(PdoQuery $pdoQuery):int|false
+    public function run():int|false
     {
+        $pdoQuery = new PdoQuery();
+
         $query = $this->__toString();
-        /** @phpstan-ignore-next-line */
-        return $pdoQuery->insertQuery($query, $this->keyValue);
+        $result = $pdoQuery->insertQuery($query, $this->keyValue);
+        if(!$result) {
+            $this->_lastError = $pdoQuery->getError();
+        }
+        
+        // Register this query with the builder for error tracking
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+        
+        return $result;
     }
+
+    public function getError(): ?string
+    {
+        return $this->_lastError;
+    }
+    
 }

@@ -1,13 +1,13 @@
 # 🚀 GEMVC
 
-Transform your PHP development with GEMVC - where security meets simplicity! Build professional, secure APIs in minutes, not hours.
+Transform your PHP development with GEMVC - a modern PHP framework where security meets simplicity! Build professional, secure APIs in minutes, not hours.
 
 ## 📋 Table of Contents
-- [Overview](#overview)
 - [Installation](#-5-second-installation)
 - [Quick Start](#-quick-start)
 - [Getting Started Guide](#-getting-started-guide)
 - [Key Components](#-key-components)
+- [Architecture Overview](#-architecture-overview)
 - [Why GEMVC Stands Out](#-why-gemvc-stands-out)
   - [Security Features](#️-security-features)
   - [Error Handling](#-robust-error-handling)
@@ -23,21 +23,8 @@ Transform your PHP development with GEMVC - where security meets simplicity! Bui
 - [Documentation](#-documentation)
 - [About](#about)
 
-## Overview
-
-```php
-// From complex, error-prone code...
-$stmt = $pdo->prepare("SELECT u.id, u.name FROM users WHERE status = ?");
-$stmt->execute(['active']);
-
-// To elegant, secure simplicity! 😍
-$users = QueryBuilder::select('u.id', 'u.name')
-    ->from('users')
-    ->whereEqual('status', 'active')
-    ->run($pdoQuery);
-```
-
 ## 🔥 5-Second Installation
+
 ```bash
 composer require gemvc/library
 ```
@@ -45,11 +32,10 @@ composer require gemvc/library
 ## 🚀 Quick Start
 
 ### 1. Configure Your Magic
-```env
-# OpenSwoole Configuration (optional)
-SWOOLE_MODE=true
-OPENSWOOLE_WORKERS=3
 
+Create an `.env` file in your app directory:
+
+```env
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=3306
@@ -74,7 +60,9 @@ ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
 SERVICE_IN_URL_SECTION=2
 METHOD_IN_URL_SECTION=3
 
-
+# OpenSwoole Configuration (optional)
+SWOOLE_MODE=true
+OPENSWOOLE_WORKERS=3
 
 # WebSocket Settings (optional)
 WS_CONNECTION_TIMEOUT=300
@@ -82,7 +70,8 @@ WS_MAX_MESSAGES_PER_MINUTE=60
 WS_HEARTBEAT_INTERVAL=30
 ```
 
-### 2. Start Building
+### 2. Start Building Your API
+
 ```php
 // Create an API endpoint
 class UserController {
@@ -99,6 +88,18 @@ class UserController {
         return (new JsonResponse())->success($users);
     }
 }
+```
+
+### 3. Choose Your Platform
+
+GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole:
+
+```bash
+# For Apache/Nginx setup
+php vendor/bin/gemvc setup apache
+
+# For OpenSwoole setup
+php vendor/bin/gemvc setup swoole
 ```
 
 ## 📘 Getting Started Guide
@@ -176,7 +177,21 @@ class UserController {
 | **Helpers** | Utility classes | File, image, type handling |
 | **WebSocket** | Real-time communication | Redis scaling, heartbeat, channels |
 
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
+
+### Elegant Database Queries
+
+```php
+// From complex, error-prone code...
+$stmt = $pdo->prepare("SELECT u.id, u.name FROM users WHERE status = ?");
+$stmt->execute(['active']);
+
+// To elegant, secure simplicity! 😍
+$users = QueryBuilder::select('u.id', 'u.name')
+    ->from('users')
+    ->whereEqual('status', 'active')
+    ->run($pdoQuery);
+```
 
 ### Database Components Hierarchy
 
@@ -543,7 +558,7 @@ $user = $request->mapPostToObject(new User(), ['username', 'email', 'first_name'
 return (new JsonResponse())->success($data)->show();
 ```
 
-#### �� AI-Ready Framework
+#### 🤖 AI-Ready Framework
 - **Dual AI Support**: 
   - `AIAssist.jsonc`: Real-time AI coding assistance
   - `GEMVCLibraryAPIReference.json`: Comprehensive API documentation

@@ -14,6 +14,7 @@ namespace Gemvc\Database\Query;
 
 use Gemvc\Database\PdoQuery;
 use Gemvc\Database\QueryBuilderInterface;
+use Gemvc\Database\QueryBuilder;
 
 class Select implements QueryBuilderInterface
 {
@@ -35,6 +36,16 @@ class Select implements QueryBuilderInterface
      * @var array<mixed>
      */
     public array $arrayBindValues = [];
+
+    /**
+     * Store the last error message
+     */
+    private ?string $_lastError = null;
+
+    /**
+     * Reference to the query builder that created this select query
+     */
+    private ?QueryBuilder $queryBuilder = null;
 
     /**
      * @var array<mixed>
@@ -75,6 +86,15 @@ class Select implements QueryBuilderInterface
     public function __construct(array $select)
     {
         $this->fields = $select;
+    }
+
+    /**
+     * Set the query builder reference
+     */
+    public function setQueryBuilder(QueryBuilder $queryBuilder): self
+    {
+        $this->queryBuilder = $queryBuilder;
+        return $this;
     }
 
     public function __toString(): string
@@ -137,21 +157,45 @@ class Select implements QueryBuilderInterface
     }
 
     /**
-     * @param  PdoQuery $pdoQuery
+     * Run the select query and return the results
      * @return array<mixed>|false
      */
-    public function run(PdoQuery $pdoQuery): array|false
+    public function run(): array|false
     {
+        $pdoQuery = new PdoQuery();
         $query = $this->__toString();
-        return $pdoQuery->selectQuery($query, $this->arrayBindValues);
+        $result = $pdoQuery->selectQuery($query, $this->arrayBindValues);
+        if ($result === false) {
+            $this->_lastError = $pdoQuery->getError();
+        }
+        
+        // Register this query with the builder for error tracking
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+        
+        return $result;
     }
 
-
-    public function json(PdoQuery $pdoQuery): string|false
+    /**
+     * Get the last error message if any
+     */
+    public function getError(): ?string
     {
+        return $this->_lastError;
+    }
+    
+
+    public function json(): string|false
+    {
+        $pdoQuery = new PdoQuery();
         $array = [];
         $query = $this->__toString();
         $result = $pdoQuery->selectQuery($query, $this->arrayBindValues);
+        if ($result === false) {
+            $this->_lastError = $pdoQuery->getError();
+            return false;
+        }
         if (\is_array($result)) {
             foreach ($result as $item) {
                 $encoded = json_encode($item, JSON_PRETTY_PRINT);
@@ -160,7 +204,7 @@ class Select implements QueryBuilderInterface
                 }
             }
         }
-        return  json_encode($array, JSON_PRETTY_PRINT);
+        return json_encode($array, JSON_PRETTY_PRINT);
     }
 
     /**
@@ -171,6 +215,10 @@ class Select implements QueryBuilderInterface
     {
         $query = $this->__toString();
         $result = $classTable->selectQuery($query, $this->arrayBindValues);
+        if ($result === false) {
+            $this->_lastError = $classTable->getError();
+            return [];
+        }
         if (\is_array($result)) {
             foreach ($result as $item) {
                 if (\is_array($item)) {

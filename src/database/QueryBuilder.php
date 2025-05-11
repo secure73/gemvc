@@ -12,33 +12,67 @@ use Gemvc\Database\Query\Update;
  */
 class QueryBuilder
 {
-    public static function select(string ...$select): Select
+    /**
+     * Stores the last executed query object for error retrieval
+     */
+    private ?QueryBuilderInterface $lastQuery = null;
+
+    public function select(string ...$select): Select
     {
-        return new Select($select);
+        $query = new Select($select);
+        $query->setQueryBuilder($this);
+        return $query;
     }
 
     /**
      * @param string $intoTableName
      */
-    public static function insert(string $intoTableName): Insert
+    public function insert(string $intoTableName): Insert
     {
-        return new Insert($intoTableName);
+        $query = new Insert($intoTableName);
+        $query->setQueryBuilder($this);
+        return $query;
     }
 
     /**
      * @param string $tableName
      */
-    public static function update(string $tableName): Update
+    public function update(string $tableName): Update
     {
-        return new Update($tableName);
+        $query = new Update($tableName);
+        $query->setQueryBuilder($this);
+        return $query;
     }
 
     /**
      * @param string $tableName 
      * Delete from table
      */
-    public static function delete(string $tableName): Delete
+    public function delete(string $tableName): Delete
     {
-        return new Delete($tableName);
+        $query = new Delete($tableName);
+        $query->setQueryBuilder($this);
+        return $query;
+    }
+    
+    /**
+     * Get the error from the last executed query
+     * 
+     * @return string|null The error message or null if no error occurred
+     */
+    public function getError(): ?string
+    {
+        return $this->lastQuery?->getError();
+    }
+    
+    /**
+     * Set the last executed query object
+     * This should be called by the query objects after execution
+     * 
+     * @param QueryBuilderInterface $query The query object that was executed
+     */
+    public function setLastQuery(QueryBuilderInterface $query): void
+    {
+        $this->lastQuery = $query;
     }
 }

@@ -14,6 +14,7 @@ namespace Gemvc\Database\Query;
 
 use Gemvc\Database\QueryBuilderInterface;
 use Gemvc\Database\PdoQuery;
+use Gemvc\Database\QueryBuilder;
 
 
 class Delete  implements QueryBuilderInterface
@@ -37,6 +38,16 @@ class Delete  implements QueryBuilderInterface
     private $whereConditions = [];
 
     private string $_query;
+    
+    /**
+     * Store the last error message
+     */
+    private ?string $_lastError = null;
+    
+    /**
+     * Reference to the query builder that created this delete query
+     */
+    private ?QueryBuilder $queryBuilder = null;
 
     public function __construct(string $table)
     {
@@ -50,13 +61,38 @@ class Delete  implements QueryBuilderInterface
         return $this->_query;
     }
 
-    public function run(PdoQuery $pdoQuery): int|false
+    /**
+     * Set the query builder reference
+     */
+    public function setQueryBuilder(QueryBuilder $queryBuilder): self
     {
+        $this->queryBuilder = $queryBuilder;
+        return $this;
+    }
+
+    public function run(): int|false
+    {
+        $pdoQuery = new PdoQuery();
         $query = $this->__toString();
         $result = $pdoQuery->deleteQuery($query, $this->arrayBindValues);
         if(!$result) {
-            return false;
+            $this->_lastError = $pdoQuery->getError();
         }
+        
+        // Register this query with the builder for error tracking
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+        
         return $result;
     }
+    
+    /**
+     * Get the last error message if any
+     */
+    public function getError(): ?string
+    {
+        return $this->_lastError;
+    }
+    
 }
