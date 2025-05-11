@@ -29,6 +29,36 @@ Transform your PHP development with GEMVC - a modern PHP framework where securit
 composer require gemvc/library
 ```
 
+### And Choose Your Platform
+
+GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole, simply in terminal!
+
+```bash
+# For Apache/Nginx setup
+php vendor/bin/gemvc setup apache
+
+# For OpenSwoole setup
+php vendor/bin/gemvc setup swoole
+```
+
+### Generate Complete API Services
+
+GEMVC includes a powerful CLI command for generating complete API services with a single command:
+
+```bash
+# Create a new service (e.g., User)
+php vendor/bin/gemvc create:service User
+```
+
+This command automatically generates:
+
+- **API Service** (`app/api/User.php`) - Handling requests with validation and routing
+- **Controller** (`app/controller/UserController.php`) - Processing business logic
+- **Model** (`app/model/UserModel.php`) - Managing data logic
+- **Table** (`app/table/UserTable.php`) - Database abstraction layer
+
+The generated code includes complete CRUD operations with proper validation, error handling, and documentation, following GEMVC's layered architecture pattern.
+
 ## 🚀 Quick Start
 
 ### 1. Configure Your Magic
@@ -46,28 +76,26 @@ DB_PASSWORD='yourPassword'
 QUERY_LIMIT=10
 
 # Database Connection Pool
-MIN_DB_CONNECTION_POOL=2
-MAX_DB_CONNECTION_POOL=10
+DB_MIN_CONNECTION_POOL=1
+DB_MAX_CONNECTION_POOL=10
+DB_CONNECTION_TIME_OUT=20
+DB_CONNECTION_EXPIER_TIME=20
 DB_CONNECTION_MAX_AGE=3600
 
 # Security Settings
 TOKEN_SECRET='your_secret'
 TOKEN_ISSUER='your_api'
+LOGIN_TOKEN_VALIDATION_IN_SECONDS=789000
 REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
-ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
+ACCESS_TOKEN_VALIDATION_IN_SECONDS=1200
 
 # URL Configuration
-SERVICE_IN_URL_SECTION=2
-METHOD_IN_URL_SECTION=3
+SERVICE_IN_URL_SECTION=1
+METHOD_IN_URL_SECTION=2
 
 # OpenSwoole Configuration (optional)
-SWOOLE_MODE=true
+IS_OPENSWOOLE=true
 OPENSWOOLE_WORKERS=3
-
-# WebSocket Settings (optional)
-WS_CONNECTION_TIMEOUT=300
-WS_MAX_MESSAGES_PER_MINUTE=60
-WS_HEARTBEAT_INTERVAL=30
 ```
 
 ### 2. Start Building Your API
@@ -83,23 +111,11 @@ class UserController {
             ->from('users')
             ->whereEqual('status', 'active')
             ->limit($limit)
-            ->run($this->db);
+            ->run();
             
         return (new JsonResponse())->success($users);
     }
 }
-```
-
-### 3. Choose Your Platform
-
-GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole:
-
-```bash
-# For Apache/Nginx setup
-php vendor/bin/gemvc setup apache
-
-# For OpenSwoole setup
-php vendor/bin/gemvc setup swoole
 ```
 
 ## 📘 Getting Started Guide
@@ -112,15 +128,9 @@ Create a complete API endpoint with authentication, validation, and error handli
 
 use Gemvc\Http\ApacheRequest;
 use Gemvc\Http\JsonResponse;
-use Gemvc\Database\PdoConnection;
 use Gemvc\Database\QueryBuilder;
 
 class UserController {
-    private PdoConnection $db;
-    
-    public function __construct() {
-        $this->db = new PdoConnection();
-    }
     
     public function getUsers(ApacheRequest $request) {
         // 1. Authenticate & authorize
@@ -148,10 +158,10 @@ class UserController {
             ->whereEqual('status', $status);
             
         // 5. Pagination
-        $total = $query->count($this->db);
+        $total = $query->count();
         $users = $query->limit($limit)
             ->offset(($page - 1) * $limit)
-            ->run($this->db);
+            ->run();
             
         // 6. Return structured response
         return (new JsonResponse())->success([
@@ -232,7 +242,21 @@ The QueryBuilder system has been improved with:
 - **Error tracking mechanism** that allows QueryBuilder to store the last executed query's error
 - **getError() method** for consistent error retrieval across all query operations
 
-These improvements enhance error handling and provide more robust debugging capabilities.
+These improvements enhance error handling and provide more robust debugging capabilities. With the enhanced error handling, you can now easily identify and resolve database query issues:
+
+```php
+// Build and execute a query with error handling
+$users = QueryBuilder::select('id', 'name')
+    ->from('users')
+    ->whereEqual('status', 'active')
+    ->run();
+
+// If the query fails, check for errors
+if ($users === false) {
+    $error = QueryBuilder::getError();
+    echo "Query failed: " . $error;
+}
+```
 
 ---
 
@@ -372,6 +396,33 @@ GEMVC now provides seamless compatibility with both OpenSwoole and regular Swool
 - **Clear error messages** - Provides helpful feedback when neither extension is available
 
 This compatibility layer ensures your application works smoothly regardless of which extension is installed on your server.
+
+Implementation details:
+```php
+// Dynamic class selection based on available extensions
+$swooleClass = class_exists('\\OpenSwoole\\WebSocket\\Server') 
+    ? '\\OpenSwoole\\WebSocket\\Server' 
+    : (class_exists('\\Swoole\\WebSocket\\Server') 
+        ? '\\Swoole\\WebSocket\\Server' 
+        : null);
+
+if (!$swooleClass) {
+    die("Error: Neither OpenSwoole nor Swoole extensions are installed.");
+}
+
+// Create server with the appropriate class
+$server = new $swooleClass('0.0.0.0', 9501);
+
+// Runtime instance checking for method calls
+function handleSwooleObject($swooleObject) {
+    // Works with both OpenSwoole and Swoole objects
+    if ($swooleObject instanceof \OpenSwoole\WebSocket\Server ||
+        $swooleObject instanceof \Swoole\WebSocket\Server) {
+        // Safe to use common methods
+        $swooleObject->push(...);
+    }
+}
+```
 
 ### 🔄 Real-Time Communication
 ```php
