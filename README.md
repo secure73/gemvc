@@ -190,7 +190,7 @@ $stmt->execute(['active']);
 $users = QueryBuilder::select('u.id', 'u.name')
     ->from('users')
     ->whereEqual('status', 'active')
-    ->run($pdoQuery);
+    ->run();
 ```
 
 ### Database Components Hierarchy
@@ -222,6 +222,17 @@ In this architecture:
 - **PdoConnection** manages database connections with advanced pooling features, including connection reuse, health verification, automatic expiration, and efficient resource tracking.
 
 This layered design allows each class to focus on a specific responsibility while building on the capabilities of its parent classes, resulting in a powerful and flexible database interaction system.
+
+#### Enhanced QueryBuilder System
+
+The QueryBuilder system has been improved with:
+
+- **Non-static query building methods** for better encapsulation and state management
+- **QueryBuilderInterface implementation** in query classes (Select, Insert, Update, Delete)
+- **Error tracking mechanism** that allows QueryBuilder to store the last executed query's error
+- **getError() method** for consistent error retrieval across all query operations
+
+These improvements enhance error handling and provide more robust debugging capabilities.
 
 ---
 
@@ -350,6 +361,17 @@ $server->start();
 ```
 
 **Use Case:** Start with traditional Apache/Nginx setup, then easily scale to high-performance OpenSwoole when needed without code changes.
+
+#### OpenSwoole/Swoole Compatibility
+
+GEMVC now provides seamless compatibility with both OpenSwoole and regular Swoole extensions:
+
+- **Dynamic extension detection** - Automatically detects whether OpenSwoole or Swoole is installed
+- **Runtime instance checking** - Uses proper class references without IDE warnings
+- **Generic object type hints** - Maintains code clarity while ensuring runtime validation
+- **Clear error messages** - Provides helpful feedback when neither extension is available
+
+This compatibility layer ensures your application works smoothly regardless of which extension is installed on your server.
 
 ### 🔄 Real-Time Communication
 ```php
@@ -549,7 +571,7 @@ $users = QueryBuilder::select('id', 'name')
     ->whereLike('name', "%$searchTerm%")
     ->orderBy('created_at', 'DESC')
     ->limit(10)
-    ->run($pdoQuery);
+    ->run();
     
 // Object mapping with consistent naming
 $user = $request->mapPostToObject(new User(), ['username', 'email', 'first_name', 'last_name']);
