@@ -29,7 +29,21 @@ Transform your PHP development with GEMVC - a modern PHP framework where securit
 composer require gemvc/library
 ```
 
-### And Choose Your Platform
+### Initialize Your Project
+
+After installing the library, initialize your project structure with:
+
+```bash
+php vendor/bin/gemvc init
+```
+
+This command:
+- Creates the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
+- Generates a sample `.env` file with default configuration
+- Copies startup files to your project root
+- Sets up a global `gemvc` command for easier access
+
+### Choose Your Platform
 
 GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole, simply in terminal!
 
