@@ -7,6 +7,11 @@
  * and performance optimizations like file preloading.
  */
 
+// Check for OpenSwoole or regular Swoole extension
+if (!extension_loaded('openswoole') && !extension_loaded('swoole')) {
+    throw new \Exception('Neither OpenSwoole nor Swoole extensions are installed. Please install one with: pecl install openswoole');
+}
+
 // Required dependencies
 require_once 'vendor/autoload.php';
 
@@ -31,8 +36,17 @@ echo $isDev ? "Running in DEVELOPMENT mode\n" : "Running in PRODUCTION mode\n";
 // Server Configuration
 // ---------------------------
 
-// Create OpenSwoole HTTP Server
-$server = new \OpenSwoole\HTTP\Server('0.0.0.0', 9501);
+// Define the server class based on available extension
+if (extension_loaded('openswoole')) {
+    $serverClass = '\OpenSwoole\HTTP\Server';
+    $timerClass = '\OpenSwoole\Timer';
+} else {
+    $serverClass = '\Swoole\HTTP\Server';
+    $timerClass = '\Swoole\Timer';
+}
+
+// Create HTTP Server (OpenSwoole or Swoole)
+$server = new $serverClass('0.0.0.0', 9501);
 
 // Set server configurations
 $server->set([
@@ -102,7 +116,7 @@ $fileHashes = [];
 // Enable hot reload in development mode
 if ($isDev) {
     // Setup a file watcher that runs every second
-    \OpenSwoole\Timer::tick(1000, function() use (&$fileHashes, $server) {
+    $timerClass::tick(1000, function() use (&$fileHashes, $server) {
         $dirs = ['app/api', 'app/controller', 'app/model', 'app/core', 'app/http', 'app/table'];
         $changed = false;
         
