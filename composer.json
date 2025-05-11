@@ -20,7 +20,8 @@
             "Gemvc\\Traits\\": "src/traits/",
             "Gemvc\\Traits\\Model\\": "src/traits/model/",
             "Gemvc\\Traits\\Controller\\": "src/traits/controller/",
-            "Gemvc\\CLI\\": "src/CLI/"
+            "Gemvc\\CLI\\": "src/CLI/",
+            "Gemvc\\CLI\\Commands\\": "src/CLI/commands/"
         },
         "files": [
             "src/database/SqlEnumCondition.php"
