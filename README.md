@@ -31,33 +31,18 @@ composer require gemvc/library
 
 ### Initialize Your Project
 
-After installing the library, initialize your project structure with:
+After installing the library, initialize your project with:
 
 ```bash
-php vendor/bin/gemvc init
+php vendor/gemvc/library/src/bin/init.php
 ```
 
-This command:
-- Creates the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
-- Generates a sample `.env` file with default configuration
-- Copies startup files to your project root
-- Sets up a global `gemvc` command for easier access
+This script will:
+- Create the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
+- Generate a sample `.env` file with default configuration
+- Copy startup files to your project root
+- Set up local command wrappers
 
-#### Non-Interactive Mode
-
-If you encounter issues with the interactive prompts, or prefer automatic setup, use the non-interactive mode:
-
-```bash
-php vendor/bin/gemvc init --non-interactive
-# or the shorter version
-php vendor/bin/gemvc init -n
-```
-
-This mode automatically:
-- Accepts all default settings
-- Overwrites existing files without prompting
-- Prefers Apache templates if available (when multiple templates exist)
-- Skips global command setup that would require user input
 
 ### Choose Your Platform
 
