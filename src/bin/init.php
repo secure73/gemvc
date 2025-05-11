@@ -8,7 +8,32 @@
  * - Generating a sample .env file
  * - Copying startup files to the project root
  * - Setting up local command wrappers
+ * 
+ * Usage: php init.php [apache|swoole]
  */
+
+// Parse command line arguments
+$platformType = isset($argv[1]) && in_array(strtolower($argv[1]), ['apache', 'swoole']) 
+    ? strtolower($argv[1]) 
+    : null;
+
+if (isset($argv[1]) && !in_array(strtolower($argv[1]), ['apache', 'swoole', '--help', '-h'])) {
+    echo "Unknown platform type: {$argv[1]}\n";
+    echo "Usage: php init.php [apache|swoole]\n";
+    exit(1);
+}
+
+if (isset($argv[1]) && (strtolower($argv[1]) === '--help' || strtolower($argv[1]) === '-h')) {
+    echo "GEMVC Project Initialization Script\n\n";
+    echo "Usage: php init.php [platform]\n\n";
+    echo "Options:\n";
+    echo "  apache    Initialize project with Apache/Nginx configuration\n";
+    echo "  swoole    Initialize project with OpenSwoole configuration\n";
+    echo "  --help    Display this help message\n";
+    echo "\nIf no platform is specified, the script will automatically select\n";
+    echo "Apache if available, or fall back to Swoole.\n";
+    exit(0);
+}
 
 // Include the Composer autoloader - find it at different possible paths
 $autoloadPaths = [
@@ -42,10 +67,11 @@ class NonInteractiveInit
     // Define properties needed for initialization
     protected $basePath;
     protected $packagePath;
+    protected $platformType;
     
-    public function __construct() 
+    public function __construct($platformType = null) 
     {
-        // Constructor is empty, initialization is done in execute()
+        $this->platformType = $platformType;
     }
     
     public function execute()
@@ -74,6 +100,17 @@ class NonInteractiveInit
             $this->createGlobalCommand();
             
             echo "\nGEMVC project initialized successfully!\n";
+            
+            if ($this->platformType) {
+                echo "Project initialized with {$this->platformType} configuration.\n";
+            }
+            
+            echo "Run your project with:\n";
+            if ($this->platformType === 'swoole') {
+                echo "  php index.php\n";
+            } else {
+                echo "  Point your web server to the project root directory\n";
+            }
         } catch (\Exception $e) {
             die("Error: " . $e->getMessage() . "\n");
         }
@@ -121,6 +158,9 @@ class NonInteractiveInit
             }
         }
         
+        // Set swoole mode based on platform type
+        $swooleMode = $this->platformType === 'swoole' ? 'true' : 'false';
+        
         // Always create or overwrite the .env file
         $envContent = <<<EOT
 # Database Configuration
@@ -148,7 +188,7 @@ SERVICE_IN_URL_SECTION=2
 METHOD_IN_URL_SECTION=3
 
 # OpenSwoole Configuration (optional)
-SWOOLE_MODE=false
+SWOOLE_MODE={$swooleMode}
 OPENSWOOLE_WORKERS=3
 
 # WebSocket Settings (optional)
@@ -197,17 +237,27 @@ EOT;
             }
         }
         
-        // Choose template - prefer apache if available
+        // Choose template based on parameter or auto-select
         $templateDir = $startupPath;
         if (!empty($templateDirs)) {
-            if (in_array('apache', $templateDirs)) {
-                $templateDir = $startupPath . '/apache';
-            } elseif (in_array('swoole', $templateDirs)) {
-                $templateDir = $startupPath . '/swoole';
-            } else {
-                $templateDir = $startupPath . '/' . $templateDirs[0];
+            // Use specified platform if provided
+            if ($this->platformType && in_array($this->platformType, $templateDirs)) {
+                $templateDir = $startupPath . '/' . $this->platformType;
+                echo "Using template directory: {$this->platformType} (user specified)\n";
+            } 
+            // Auto-select based on priority
+            else {
+                if (in_array('apache', $templateDirs) && (!$this->platformType || $this->platformType === 'apache')) {
+                    $templateDir = $startupPath . '/apache';
+                } elseif (in_array('swoole', $templateDirs) && (!$this->platformType || $this->platformType === 'swoole')) {
+                    $templateDir = $startupPath . '/swoole';
+                } else {
+                    $templateDir = $startupPath . '/' . $templateDirs[0];
+                }
+                echo "Using template directory: " . basename($templateDir) . " (auto-selected)\n";
             }
-            echo "Using template directory: " . basename($templateDir) . "\n";
+        } else {
+            echo "No specific template directories found, using startup directory directly\n";
         }
         
         if (!is_dir($templateDir)) {
@@ -344,6 +394,6 @@ EOT;
     }
 }
 
-// Run the non-interactive init script
-$init = new NonInteractiveInit();
+// Run the non-interactive init script with the specified platform type
+$init = new NonInteractiveInit($platformType);
 $init->execute();

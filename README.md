@@ -34,15 +34,23 @@ composer require gemvc/library
 After installing the library, initialize your project with:
 
 ```bash
+# For automatic platform selection (prefers Apache if available)
 php vendor/gemvc/library/src/bin/init.php
+
+# For Apache/Nginx setup
+php vendor/gemvc/library/src/bin/init.php apache
+
+# For OpenSwoole setup
+php vendor/gemvc/library/src/bin/init.php swoole
 ```
 
 This script will:
 - Create the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
 - Generate a sample `.env` file with default configuration
-- Copy startup files to your project root
+- Copy appropriate startup files to your project root based on platform choice
 - Set up local command wrappers
 
+> Note: If the above command doesn't work, check if the path exists. The script may be located at `vendor/gemvc/library/init.php` depending on your installation method.
 
 ### Choose Your Platform
 
