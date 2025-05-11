@@ -52,18 +52,6 @@ This script will:
 
 > Note: If the above command doesn't work, check if the path exists. The script may be located at `vendor/gemvc/library/init.php` depending on your installation method.
 
-### Choose Your Platform
-
-GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole, simply in terminal!
-
-```bash
-# For Apache/Nginx setup
-php vendor/bin/gemvc setup apache
-
-# For OpenSwoole setup
-php vendor/bin/gemvc setup swoole
-```
-
 ### Generate Complete API Services
 
 GEMVC includes a powerful CLI command for generating complete API services with a single command:
