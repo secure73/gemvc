@@ -43,6 +43,22 @@ This command:
 - Copies startup files to your project root
 - Sets up a global `gemvc` command for easier access
 
+#### Non-Interactive Mode
+
+If you encounter issues with the interactive prompts, or prefer automatic setup, use the non-interactive mode:
+
+```bash
+php vendor/bin/gemvc init --non-interactive
+# or the shorter version
+php vendor/bin/gemvc init -n
+```
+
+This mode automatically:
+- Accepts all default settings
+- Overwrites existing files without prompting
+- Prefers Apache templates if available (when multiple templates exist)
+- Skips global command setup that would require user input
+
 ### Choose Your Platform
 
 GEMVC supports both traditional Apache/Nginx and high-performance OpenSwoole, simply in terminal!

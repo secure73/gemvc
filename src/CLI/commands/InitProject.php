@@ -8,9 +8,16 @@ class InitProject extends Command
 {
     private string $basePath;
     private string $packagePath;
+    private bool $nonInteractive = false;
     
     public function execute()
     {
+        // Check if non-interactive mode is requested
+        $this->nonInteractive = in_array('--non-interactive', $this->args) || in_array('-n', $this->args);
+        if ($this->nonInteractive) {
+            $this->info("Running in non-interactive mode - will automatically accept defaults and overwrite files");
+        }
+        
         // Determine the project root
         $this->basePath = defined('PROJECT_ROOT') ? PROJECT_ROOT : $this->determineProjectRoot();
         
@@ -70,8 +77,8 @@ class InitProject extends Command
     {
         $envPath = $this->basePath . '/app/.env';
         
-        // Don't overwrite existing .env file without confirmation
-        if (file_exists($envPath)) {
+        // Don't overwrite existing .env file without confirmation (unless in non-interactive mode)
+        if (file_exists($envPath) && !$this->nonInteractive) {
             echo "File already exists: {$envPath}" . PHP_EOL;
             echo "Do you want to overwrite it? (y/N): ";
             $handle = fopen("php://stdin", "r");
@@ -82,6 +89,8 @@ class InitProject extends Command
                 $this->info("Skipped .env creation");
                 return;
             }
+        } elseif (file_exists($envPath) && $this->nonInteractive) {
+            $this->info("File already exists (non-interactive mode): {$envPath} - will be overwritten");
         }
         
         $envContent = <<<EOT
@@ -128,20 +137,101 @@ EOT;
     
     private function copyStartupFiles()
     {
-        $startupPath = $this->packagePath . '/startup';
+        // First, try to find the startup template path
+        $potentialPaths = [
+            $this->packagePath . '/src/startup',
+            $this->packagePath . '/startup',
+            dirname(dirname(dirname(__DIR__))) . '/startup'
+        ];
         
-        if (!is_dir($startupPath)) {
-            throw new \RuntimeException("Startup directory not found: {$startupPath}");
+        $startupPath = null;
+        foreach ($potentialPaths as $path) {
+            if (is_dir($path)) {
+                $startupPath = $path;
+                $this->info("Found startup directory: {$startupPath}");
+                break;
+            }
         }
         
-        $files = scandir($startupPath);
+        if ($startupPath === null) {
+            throw new \RuntimeException("Startup directory not found. Tried: " . implode(", ", $potentialPaths));
+        }
+        
+        // Check for available templates
+        $templateDirs = [];
+        $dirs = scandir($startupPath);
+        foreach ($dirs as $dir) {
+            if ($dir === '.' || $dir === '..') continue;
+            if (is_dir($startupPath . '/' . $dir)) {
+                $templateDirs[] = $dir;
+                $this->info("Found template: {$dir}");
+            }
+        }
+        
+        // For non-interactive mode, or if there's just one template, use it directly
+        if (count($templateDirs) === 1 || $this->nonInteractive) {
+            $templateName = $templateDirs[0] ?? null;
+            
+            // In non-interactive mode, prefer apache if available
+            if ($this->nonInteractive && count($templateDirs) > 1) {
+                if (in_array('apache', $templateDirs)) {
+                    $templateName = 'apache';
+                } elseif (in_array('swoole', $templateDirs)) {
+                    $templateName = 'swoole';
+                }
+            }
+            
+            if ($templateName) {
+                $this->info("Using template: {$templateName}");
+                $templateDir = $startupPath . '/' . $templateName;
+                $this->copyTemplateFiles($templateDir);
+                return;
+            }
+        }
+        
+        // If we have multiple templates and we're in interactive mode, let the user choose
+        if (count($templateDirs) > 1 && !$this->nonInteractive) {
+            $this->info("Multiple templates available. Please choose one:");
+            foreach ($templateDirs as $index => $dir) {
+                $this->info("[{$index}] {$dir}");
+            }
+            echo "Enter choice (number): ";
+            $handle = fopen("php://stdin", "r");
+            $choice = trim(fgets($handle));
+            fclose($handle);
+            
+            if (isset($templateDirs[(int)$choice])) {
+                $templateName = $templateDirs[(int)$choice];
+                $templateDir = $startupPath . '/' . $templateName;
+                $this->info("Using template: {$templateName}");
+                $this->copyTemplateFiles($templateDir);
+                return;
+            } else {
+                throw new \RuntimeException("Invalid template choice");
+            }
+        }
+        
+        // If there are no template directories, try to use the startup dir itself
+        if (empty($templateDirs)) {
+            $this->info("No specific templates found, using startup directory directly");
+            $this->copyTemplateFiles($startupPath);
+        }
+    }
+    
+    private function copyTemplateFiles($templateDir)
+    {
+        if (!is_dir($templateDir)) {
+            throw new \RuntimeException("Template directory not found: {$templateDir}");
+        }
+        
+        $files = scandir($templateDir);
         
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') {
                 continue;
             }
             
-            $sourcePath = $startupPath . '/' . $file;
+            $sourcePath = $templateDir . '/' . $file;
             $destPath = $this->basePath . '/' . $file;
             
             // Skip directories, we just want files
@@ -150,7 +240,7 @@ EOT;
             }
             
             // Check if file already exists
-            if (file_exists($destPath)) {
+            if (file_exists($destPath) && !$this->nonInteractive) {
                 echo "File already exists: {$destPath}" . PHP_EOL;
                 echo "Do you want to overwrite it? (y/N): ";
                 $handle = fopen("php://stdin", "r");
@@ -161,6 +251,8 @@ EOT;
                     $this->info("Skipped: {$file}");
                     continue;
                 }
+            } elseif (file_exists($destPath) && $this->nonInteractive) {
+                $this->info("File already exists (non-interactive mode): {$destPath} - will be overwritten");
             }
             
             // Copy the file
@@ -188,20 +280,29 @@ EOT;
     
     private function determinePackagePath(): string
     {
-        // Try to locate package directory based on the location of this file
-        $path = dirname(dirname(dirname(__FILE__))); // src/CLI/commands -> src
+        // Multiple possible locations for package path
+        $paths = [
+            // If we're in development mode
+            dirname(dirname(dirname(__DIR__))),
+            
+            // If installed via Composer
+            dirname(dirname(dirname(dirname(__DIR__)))) . '/gemvc/library',
+            
+            // Other common paths
+            dirname(dirname(dirname(dirname(__DIR__)))) . '/gemvc/framework'
+        ];
         
-        if (basename($path) === 'src') {
-            return dirname($path); // Go up from src to package root
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                $this->info("Using package path: {$path}");
+                return $path;
+            }
         }
         
-        // Try to find it within vendor directory
-        $vendorPath = dirname(dirname(dirname(dirname(__FILE__)))); // src/CLI/commands -> vendor/gemvc/framework
-        if (file_exists($vendorPath . '/gemvc/framework/src/startup')) {
-            return $vendorPath . '/gemvc/framework';
-        }
-        
-        throw new \RuntimeException("Could not determine package path");
+        // Fallback
+        $currentDir = dirname(dirname(dirname(__FILE__))); // src/CLI/commands -> src
+        $this->warning("Using fallback package path: {$currentDir}");
+        return dirname($currentDir); // Go up from src to package root
     }
     
     /**
@@ -250,19 +351,25 @@ EOT;
             return;
         }
         
-        // For Unix/Linux/Mac systems
-        // Ask if the user wants to create a global symlink
-        echo "Would you like to create a global 'gemvc' command? (y/N): ";
-        $handle = fopen("php://stdin", "r");
-        $line = fgets($handle);
-        fclose($handle);
-        
-        if (strtolower(trim($line)) !== 'y') {
-            $this->info("Skipped global command setup");
-            $this->write("\nYou can still use the command with:\n", 'blue');
-            $this->write("  php vendor/bin/gemvc [command]\n", 'white');
-            $this->write("  OR\n", 'white');
-            $this->write("  php bin/gemvc [command]\n\n", 'white');
+        // For Unix/Linux/Mac systems - only prompt if not in non-interactive mode
+        if (!$this->nonInteractive) {
+            // Ask if the user wants to create a global symlink
+            echo "Would you like to create a global 'gemvc' command? (y/N): ";
+            $handle = fopen("php://stdin", "r");
+            $line = fgets($handle);
+            fclose($handle);
+            
+            if (strtolower(trim($line)) !== 'y') {
+                $this->info("Skipped global command setup");
+                $this->write("\nYou can still use the command with:\n", 'blue');
+                $this->write("  php vendor/bin/gemvc [command]\n", 'white');
+                $this->write("  OR\n", 'white');
+                $this->write("  php bin/gemvc [command]\n\n", 'white');
+                return;
+            }
+        } else {
+            // Skip global command setup in non-interactive mode
+            $this->info("Skipped global command setup (non-interactive mode)");
             return;
         }
         
@@ -276,13 +383,18 @@ EOT;
                 
                 // Check if it already exists
                 if (file_exists($globalBinPath)) {
-                    echo "Command already exists at {$globalBinPath}. Overwrite? (y/N): ";
-                    $handle = fopen("php://stdin", "r");
-                    $line = fgets($handle);
-                    fclose($handle);
-                    
-                    if (strtolower(trim($line)) !== 'y') {
-                        $this->info("Skipped global command setup");
+                    if (!$this->nonInteractive) {
+                        echo "Command already exists at {$globalBinPath}. Overwrite? (y/N): ";
+                        $handle = fopen("php://stdin", "r");
+                        $line = fgets($handle);
+                        fclose($handle);
+                        
+                        if (strtolower(trim($line)) !== 'y') {
+                            $this->info("Skipped global command setup");
+                            continue;
+                        }
+                    } else {
+                        $this->info("Command already exists at {$globalBinPath} - skipping (non-interactive mode)");
                         continue;
                     }
                     
