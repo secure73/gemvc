@@ -6,16 +6,29 @@ use Gemvc\Http\Request;
 // Redis class comes from the phpredis extension
 // @see https://github.com/phpredis/phpredis
 
+// Check for OpenSwoole or Swoole extension
+if (!extension_loaded('openswoole') && !extension_loaded('swoole')) {
+    throw new \Exception('Neither OpenSwoole nor Swoole extensions are installed. Please install one with: pecl install openswoole');
+}
+
+// Create an interface to make IDE happy
+interface WebSocketServerInterface {
+    public function tick(int $ms, callable $callback);
+    public function push(int $fd, string $data, int $opcode = 1);
+    public function isEstablished(int $fd): bool;
+    public function close(int $fd);
+}
+
 /**
  * Class SwooleWebSocketHandler
- * Handles WebSocket connections using OpenSwoole with advanced features:
+ * Handles WebSocket connections using OpenSwoole/Swoole with advanced features:
  * - Connection tracking and management
  * - Rate limiting for messages
  * - Heartbeat mechanism
  * - Redis integration for scalability
  * 
  * Requirements:
- * - OpenSwoole extension
+ * - OpenSwoole or Swoole extension
  * - Redis extension (optional, for scalability)
  */
 class SwooleWebSocketHandler
@@ -97,9 +110,13 @@ class SwooleWebSocketHandler
     
     /**
      * Register the heartbeat timer with the Swoole server
+     * 
+     * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
      */
-    public function registerHeartbeat(\Swoole\WebSocket\Server $server): void
+    public function registerHeartbeat(object $server): void
     {
+        $this->checkServerCompatibility($server);
+        
         $server->tick($this->heartbeatInterval * 1000, function() use ($server) {
             $this->performHeartbeat($server);
         });
@@ -113,11 +130,13 @@ class SwooleWebSocketHandler
     /**
      * Handle a new WebSocket connection
      * 
-     * @param \Swoole\WebSocket\Server $server
-     * @param \Swoole\Http\Request $request
+     * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
+     * @param object $request The HTTP request object
      */
-    public function onOpen($server, $request)
+    public function onOpen(object $server, object $request)
     {
+        $this->checkServerCompatibility($server);
+        
         // Create a standard Request object for the handshake
         $httpRequest = new SwooleRequest($request);
         
@@ -162,11 +181,13 @@ class SwooleWebSocketHandler
     /**
      * Handle WebSocket messages
      * 
-     * @param \Swoole\WebSocket\Server $server
-     * @param \Swoole\WebSocket\Frame $frame
+     * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
+     * @param object $frame The WebSocket frame
      */
-    public function onMessage($server, $frame)
+    public function onMessage(object $server, object $frame)
     {
+        $this->checkServerCompatibility($server);
+        
         // Update last activity time
         $this->updateLastActivity($frame->fd);
         
@@ -401,9 +422,13 @@ class SwooleWebSocketHandler
     
     /**
      * Perform heartbeat check on all connections
+     * 
+     * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
      */
-    private function performHeartbeat(\Swoole\WebSocket\Server $server): void
+    private function performHeartbeat(object $server): void
     {
+        $this->checkServerCompatibility($server);
+        
         $connections = $this->useRedis ? $this->getAllConnectionsFromRedis() : $this->connections;
         
         foreach ($connections as $fd => $connection) {
@@ -429,9 +454,13 @@ class SwooleWebSocketHandler
     
     /**
      * Clean up expired connections
+     * 
+     * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
      */
-    private function cleanupExpiredConnections(\Swoole\WebSocket\Server $server): void
+    private function cleanupExpiredConnections(object $server): void
     {
+        $this->checkServerCompatibility($server);
+        
         $now = time();
         $connections = $this->useRedis ? $this->getAllConnectionsFromRedis() : $this->connections;
         
@@ -763,5 +792,22 @@ class SwooleWebSocketHandler
         
         // Check if limit exceeded
         return $count <= $this->maxMessagesPerMinute;
+    }
+
+    /**
+     * Helper method to check if a server object is compatible
+     * 
+     * @param object $server The server object to check
+     * @throws \Exception If server is not compatible
+     */
+    private function checkServerCompatibility($server): void
+    {
+        // Check if this is Swoole or OpenSwoole server
+        $isOpenSwoole = $server instanceof \OpenSwoole\WebSocket\Server;
+        $isSwoole = $server instanceof \Swoole\WebSocket\Server;
+        
+        if (!$isOpenSwoole && !$isSwoole) {
+            throw new \Exception('Server must be either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server');
+        }
     }
 }
