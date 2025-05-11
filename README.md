@@ -34,9 +34,6 @@ composer require gemvc/library
 After installing the library, initialize your project with:
 
 ```bash
-# For automatic platform selection (prefers Apache if available)
-php vendor/gemvc/library/src/bin/init.php
-
 # For Apache/Nginx setup
 php vendor/gemvc/library/src/bin/init.php apache
 

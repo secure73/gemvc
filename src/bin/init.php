@@ -96,6 +96,14 @@ class NonInteractiveInit
             // Copy startup files to project root
             $this->copyStartupFiles();
             
+            // Secure bin directory in .htaccess for Apache
+            if ($this->platformType === 'apache') {
+                $this->secureBinDirectory();
+            }
+            
+            // Create or update .gitignore file
+            $this->setupGitignore();
+            
             // Create global command wrapper
             $this->createGlobalCommand();
             
@@ -355,6 +363,116 @@ EOT;
         
         if (file_put_contents($batPath, $batContent)) {
             echo "Created Windows batch file: {$batPath}\n";
+        }
+    }
+    
+    /**
+     * Secure bin directory in .htaccess file
+     */
+    protected function secureBinDirectory()
+    {
+        $htaccessPath = $this->basePath . '/.htaccess';
+        
+        if (!file_exists($htaccessPath)) {
+            echo "Warning: .htaccess file not found. Bin directory not secured.\n";
+            return;
+        }
+        
+        $htaccessContent = file_get_contents($htaccessPath);
+        
+        // Check if the bin directory is already secured
+        if (strpos($htaccessContent, '<Directory "bin">') !== false) {
+            echo "Bin directory already secured in .htaccess\n";
+            return;
+        }
+        
+        // Find where to insert the bin directory protection
+        $vendorDirective = '<Directory "vendor">';
+        $binDirective = <<<EOT
+
+<Directory "bin">
+    Require all denied
+</Directory>
+EOT;
+        
+        if (strpos($htaccessContent, $vendorDirective) !== false) {
+            // Add bin directory protection after vendor directory protection
+            $htaccessContent = str_replace(
+                "</Directory>\n",
+                "</Directory>\n" . $binDirective,
+                $htaccessContent
+            );
+        } else {
+            // Add bin directory protection at the end
+            $htaccessContent .= $binDirective . "\n";
+        }
+        
+        // Update the .htaccess file
+        if (file_put_contents($htaccessPath, $htaccessContent)) {
+            echo "Secured bin directory in .htaccess\n";
+        } else {
+            echo "Warning: Failed to update .htaccess file\n";
+        }
+    }
+    
+    /**
+     * Set up .gitignore file to exclude common directories and files
+     */
+    protected function setupGitignore()
+    {
+        $gitignorePath = $this->basePath . '/.gitignore';
+        $commonExcludes = [
+            'vendor/',
+            'node_modules/',
+            '.env',
+            '.DS_Store',
+            '.idea/',
+            '.vscode/',
+            '*.log',
+            'app/.env'
+        ];
+        
+        // Read existing .gitignore if it exists
+        $existingContent = file_exists($gitignorePath) ? file_get_contents($gitignorePath) : '';
+        $existingLines = $existingContent ? explode("\n", $existingContent) : [];
+        
+        $updatedContent = '';
+        $updated = false;
+        
+        // Check if vendor directory is already excluded
+        $vendorExcluded = false;
+        foreach ($existingLines as $line) {
+            if (trim($line) === 'vendor/' || trim($line) === '/vendor/' || trim($line) === 'vendor' || trim($line) === '/vendor') {
+                $vendorExcluded = true;
+                break;
+            }
+        }
+        
+        if ($existingContent) {
+            // Update existing .gitignore
+            if (!$vendorExcluded) {
+                // Add vendor/ to the beginning to ensure it's excluded
+                $updatedContent = "vendor/\n" . $existingContent;
+                $updated = true;
+            } else {
+                // If vendor is already excluded, keep the file as is
+                $updatedContent = $existingContent;
+            }
+        } else {
+            // Create new .gitignore with common excludes
+            $updatedContent = implode("\n", $commonExcludes);
+            $updated = true;
+        }
+        
+        // Write the updated content
+        if ($updated) {
+            if (file_put_contents($gitignorePath, $updatedContent)) {
+                echo "Updated .gitignore to exclude vendor directory\n";
+            } else {
+                echo "Warning: Failed to update .gitignore file\n";
+            }
+        } else {
+            echo "Vendor directory already excluded in .gitignore\n";
         }
     }
     
