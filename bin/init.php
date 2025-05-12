@@ -281,30 +281,34 @@ EOT;
     
     protected function copyStartupFiles()
     {
-        // Try multiple possible paths for startup templates
-        $potentialPaths = [
-            $this->packagePath . '/src/startup',
-            $this->packagePath . '/startup',
-            dirname(dirname(__DIR__)) . '/startup'
+        // Determine the startup directory path
+        $startupPath = $this->packagePath . '/src/startup';
+        
+        if (!is_dir($startupPath)) {
+            die("Error: Startup directory not found at: {$startupPath}\n");
+        }
+        
+        echo "Using startup directory: {$startupPath}\n";
+        
+        // Create essential files for both platforms
+        $commonFiles = [
+            '.gitignore' => <<<'EOT'
+/vendor/
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+*.log
+composer.lock
+docker-compose.override.yml
+EOT
         ];
-        
-        $startupPath = null;
-        foreach ($potentialPaths as $path) {
-            if (file_exists($path) && is_dir($path)) {
-                $startupPath = $path;
-                echo "Found startup directory: {$startupPath}\n";
-                break;
-            }
-        }
-        
-        if ($startupPath === null) {
-            die("Error: Startup directory not found. Tried: " . implode(", ", $potentialPaths) . "\n");
-        }
 
-        // Create essential files for Swoole projects
+        // Add platform-specific files
         if ($this->platformType === 'swoole') {
-            // Create Dockerfile
-            $dockerfile = <<<'EOT'
+            $commonFiles['Dockerfile'] = <<<'EOT'
 FROM phpswoole/swoole:php8.2
 
 # Install system dependencies
@@ -335,11 +339,7 @@ EXPOSE 9501
 # Start Swoole server
 CMD ["php", "index.php"]
 EOT;
-            file_put_contents($this->basePath . '/Dockerfile', $dockerfile);
-            echo "Created Dockerfile\n";
-
-            // Create docker-compose.yml
-            $dockerCompose = <<<'EOT'
+            $commonFiles['docker-compose.yml'] = <<<'EOT'
 version: '3.8'
 
 services:
@@ -376,134 +376,97 @@ services:
 volumes:
   mysql_data:
 EOT;
-            file_put_contents($this->basePath . '/docker-compose.yml', $dockerCompose);
-            echo "Created docker-compose.yml\n";
+        } else {
+            $commonFiles['Dockerfile'] = <<<'EOT'
+FROM php:8.2-apache
 
-            // Create .gitignore
-            $gitignore = <<<'EOT'
-/vendor/
-.env
-.env.*
-!.env.example
-.DS_Store
-.idea/
-.vscode/
-*.log
-composer.lock
-docker-compose.override.yml
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install zip pdo_mysql
+
+# Enable Apache modules
+RUN a2enmod rewrite
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-scripts --no-autoloader
+
+# Copy application files
+COPY . .
+
+# Generate autoloader
+RUN composer dump-autoload --optimize
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html
+
+EXPOSE 80
 EOT;
-            file_put_contents($this->basePath . '/.gitignore', $gitignore);
-            echo "Created .gitignore\n";
+            $commonFiles['docker-compose.yml'] = <<<'EOT'
+version: '3.8'
 
-            // Create .env.example
-            $envExample = <<<'EOT'
-# App Environment
-APP_ENV=development
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      - APP_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=gemvc
+      - DB_USER=gemvc
+      - DB_PASSWORD=secret
+    depends_on:
+      - db
 
-# OpenSwoole Configuration
-SWOOLE_MODE=true
-OPENSWOOLE_WORKERS=3
-OPEN_SWOOLE_ACCEPT_REQUEST='0.0.0.0'
-OPEN_SWOOLE_ACCPT_PORT=9501
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=gemvc
+      - MYSQL_USER=gemvc
+      - MYSQL_PASSWORD=secret
+      - MYSQL_ROOT_PASSWORD=root_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
 
-# Database Configuration
-DB_HOST=db
-DB_PORT=3306
-DB_NAME=gemvc
-DB_CHARSET=utf8mb4
-DB_USER=gemvc
-DB_PASSWORD=secret
-QUERY_LIMIT=10
-
-# Database Connection Pool
-MIN_DB_CONNECTION_POOL=2
-MAX_DB_CONNECTION_POOL=5
-DB_CONNECTION_MAX_AGE=3600
-
-# Security Settings
-TOKEN_SECRET='your_secret'
-TOKEN_ISSUER='your_api'
-REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
-ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
-
-# URL Configuration
-SERVICE_IN_URL_SECTION=2
-METHOD_IN_URL_SECTION=3
-
-# WebSocket Settings
-WS_CONNECTION_TIMEOUT=300
-WS_MAX_MESSAGES_PER_MINUTE=60
-WS_HEARTBEAT_INTERVAL=30
+volumes:
+  mysql_data:
 EOT;
-            file_put_contents($this->basePath . '/.env.example', $envExample);
-            echo "Created .env.example\n";
+        }
 
-            // Create README.md
-            $readme = <<<'EOT'
-# GEMVC Project
-
-## Development Setup
-
-1. Install dependencies:
-```bash
-composer install
-```
-
-2. Copy environment file:
-```bash
-cp .env.example .env
-```
-
-3. Start with Docker:
-```bash
-docker-compose up -d
-```
-
-4. Access the application:
-- API: http://localhost:9501
-- Database: localhost:3306
-
-## Development Commands
-
-- Start server: `php index.php`
-- Create service: `bin/gemvc create:service ServiceName`
-- Create model: `bin/gemvc create:model ModelName`
-- Create table: `bin/gemvc create:table TableName`
-
-## Docker Commands
-
-- Start containers: `docker-compose up -d`
-- Stop containers: `docker-compose down`
-- View logs: `docker-compose logs -f`
-- Rebuild: `docker-compose up -d --build`
-
-## Project Structure
-
-```
-project_root/
-├── app/
-│   ├── api/        # API endpoints
-│   ├── controller/ # Business logic
-│   ├── model/      # Data models
-│   ├── table/      # Database tables
-│   └── .env        # Environment config
-├── bin/            # CLI tools
-├── vendor/         # Dependencies
-└── index.php       # Entry point
-```
-EOT;
-            file_put_contents($this->basePath . '/README.md', $readme);
-            echo "Created README.md\n";
+        // Create all common files
+        foreach ($commonFiles as $filename => $content) {
+            $filepath = $this->basePath . '/' . $filename;
+            if (file_put_contents($filepath, $content)) {
+                echo "Created {$filename}\n";
+            } else {
+                echo "Warning: Failed to create {$filename}\n";
+            }
         }
 
         // Copy platform-specific startup files
-        $templateDir = $startupPath . '/' . $this->platformType;
-        if (is_dir($templateDir)) {
-            $files = scandir($templateDir);
+        $platformDir = $startupPath . '/' . $this->platformType;
+        if (is_dir($platformDir)) {
+            $files = scandir($platformDir);
             foreach ($files as $file) {
                 if ($file === '.' || $file === '..') continue;
                 
-                $sourcePath = $templateDir . '/' . $file;
+                $sourcePath = $platformDir . '/' . $file;
                 $destPath = $this->basePath . '/' . $file;
                 
                 if (is_file($sourcePath)) {
@@ -1218,19 +1181,26 @@ EOT;
     {
         // Multiple possible locations for package path
         $paths = [
-            dirname(dirname(__DIR__)), // src/bin -> src
-            dirname(dirname(dirname(__DIR__))), // If src/bin is inside another directory
-            dirname(dirname(dirname(dirname(dirname(__DIR__))))).'/gemvc/library', // vendor/gemvc/library
+            dirname(dirname(__DIR__)),                    // When in vendor/gemvc/library/bin
+            dirname(dirname(dirname(__DIR__))),           // When in vendor/gemvc/library/src/bin
+            dirname(dirname(dirname(dirname(__DIR__))))   // When in vendor/gemvc/library
         ];
         
         foreach ($paths as $path) {
-            if (file_exists($path)) {
+            if (file_exists($path . '/src/startup')) {
                 return $path;
             }
         }
         
-        // Fallback
-        return dirname(dirname(__DIR__)); // Hope for the best
+        // If we can't find the startup directory, try to find the package root
+        foreach ($paths as $path) {
+            if (file_exists($path . '/composer.json')) {
+                return $path;
+            }
+        }
+        
+        // Fallback to current directory
+        return dirname(dirname(__DIR__));
     }
 }
 
