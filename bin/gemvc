@@ -37,7 +37,7 @@ if (!$autoloaded) {
 // Set up command paths
 $paths = [
     'framework' => [
-        'commands' => dirname(__DIR__) . '/src/CLI/commands',
+        'commands' => dirname(__DIR__) . '/vendor/gemvc/library/src/CLI/commands',
         'namespace' => 'Gemvc\\CLI\\Commands\\'
     ],
     'project' => [
