@@ -184,14 +184,6 @@ class NonInteractiveInit
                 echo "Directory already exists: {$directory}\n";
             }
         }
-        
-        // Create bin directory if it doesn't exist
-        if (!is_dir($this->basePath . '/bin')) {
-            if (!@mkdir($this->basePath . '/bin', 0755, true)) {
-                throw new \RuntimeException("Failed to create directory: {$this->basePath}/bin");
-            }
-            echo "Created directory: {$this->basePath}/bin\n";
-        }
     }
     
     protected function createEnvFile()
@@ -308,76 +300,217 @@ EOT;
         if ($startupPath === null) {
             die("Error: Startup directory not found. Tried: " . implode(", ", $potentialPaths) . "\n");
         }
-        
-        // Check if this directory has subdirs for different templates
-        $templateDirs = [];
-        $dirs = scandir($startupPath);
-        foreach ($dirs as $dir) {
-            if ($dir === '.' || $dir === '..') continue;
-            if (is_dir($startupPath . '/' . $dir)) {
-                $templateDirs[] = $dir;
-                echo "Found template: {$dir}\n";
-            }
+
+        // Create essential files for Swoole projects
+        if ($this->platformType === 'swoole') {
+            // Create Dockerfile
+            $dockerfile = <<<'EOT'
+FROM phpswoole/swoole:php8.2
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install zip pdo_mysql
+
+# Set working directory
+WORKDIR /var/www
+
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-scripts --no-autoloader
+
+# Copy application files
+COPY . .
+
+# Generate autoloader
+RUN composer dump-autoload --optimize
+
+# Expose port
+EXPOSE 9501
+
+# Start Swoole server
+CMD ["php", "index.php"]
+EOT;
+            file_put_contents($this->basePath . '/Dockerfile', $dockerfile);
+            echo "Created Dockerfile\n";
+
+            // Create docker-compose.yml
+            $dockerCompose = <<<'EOT'
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9501:9501"
+    volumes:
+      - .:/var/www
+    environment:
+      - APP_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=gemvc
+      - DB_USER=gemvc
+      - DB_PASSWORD=secret
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=gemvc
+      - MYSQL_USER=gemvc
+      - MYSQL_PASSWORD=secret
+      - MYSQL_ROOT_PASSWORD=root_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+EOT;
+            file_put_contents($this->basePath . '/docker-compose.yml', $dockerCompose);
+            echo "Created docker-compose.yml\n";
+
+            // Create .gitignore
+            $gitignore = <<<'EOT'
+/vendor/
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+*.log
+composer.lock
+docker-compose.override.yml
+EOT;
+            file_put_contents($this->basePath . '/.gitignore', $gitignore);
+            echo "Created .gitignore\n";
+
+            // Create .env.example
+            $envExample = <<<'EOT'
+# App Environment
+APP_ENV=development
+
+# OpenSwoole Configuration
+SWOOLE_MODE=true
+OPENSWOOLE_WORKERS=3
+OPEN_SWOOLE_ACCEPT_REQUEST='0.0.0.0'
+OPEN_SWOOLE_ACCPT_PORT=9501
+
+# Database Configuration
+DB_HOST=db
+DB_PORT=3306
+DB_NAME=gemvc
+DB_CHARSET=utf8mb4
+DB_USER=gemvc
+DB_PASSWORD=secret
+QUERY_LIMIT=10
+
+# Database Connection Pool
+MIN_DB_CONNECTION_POOL=2
+MAX_DB_CONNECTION_POOL=5
+DB_CONNECTION_MAX_AGE=3600
+
+# Security Settings
+TOKEN_SECRET='your_secret'
+TOKEN_ISSUER='your_api'
+REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
+ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
+
+# URL Configuration
+SERVICE_IN_URL_SECTION=2
+METHOD_IN_URL_SECTION=3
+
+# WebSocket Settings
+WS_CONNECTION_TIMEOUT=300
+WS_MAX_MESSAGES_PER_MINUTE=60
+WS_HEARTBEAT_INTERVAL=30
+EOT;
+            file_put_contents($this->basePath . '/.env.example', $envExample);
+            echo "Created .env.example\n";
+
+            // Create README.md
+            $readme = <<<'EOT'
+# GEMVC Project
+
+## Development Setup
+
+1. Install dependencies:
+```bash
+composer install
+```
+
+2. Copy environment file:
+```bash
+cp .env.example .env
+```
+
+3. Start with Docker:
+```bash
+docker-compose up -d
+```
+
+4. Access the application:
+- API: http://localhost:9501
+- Database: localhost:3306
+
+## Development Commands
+
+- Start server: `php index.php`
+- Create service: `bin/gemvc create:service ServiceName`
+- Create model: `bin/gemvc create:model ModelName`
+- Create table: `bin/gemvc create:table TableName`
+
+## Docker Commands
+
+- Start containers: `docker-compose up -d`
+- Stop containers: `docker-compose down`
+- View logs: `docker-compose logs -f`
+- Rebuild: `docker-compose up -d --build`
+
+## Project Structure
+
+```
+project_root/
+├── app/
+│   ├── api/        # API endpoints
+│   ├── controller/ # Business logic
+│   ├── model/      # Data models
+│   ├── table/      # Database tables
+│   └── .env        # Environment config
+├── bin/            # CLI tools
+├── vendor/         # Dependencies
+└── index.php       # Entry point
+```
+EOT;
+            file_put_contents($this->basePath . '/README.md', $readme);
+            echo "Created README.md\n";
         }
-        
-        // Choose template based on parameter or auto-select
-        $templateDir = $startupPath;
-        if (!empty($templateDirs)) {
-            // Use specified platform if provided
-            if ($this->platformType && in_array($this->platformType, $templateDirs)) {
-                $templateDir = $startupPath . '/' . $this->platformType;
-                echo "Using template directory: {$this->platformType} (user specified)\n";
-            } 
-            // Auto-select based on priority
-            else {
-                if (in_array('apache', $templateDirs) && (!$this->platformType || $this->platformType === 'apache')) {
-                    $templateDir = $startupPath . '/apache';
-                } elseif (in_array('swoole', $templateDirs) && (!$this->platformType || $this->platformType === 'swoole')) {
-                    $templateDir = $startupPath . '/swoole';
-                } else {
-                    $templateDir = $startupPath . '/' . $templateDirs[0];
+
+        // Copy platform-specific startup files
+        $templateDir = $startupPath . '/' . $this->platformType;
+        if (is_dir($templateDir)) {
+            $files = scandir($templateDir);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                
+                $sourcePath = $templateDir . '/' . $file;
+                $destPath = $this->basePath . '/' . $file;
+                
+                if (is_file($sourcePath)) {
+                    copy($sourcePath, $destPath);
+                    echo "Copied: {$file}\n";
                 }
-                echo "Using template directory: " . basename($templateDir) . " (auto-selected)\n";
             }
-        } else {
-            echo "No specific template directories found, using startup directory directly\n";
-        }
-        
-        if (!is_dir($templateDir)) {
-            die("Error: Template directory not found: {$templateDir}\n");
-        }
-        
-        // Copy all files from template dir
-        $files = scandir($templateDir);
-        $copiedCount = 0;
-        
-        foreach ($files as $file) {
-            if ($file === '.' || $file === '..') {
-                continue;
-            }
-            
-            $sourcePath = $templateDir . '/' . $file;
-            $destPath = $this->basePath . '/' . $file;
-            
-            // Skip directories, we just want files
-            if (is_dir($sourcePath)) {
-                continue;
-            }
-            
-            // Always overwrite existing files
-            if (!copy($sourcePath, $destPath)) {
-                echo "Warning: Failed to copy file: {$file}\n";
-                continue;
-            }
-            
-            echo "Copied: {$file}\n";
-            $copiedCount++;
-        }
-        
-        if ($copiedCount === 0) {
-            echo "Warning: No template files were copied. Check if the template directory contains files.\n";
-        } else {
-            echo "Successfully copied {$copiedCount} template files.\n";
         }
     }
     
