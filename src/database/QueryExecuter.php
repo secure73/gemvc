@@ -28,6 +28,8 @@ class QueryExecuter
         'sets' => 0
     ];
 
+    private array $_bindings = [];
+
     /**
      * Constructor initializes execution timer but doesn't establish a database connection
      * Connection is only established when needed for query execution
@@ -131,10 +133,6 @@ class QueryExecuter
 
     /**
      * Bind a parameter to the prepared statement with automatic type detection
-     * 
-     * @param string $param Parameter name or placeholder
-     * @param mixed $value Value to bind
-     * @return void
      */
     public function bind(string $param, mixed $value): void
     {
@@ -144,13 +142,14 @@ class QueryExecuter
         }
         
         $type = match (true) {
-            \is_int($value) => \PDO::PARAM_INT,
-            null === $value => \PDO::PARAM_NULL,
-            \is_bool($value) => \PDO::PARAM_BOOL,
-            \is_string($value) => \PDO::PARAM_STR,
-            default => \PDO::PARAM_STR,
+            \is_int($value) => PDO::PARAM_INT,
+            null === $value => PDO::PARAM_NULL,
+            \is_bool($value) => PDO::PARAM_BOOL,
+            \is_string($value) => PDO::PARAM_STR,
+            default => PDO::PARAM_STR,
         };
         $this->stsment->bindValue($param, $value, $type);
+        $this->_bindings[$param] = $value;
     }
 
     /**
@@ -265,15 +264,7 @@ class QueryExecuter
      */
     private function getBindings(): array
     {
-        if (!$this->stsment) {
-            return [];
-        }
-
-        $bindings = [];
-        foreach ($this->stsment->getBindings() as $key => $value) {
-            $bindings[$key] = $value;
-        }
-        return $bindings;
+        return $this->_bindings;
     }
 
     /**
@@ -531,7 +522,7 @@ class QueryExecuter
         }
         
         try {
-            return $this->stsment->fetchAll(\PDO::FETCH_CLASS, $targetClassName);
+            return $this->stsment->fetchAll(PDO::FETCH_CLASS, $targetClassName);
         } catch (\PDOException $e) {
             $this->error = $e->getMessage();
             return false;
