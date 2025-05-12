@@ -5,35 +5,10 @@ namespace Gemvc\Traits\Model;
 use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
 
-trait CreateTrait
+trait CreateModelTrait
 {
-    public function create(): self|false
+    public function createModel(): self|false
     {
-        if(isset($this->searchable)){
-           unset($this->searchable);
-        }
-        if(isset($this->rangeable)){
-           unset($this->rangeable);
-        }
-        if(isset($this->orderable)){
-           unset($this->orderable);
-        }
-        if(isset($this->rangeable)){
-           unset($this->rangeable);
-        }
-        if(isset($this->defaultPageSize)){  
-           unset($this->defaultPageSize);
-        }
-        if(isset($this->maxPageSize)){
-           unset($this->maxPageSize);
-        }
-        if(isset($this->filterable)){
-           unset($this->filterable);
-        }
-        if(isset($this->orderable)){
-           unset($this->orderable);
-        }
-
         $table = $this->getTable();
         if (!$table) {
             $this->setError('Table is not set in function setTable');
@@ -66,9 +41,9 @@ trait CreateTrait
         return $this;
     }
 
-    public function createWithJsonResponse():JsonResponse
+    public function createModelJsonResponse():JsonResponse
     {
-        $result = $this->create();
+        $result = $this->createModel();
         if ($result === false) {
             return Response::internalError('Error in create query: ' . $this->getError());
         }

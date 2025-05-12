@@ -18,6 +18,15 @@ class QueryExecuter
     private bool $isConnected = false;
     private ?PdoConnection $connection = null;
 
+    // Cache properties
+    private array $_cache = [];
+    private array $_cacheConfig = [];
+
+    private array $_cacheStats = [
+        'hits' => 0,
+        'misses' => 0,
+        'sets' => 0
+    ];
 
     /**
      * Constructor initializes execution timer but doesn't establish a database connection
@@ -26,6 +35,17 @@ class QueryExecuter
     public function __construct()
     {
         $this->startExecutionTime = microtime(true);
+        
+        // Initialize cache config from environment variables with defaults
+        $this->_cacheConfig = [
+            'enabled' => filter_var(
+                getenv('DB_CACHE_ENABLED') ?: 'true', 
+                FILTER_VALIDATE_BOOLEAN
+            ),
+            'ttl' => (int)(getenv('DB_CACHE_TTL_SEC') ?: 3600),                    // 1 hour default
+            'max_size' => (int)(getenv('DB_CACHE_MAX_QUERY_SIZE') ?: 1000),          // Maximum cached queries
+            'include_patterns' => 'SELECT'  // Only cache SELECT queries by default
+        ];
     }
 
     /**
@@ -134,14 +154,191 @@ class QueryExecuter
     }
 
     /**
-     * Execute the prepared statement
-     * Establishes a database connection if needed
-     * 
-     * @return bool True on success, false on failure
+     * Generate a unique cache key for a query and its parameters
+     */
+    private function generateCacheKey(string $query, array $params): string
+    {
+        // Normalize query by removing extra spaces
+        $normalizedQuery = preg_replace('/\s+/', ' ', trim($query));
+        
+        // Create unique key based on query and parameters
+        $key = [
+            'query' => $normalizedQuery,
+            'params' => $params
+        ];
+        
+        return md5(serialize($key));
+    }
+
+    /**
+     * Check if a query should be cached
+     */
+    private function shouldCache(string $query): bool
+    {
+        if (!$this->_cacheConfig['enabled']) {
+            return false;
+        }
+
+        // Only cache SELECT queries
+        foreach ($this->_cacheConfig['include_patterns'] as $pattern) {
+            if (stripos($query, $pattern) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get data from cache
+     */
+    private function getFromCache(string $key): ?array
+    {
+        try {
+            if (!isset($this->_cache[$key])) {
+                $this->_cacheStats['misses']++;
+                return null;
+            }
+
+            $cached = $this->_cache[$key];
+            
+            if (time() > $cached['expires']) {
+                unset($this->_cache[$key]);
+                $this->_cacheStats['misses']++;
+                return null;
+            }
+
+            $this->_cacheStats['hits']++;
+            return $cached['data'];
+        } catch (\Throwable $e) {
+            error_log("Cache error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Store data in cache
+     */
+    private function setCache(string $key, array $data): void
+    {
+        try {
+            $this->_cache[$key] = [
+                'data' => $data,
+                'created' => time(),
+                'expires' => time() + $this->_cacheConfig['ttl']
+            ];
+            
+            $this->_cacheStats['sets']++;
+            
+            if (count($this->_cache) > $this->_cacheConfig['max_size']) {
+                $this->removeOldestCache();
+            }
+        } catch (\Throwable $e) {
+            error_log("Cache set error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove oldest cache entries
+     */
+    private function removeOldestCache(): void
+    {
+        try {
+            if (empty($this->_cache)) {
+                return;
+            }
+
+            uasort($this->_cache, function($a, $b) {
+                return $a['created'] - $b['created'];
+            });
+            
+            $removeCount = max(1, ceil(count($this->_cache) * 0.1));
+            $this->_cache = array_slice($this->_cache, $removeCount);
+        } catch (\Throwable $e) {
+            $this->_cache = [];
+            error_log("Cache cleanup error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get current bindings from PDO statement
+     */
+    private function getBindings(): array
+    {
+        if (!$this->stsment) {
+            return [];
+        }
+
+        $bindings = [];
+        foreach ($this->stsment->getBindings() as $key => $value) {
+            $bindings[$key] = $value;
+        }
+        return $bindings;
+    }
+
+    /**
+     * Set cached result
+     */
+    private function setCachedResult(array $cached): void
+    {
+        $this->stsment = null;
+        $this->affectedRows = count($cached);
+        $this->endExecutionTime = microtime(true);
+        $this->error = null;
+    }
+
+    /**
+     * Get result from PDO statement
+     */
+    private function getResult(): array
+    {
+        if (!$this->stsment) {
+            return [];
+        }
+
+        try {
+            return $this->stsment->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            $this->error = $e->getMessage();
+            return [];
+        }
+    }
+
+    /**
+     * Execute query with caching support
      */
     public function execute(): bool
     {
-        // Ensure we have a connection before executing
+        // Check if we should cache this query
+        if ($this->shouldCache($this->_query)) {
+            $cacheKey = $this->generateCacheKey($this->_query, $this->getBindings());
+            
+            // Try to get from cache first
+            if ($cached = $this->getFromCache($cacheKey)) {
+                $this->setCachedResult($cached);
+                return true;
+            }
+        }
+
+        // If not in cache or shouldn't cache, execute normally
+        $result = $this->executeWithoutCache();
+        
+        // Cache result if successful and should cache
+        if ($result && $this->shouldCache($this->_query)) {
+            $resultData = $this->getResult();
+            if ($resultData !== false) {
+                $this->setCache($cacheKey, $resultData);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Execute query without caching
+     */
+    private function executeWithoutCache(): bool
+    {
         if (!$this->ensureConnection()) {
             $this->error = 'Database connection not established';
             $this->endExecutionTime = microtime(true);
@@ -159,16 +356,58 @@ class QueryExecuter
             $this->affectedRows = $this->stsment->rowCount();
             $this->lastInsertedId = $this->db->lastInsertId();
             $this->endExecutionTime = microtime(true);
-            
-            // Clear error if execution was successful
             $this->error = null;
             return true;
-
         } catch (\PDOException $e) {
             $this->endExecutionTime = microtime(true);
             $this->error = $e->getMessage();
             return false;
         }
+    }
+
+    /**
+     * Configure cache settings
+     */
+    public function configureCache(array $config): void
+    {
+        if (isset($config['ttl']) && !is_int($config['ttl'])) {
+            throw new \InvalidArgumentException('Cache TTL must be an integer');
+        }
+
+        if (isset($config['max_size']) && !is_int($config['max_size'])) {
+            throw new \InvalidArgumentException('Cache max size must be an integer');
+        }
+
+        if (isset($config['include_patterns']) && !is_array($config['include_patterns'])) {
+            throw new \InvalidArgumentException('Cache include patterns must be an array');
+        }
+
+        $this->_cacheConfig = array_merge($this->_cacheConfig, $config);
+    }
+
+    /**
+     * Get cache statistics
+     */
+    public function getCacheStats(): array
+    {
+        return [
+            'stats' => $this->_cacheStats,
+            'cache_size' => count($this->_cache),
+            'config' => $this->_cacheConfig
+        ];
+    }
+
+    /**
+     * Clear the cache
+     */
+    public function clearCache(): void
+    {
+        $this->_cache = [];
+        $this->_cacheStats = [
+            'hits' => 0,
+            'misses' => 0,
+            'sets' => 0
+        ];
     }
 
     /**

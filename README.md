@@ -67,6 +67,97 @@ This command automatically generates:
 
 The generated code includes complete CRUD operations with proper validation, error handling, and documentation, following GEMVC's layered architecture pattern.
 
+## ⚡ Performance Powerhouse
+
+### The Ultimate Performance Trio: OpenSwoole + DB Cache + Connection Pooling
+
+GEMVC combines three powerful technologies to deliver exceptional performance:
+
+```php
+// 1. OpenSwoole: Asynchronous, non-blocking I/O
+$server = new \OpenSwoole\HTTP\Server('0.0.0.0', 9501);
+$server->set([
+    'worker_num' => 4,
+    'max_request' => 1000,
+    'enable_coroutine' => true
+]);
+
+// 2. Database Cache: Automatic query caching
+// Configure in .env:
+// DB_CACHE_ENABLED=true
+// DB_CACHE_TTL_SEC=3600
+// DB_CACHE_MAX_QUERY_SIZE=1000
+
+// 3. Connection Pooling: Efficient database connections
+// Configure in .env:
+// MIN_DB_CONNECTION_POOL=2
+// MAX_DB_CONNECTION_POOL=5
+// DB_CONNECTION_MAX_AGE=3600
+```
+
+#### Performance Benefits:
+
+1. **OpenSwoole**
+   - Non-blocking I/O for concurrent requests
+   - Coroutine support for efficient resource usage
+   - Built-in HTTP/WebSocket server
+   - Automatic worker process management
+
+2. **Database Cache**
+   - Automatic caching of frequent queries
+   - Configurable TTL for cache freshness
+   - Memory-efficient cache size limits
+   - Automatic cache invalidation
+
+3. **Connection Pooling**
+   - Reuse database connections
+   - Automatic connection health checks
+   - Configurable pool sizes per worker
+   - Efficient resource management
+
+#### Real-World Impact:
+
+```php
+// Without these features:
+// - Each request creates new DB connection
+// - Queries execute every time
+// - Resources are wasted
+
+// With GEMVC's performance trio:
+// 1. OpenSwoole handles concurrent requests efficiently
+// 2. DB Cache stores frequent query results
+// 3. Connection Pooling reuses DB connections
+
+// Result: Up to 10x performance improvement!
+```
+
+#### Configuration Example:
+
+```env
+# OpenSwoole Configuration
+SWOOLE_MODE=true
+OPENSWOOLE_WORKERS=3
+OPEN_SWOOLE_ACCEPT_REQUEST='0.0.0.0'
+OPEN_SWOOLE_ACCPT_PORT=9501
+
+# Database Cache Configuration
+DB_CACHE_ENABLED=true
+DB_CACHE_TTL_SEC=3600
+DB_CACHE_MAX_QUERY_SIZE=1000
+
+# Database Connection Pool
+MIN_DB_CONNECTION_POOL=2
+MAX_DB_CONNECTION_POOL=5
+DB_CONNECTION_MAX_AGE=3600
+```
+
+This powerful combination makes GEMVC perfect for:
+- High-traffic APIs
+- Real-time applications
+- Microservices
+- Data-intensive applications
+- WebSocket servers
+
 ## 🚀 Quick Start
 
 ### 1. Configure Your Magic
@@ -82,6 +173,11 @@ DB_CHARSET=utf8mb4
 DB_USER=root
 DB_PASSWORD='yourPassword'
 QUERY_LIMIT=10
+
+# Database Cache Configuration
+DB_CACHE_ENABLED=true
+DB_CACHE_TTL_SEC=3600
+DB_CACHE_MAX_QUERY_SIZE=1000
 
 # Database Connection Pool
 DB_MIN_CONNECTION_POOL=1

@@ -1,12 +1,9 @@
 <?php
 namespace Gemvc\Traits\Model;
 
-use Gemvc\Traits\Table\UpdateQuery;
-
-trait DeleteTrait
+trait SafeDeleteModelTrait
 {
-    use UpdateQuery;
-    public function delete(int $id=null):bool
+    public function safeDelete(int $id=null):bool
     {
         if($id)
         {
