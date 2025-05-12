@@ -1186,20 +1186,34 @@ EOT;
             dirname(dirname(dirname(dirname(__DIR__))))   // When in vendor/gemvc/library
         ];
         
+        // First try to find the startup directory
         foreach ($paths as $path) {
             if (file_exists($path . '/src/startup')) {
                 return $path;
             }
         }
         
-        // If we can't find the startup directory, try to find the package root
+        // If startup directory not found, try to find the package in vendor
+        $vendorPath = dirname(dirname(dirname(__DIR__))); // Go up to vendor directory
+        if (file_exists($vendorPath . '/gemvc/library')) {
+            return $vendorPath . '/gemvc/library';
+        }
+        
+        // If still not found, try to find composer.json to identify package root
         foreach ($paths as $path) {
             if (file_exists($path . '/composer.json')) {
                 return $path;
             }
         }
         
-        // Fallback to current directory
+        // If all else fails, try to find the package in vendor using getcwd()
+        $currentDir = getcwd();
+        $vendorPath = $currentDir . '/vendor/gemvc/library';
+        if (file_exists($vendorPath)) {
+            return $vendorPath;
+        }
+        
+        // Last resort: fallback to current directory
         return dirname(dirname(__DIR__));
     }
 }
