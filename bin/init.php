@@ -37,10 +37,10 @@ if (isset($argv[1]) && (strtolower($argv[1]) === '--help' || strtolower($argv[1]
 
 // Include the Composer autoloader - find it at different possible paths
 $autoloadPaths = [
-    __DIR__ . '/../../autoload.php',                      // When in vendor/gemvc/library/src/bin 
-    __DIR__ . '/../../../vendor/autoload.php',            // When in vendor/gemvc/library/src/bin, project root is 3 levels up
-    __DIR__ . '/../../../../../autoload.php',             // When in vendor/gemvc/library/src/bin, project vendor is 4 levels up
-    __DIR__ . '/../../../../autoload.php'                 // Alternative path
+    __DIR__ . '/../vendor/autoload.php',                // When in bin directory
+    __DIR__ . '/../../vendor/autoload.php',             // When in vendor/gemvc/library/bin
+    __DIR__ . '/../../../vendor/autoload.php',          // When in vendor/gemvc/library/bin, project root is 3 levels up
+    __DIR__ . '/../../../../vendor/autoload.php'        // Alternative path
 ];
 
 $autoloaded = false;

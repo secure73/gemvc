@@ -34,10 +34,10 @@ composer require gemvc/library
 After installing the library, initialize your project with:
 
 ```bash
-# For Apache/Nginx setup
+# For Apache/Nginx
 php vendor/gemvc/library/bin/init.php apache
 
-# For OpenSwoole setup
+# For OpenSwoole
 php vendor/gemvc/library/bin/init.php swoole
 ```
 
