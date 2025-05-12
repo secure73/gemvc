@@ -56,7 +56,6 @@ $className = '';
 foreach ($commandParts as $part) {
     $className .= ucfirst(strtolower($part));
 }
-$className .= 'Command';
 
 // Try to find and execute the command
 $commandFound = false;
