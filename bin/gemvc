@@ -1,0 +1,96 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * GEMVC Command Line Interface
+ * 
+ * This is the main entry point for all GEMVC commands, both framework and project specific.
+ * It handles command discovery and execution from both the framework and the project.
+ */
+
+// Determine if we're in a project context or framework context
+$possibleAutoloaders = [
+    __DIR__ . '/../vendor/autoload.php',              // Project installation
+    __DIR__ . '/../autoload.php',                     // Framework development
+    __DIR__ . '/../../autoload.php',                  // Alternative project path
+    __DIR__ . '/../../../../autoload.php'             // Composer vendor installation
+];
+
+$autoloaded = false;
+foreach ($possibleAutoloaders as $autoloader) {
+    if (file_exists($autoloader)) {
+        require_once $autoloader;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    echo "\033[31mError: Could not find Composer's autoloader.\033[0m\n";
+    echo "Please ensure:\n";
+    echo "1. You have run 'composer install'\n";
+    echo "2. You are running this script from the project root\n";
+    echo "3. The vendor directory exists and is not corrupted\n";
+    exit(1);
+}
+
+// Set up command paths
+$paths = [
+    'framework' => [
+        'commands' => dirname(__DIR__) . '/src/CLI/commands',
+        'namespace' => 'Gemvc\\CLI\\Commands\\'
+    ],
+    'project' => [
+        'commands' => getcwd() . '/app/CLI/commands',
+        'namespace' => 'App\\CLI\\Commands\\'
+    ]
+];
+
+// Parse command line arguments
+$command = $argv[1] ?? '--help';
+$args = array_slice($argv, 2);
+
+// Convert command format (e.g., create:service -> CreateService)
+$commandParts = explode(':', $command);
+$className = '';
+foreach ($commandParts as $part) {
+    $className .= ucfirst(strtolower($part));
+}
+$className .= 'Command';
+
+// Try to find and execute the command
+$commandFound = false;
+
+foreach ($paths as $context) {
+    $commandClass = $context['namespace'] . $className;
+    
+    if (class_exists($commandClass)) {
+        try {
+            $commandObj = new $commandClass($args);
+            $commandObj->execute();
+            $commandFound = true;
+            break;
+        } catch (\Exception $e) {
+            echo "\033[31mError: {$e->getMessage()}\033[0m\n";
+            exit(1);
+        }
+    }
+}
+
+if (!$commandFound) {
+    if ($command === '--help' || $command === '-h') {
+        echo "GEMVC Framework CLI\n\n";
+        echo "Usage: gemvc <command> [options]\n\n";
+        echo "Available commands:\n";
+        echo "  init                          Initialize GEMVC project structure\n";
+        echo "  setup [apache|swoole]         Configure project for Apache or OpenSwoole\n";
+        echo "  create:service <ServiceName>  Create a new service\n";
+        echo "  create:model <ModelName>      Create a new model\n";
+        echo "  create:table <TableName>      Create a new table class\n";
+        echo "  --help                        Show this help message\n";
+    } else {
+        echo "\033[31mError: Command '$command' not found.\033[0m\n";
+        echo "Run 'gemvc --help' for available commands.\n";
+        exit(1);
+    }
+} 

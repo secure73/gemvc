@@ -27,6 +27,9 @@
             "src/database/SqlEnumCondition.php"
         ]
     },
+    "bin": [
+        "bin/gemvc"
+    ],
     "authors": [
         {
             "name": "Ali Khorsandfard",

@@ -35,10 +35,10 @@ After installing the library, initialize your project with:
 
 ```bash
 # For Apache/Nginx setup
-php vendor/gemvc/library/src/bin/init.php apache
+php vendor/gemvc/library/bin/init.php apache
 
 # For OpenSwoole setup
-php vendor/gemvc/library/src/bin/init.php swoole
+php vendor/gemvc/library/bin/init.php swoole
 ```
 
 This script will:

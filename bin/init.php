@@ -53,7 +53,42 @@ foreach ($autoloadPaths as $path) {
 }
 
 if (!$autoloaded) {
-    die("Error: Couldn't find Composer autoloader. Make sure you are running this script from the project root.\n");
+    echo "\033[31mError: Could not find Composer's autoloader.\033[0m\n";
+    echo "Please ensure:\n";
+    echo "1. You have run 'composer install'\n";
+    echo "2. You are running this script from the project root\n";
+    echo "3. The vendor directory exists and is not corrupted\n";
+    exit(1);
+}
+
+// Check PHP version
+if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+    echo "\033[31mError: GEMVC requires PHP 8.0 or higher.\033[0m\n";
+    echo "Current PHP version: " . PHP_VERSION . "\n";
+    echo "Please upgrade your PHP installation.\n";
+    exit(1);
+}
+
+// Check required PHP extensions
+$requiredExtensions = ['json', 'pdo', 'mbstring'];
+$missingExtensions = [];
+
+foreach ($requiredExtensions as $ext) {
+    if (!extension_loaded($ext)) {
+        $missingExtensions[] = $ext;
+    }
+}
+
+if (!empty($missingExtensions)) {
+    echo "\033[31mError: Missing required PHP extensions:\033[0m\n";
+    foreach ($missingExtensions as $ext) {
+        echo "- $ext\n";
+    }
+    echo "\nPlease install the missing extensions using:\n";
+    echo "Windows: Enable them in php.ini\n";
+    echo "Linux: apt-get install php8.0-{extension}\n";
+    echo "macOS: brew install php@8.0 (includes all required extensions)\n";
+    exit(1);
 }
 
 /**
@@ -348,7 +383,7 @@ EOT;
     
     protected function createGlobalCommand()
     {
-        echo "Setting up local command wrapper...\n";
+        echo "Setting up command structure...\n";
         
         // Create bin directory if needed
         $binDir = $this->basePath . '/bin';
@@ -358,48 +393,169 @@ EOT;
                 return;
             }
         }
-        
-        // Create a local wrapper script in the project's bin directory
-        $wrapperPath = $binDir . '/gemvc';
-        $wrapperContent = <<<EOT
+
+        // Create the CLI commands directory structure
+        $cliDir = $this->basePath . '/app/CLI/commands';
+        if (!is_dir($cliDir)) {
+            if (!mkdir($cliDir, 0755, true)) {
+                echo "Warning: Failed to create directory: {$cliDir}\n";
+                return;
+            }
+        }
+
+        // Create a README for custom commands
+        $readmeContent = <<<'EOT'
+# Custom CLI Commands
+
+This directory contains your project-specific CLI commands.
+
+## Creating a New Command
+
+1. Create a new PHP class in this directory
+2. Extend the `Gemvc\CLI\Command` class
+3. Implement the `execute()` method
+
+Example:
+
+```php
+<?php
+
+namespace App\CLI\Commands;
+
+use Gemvc\CLI\Command;
+
+class MyCustomCommand extends Command
+{
+    public function execute()
+    {
+        // Your command logic here
+        $this->info("Hello from my custom command!");
+    }
+}
+```
+
+Usage: `gemvc my:custom`
+EOT;
+
+        file_put_contents($cliDir . '/README.md', $readmeContent);
+
+        // Create the main command executor
+        $mainScript = <<<'EOT'
 #!/usr/bin/env php
 <?php
-// Forward to the vendor binary
-\$paths = [
-    __DIR__ . '/../vendor/bin/gemvc',
-    __DIR__ . '/../vendor/gemvc/library/src/bin/gemvc'
+
+/**
+ * GEMVC Command Line Interface
+ * 
+ * This is the main entry point for all GEMVC commands, both framework and project specific.
+ * It handles command discovery and execution from both the framework and the project.
+ */
+
+// Determine if we're in a project context or framework context
+$possibleAutoloaders = [
+    __DIR__ . '/../vendor/autoload.php',              // Project installation
+    __DIR__ . '/../autoload.php',                     // Framework development
+    __DIR__ . '/../../autoload.php',                  // Alternative project path
+    __DIR__ . '/../../../../autoload.php'             // Composer vendor installation
 ];
 
-foreach (\$paths as \$path) {
-    if (file_exists(\$path)) {
-        require \$path;
-        exit;
+$autoloaded = false;
+foreach ($possibleAutoloaders as $autoloader) {
+    if (file_exists($autoloader)) {
+        require_once $autoloader;
+        $autoloaded = true;
+        break;
     }
 }
 
-echo "Error: Could not find GEMVC command in vendor directory.\n";
-exit(1);
+if (!$autoloaded) {
+    echo "\033[31mError: Could not find Composer's autoloader.\033[0m\n";
+    echo "Please ensure:\n";
+    echo "1. You have run 'composer install'\n";
+    echo "2. You are running this script from the project root\n";
+    echo "3. The vendor directory exists and is not corrupted\n";
+    exit(1);
+}
+
+// Set up command paths
+$paths = [
+    'framework' => [
+        'commands' => dirname(__DIR__) . '/src/CLI/commands',
+        'namespace' => 'Gemvc\\CLI\\Commands\\'
+    ],
+    'project' => [
+        'commands' => getcwd() . '/app/CLI/commands',
+        'namespace' => 'App\\CLI\\Commands\\'
+    ]
+];
+
+// Parse command line arguments
+$command = $argv[1] ?? '--help';
+$args = array_slice($argv, 2);
+
+// Convert command format (e.g., create:service -> CreateService)
+$commandParts = explode(':', $command);
+$className = '';
+foreach ($commandParts as $part) {
+    $className .= ucfirst(strtolower($part));
+}
+$className .= 'Command';
+
+// Try to find and execute the command
+$commandFound = false;
+
+foreach ($paths as $context) {
+    $commandClass = $context['namespace'] . $className;
+    
+    if (class_exists($commandClass)) {
+        try {
+            $commandObj = new $commandClass($args);
+            $commandObj->execute();
+            $commandFound = true;
+            break;
+        } catch (\Exception $e) {
+            echo "\033[31mError: {$e->getMessage()}\033[0m\n";
+            exit(1);
+        }
+    }
+}
+
+if (!$commandFound) {
+    if ($command === '--help' || $command === '-h') {
+        echo "GEMVC Framework CLI\n\n";
+        echo "Usage: gemvc <command> [options]\n\n";
+        echo "Available commands:\n";
+        echo "  init                          Initialize GEMVC project structure\n";
+        echo "  setup [apache|swoole]         Configure project for Apache or OpenSwoole\n";
+        echo "  create:service <ServiceName>  Create a new service\n";
+        echo "  create:model <ModelName>      Create a new model\n";
+        echo "  create:table <TableName>      Create a new table class\n";
+        echo "  --help                        Show this help message\n";
+    } else {
+        echo "\033[31mError: Command '$command' not found.\033[0m\n";
+        echo "Run 'gemvc --help' for available commands.\n";
+        exit(1);
+    }
+}
 EOT;
-        
-        if (!file_put_contents($wrapperPath, $wrapperContent)) {
-            echo "Warning: Failed to create local wrapper script: {$wrapperPath}\n";
+
+        $executablePath = $binDir . '/gemvc';
+        if (!file_put_contents($executablePath, $mainScript)) {
+            echo "Warning: Failed to create command executor: {$executablePath}\n";
             return;
         }
-        
-        // Make it executable
-        @chmod($wrapperPath, 0755);
-        echo "Created local command wrapper: {$wrapperPath}\n";
-        
+        chmod($executablePath, 0755);
+
         // Create Windows batch file
+        $batContent = "@echo off\nphp \"%~dp0gemvc\" %*";
         $batPath = $binDir . '/gemvc.bat';
-        $batContent = <<<EOT
-@echo off
-php "%~dp0gemvc" %*
-EOT;
-        
         if (file_put_contents($batPath, $batContent)) {
             echo "Created Windows batch file: {$batPath}\n";
         }
+
+        echo "Command structure set up successfully!\n";
+        echo "You can now use 'bin/gemvc' to run commands.\n";
+        echo "Add the bin directory to your PATH for global access.\n";
     }
     
     /**
