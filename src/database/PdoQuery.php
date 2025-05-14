@@ -30,7 +30,7 @@ class PdoQuery extends QueryExecuter
 
         try {
             if ($this->executeQuery($insertQuery, $arrayBindKeyValue)) {
-                $lastId = $this->lastInsertId();
+                $lastId = $this->getLastInsertedId();
                 return is_string($lastId) ? (int)$lastId : false;
             }
             return false;
@@ -56,7 +56,7 @@ class PdoQuery extends QueryExecuter
 
         try {
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
-                $affectedRows = $this->affectedRows();
+                $affectedRows = $this->getAffectedRows();
                 if ($affectedRows === 0) {
                     // This is not an error, just informational
                     $this->setError('No rows were updated. The data might be unchanged.');
@@ -127,7 +127,7 @@ class PdoQuery extends QueryExecuter
 
         try {
             if ($this->executeQuery($deleteQuery, $arrayBindKeyValue)) {
-                $affectedRows = $this->affectedRows();
+                $affectedRows = $this->getAffectedRows();
                 if ($affectedRows === 0) {
                     $this->setError('No rows were deleted. The specified record might not exist.');
                 }

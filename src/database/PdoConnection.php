@@ -12,12 +12,13 @@ class PdoConnection
     private bool $isConnected = false;
     private ?string $error = null;
     private ?PDO $db = null;
+    private ?DBConnection $connection = null;
     
     /**
      * Static connection pool to store and reuse database connections
      * Keyed by connection parameters hash
      * Each connection is stored with its creation timestamp
-     * @var array<string, array<int, array{connection: PDO, created_at: int}>>
+     * @var array<string, array<int, array{connection: DBConnection, created_at: int}>>
      */
     private static array $connectionPool = [];
     
@@ -217,61 +218,39 @@ class PdoConnection
         // Clean expired connections before getting one
         self::cleanExpiredConnections($this->poolKey);
         
-        // Try to get a connection from the pool for this connection parameter set
+        // Try to get a connection from the pool
         if (isset(self::$connectionPool[$this->poolKey]) && !empty(self::$connectionPool[$this->poolKey])) {
             $connectionData = array_pop(self::$connectionPool[$this->poolKey]);
-            $this->db = $connectionData['connection'];
-            self::$totalConnections--; // Reduce count as it's taken from the pool
+            $this->connection = $connectionData['connection'];
+            self::$totalConnections--;
             
-            // Test if the connection is still alive before returning it
+            // Test if the connection is still alive
             try {
-                $this->db->query('SELECT 1');
-                $this->isConnected = true;
-                $this->error = null;
-                self::$totalConnections++; // Increment count for this active connection
-                return $this->db;
+                // Test connection first
+                if ($this->connection->isConnected()) {
+                    $this->db = $this->connection->db();
+                    $this->isConnected = true;
+                    $this->error = null;
+                    self::$totalConnections++;
+                    return $this->db;
+                }
             } catch (\PDOException $e) {
-                // Connection is stale, create a new one
+                $this->error = $e->getMessage();
+                unset($this->connection);
                 unset($this->db);
             }
         }
         
-        // Create a new connection
-        return $this->createNewConnection();
+        // Create new connection
+        $this->connection = new DBConnection();
+        $this->db = $this->connection->connect();
+        if ($this->db) {
+            $this->isConnected = true;
+            self::$totalConnections++;
+        }
+        return $this->db;
     }
     
-    /**
-     * Create a new database connection using environment variables
-     * 
-     * @return PDO|null PDO connection or null on failure
-     */
-    private function createNewConnection(): PDO|null
-    {
-        $dsn = sprintf(
-            'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-            $_ENV['DB_HOST'],
-            $_ENV['DB_PORT'],
-            $_ENV['DB_NAME'],
-            $_ENV['DB_CHARSET']
-        );
-        
-        try {
-            $options = [
-                \PDO::ATTR_PERSISTENT => true, // Always use persistent connections
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            ];
-            
-            $this->db = new \PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options);
-            $this->isConnected = true;
-            $this->error = null;
-            self::$totalConnections++; // Increment total count
-            return $this->db;
-        } catch (\PDOException $e) {
-            $this->error = $e->getMessage();   
-        }
-        return null;
-    }
-
     /**
      * Get the current database connection
      * 
@@ -289,39 +268,35 @@ class PdoConnection
      */
     public function releaseConnection(): bool
     {
-        if (!$this->isConnected || $this->db === null) {
+        if (!$this->isConnected || $this->connection === null) {
             return false;
         }
         
-        // Check if the pool for this key exists, create if not
         if (!isset(self::$connectionPool[$this->poolKey])) {
             self::$connectionPool[$this->poolKey] = [];
         }
         
-        // Only add connection to the pool if we haven't reached the max size
         $maxPoolSize = self::getMaxPoolSize();
         if (count(self::$connectionPool[$this->poolKey]) < $maxPoolSize) {
-            // Test the connection before adding it back to the pool
             try {
                 $this->db->query('SELECT 1');
-                // Store connection with current timestamp
                 self::$connectionPool[$this->poolKey][] = [
-                    'connection' => $this->db,
+                    'connection' => $this->connection,
                     'created_at' => time()
                 ];
                 $this->db = null;
+                $this->connection = null;
                 $this->isConnected = false;
-                // Note: don't decrement totalConnections here as it's still in the pool
                 return true;
             } catch (\PDOException $e) {
-                // Connection is not healthy, don't add to pool
                 $this->error = "Connection not healthy: " . $e->getMessage();
             }
         }
         
-        // Connection was not added to pool, reduce count
+        $this->connection->disconnect();
         self::$totalConnections--;
         $this->db = null;
+        $this->connection = null;
         $this->isConnected = false;
         return false;
     }
