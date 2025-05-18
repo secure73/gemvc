@@ -188,7 +188,7 @@ class SwooleRequest
     {
         $cookieData = $this->incomingRequestObject->cookie ?? [];
         $sanitizedCookies = $this->sanitizeData($cookieData);
-        $this->request->cookies = json_encode($sanitizedCookies);
+        $this->request->cookies = $sanitizedCookies;
     }
 
     /**
