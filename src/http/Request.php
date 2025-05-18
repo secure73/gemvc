@@ -55,7 +55,7 @@ class Request
     private string $time;
     private float $start_exec;
 
-    public ?string $cookies;
+    public null|array $cookies;
 
     /**
      * Summary of _arr_filterBy
