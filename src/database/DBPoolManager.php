@@ -208,6 +208,21 @@ class DBPoolManager
         ];
     }
 
+    /**
+     * Get detailed connection pool status including configuration values
+     * This is an extension of getPoolStatus() with additional metrics
+     * keys: 'max_age', 'max_pool_size', 'cleanup_interval'
+     * @return array<string, mixed>
+     */
+    public function getDetailedPoolStatus(): array
+    {
+        return array_merge($this->getPoolStatus(), [
+            'max_age' => $this->getMaxConnectionAge(),
+            'max_pool_size' => $this->getMaxPoolSize(),
+            'cleanup_interval' => self::CLEANUP_INTERVAL_SECONDS
+        ]);
+    }
+
     public function getAvailableConnectionsCount(): int
     {
         return count(self::$availableConnections);

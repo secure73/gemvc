@@ -16,22 +16,11 @@ class QueryExecuter
     private string $_query = '';
     private ?PDO $db = null;
     private bool $isConnected = false;
-
-    private array $_cache = [];
-    private array $_cacheConfig = [];
-    private array $_cacheStats = ['hits' => 0, 'misses' => 0, 'sets' => 0];
     private array $_bindings = [];
 
     public function __construct()
     {
         $this->startExecutionTime = microtime(true);
-
-        $this->_cacheConfig = [
-            'enabled' => filter_var(getenv('DB_CACHE_ENABLED') ?: 'true', FILTER_VALIDATE_BOOLEAN),
-            'ttl' => (int)(getenv('DB_CACHE_TTL_SEC') ?: 3600),
-            'max_size' => (int)(getenv('DB_CACHE_MAX_QUERY_SIZE') ?: 1000),
-            'include_patterns' => ['SELECT']
-        ];
     }
 
     public function __destruct()
@@ -43,7 +32,7 @@ class QueryExecuter
     {
         if (!$this->db) {
             try {
-                $this->db = DBPoolManager::getInstance()->getConnection();  // Use DBPoolManager here
+                $this->db = DBPoolManager::getInstance()->getConnection();
                 $this->isConnected = $this->db instanceof PDO;
             } catch (\Throwable $e) {
                 $this->error = 'Failed to get DB connection: ' . $e->getMessage();
@@ -103,102 +92,12 @@ class QueryExecuter
         $this->_bindings[$param] = $value;
     }
 
-    private function generateCacheKey(string $query, array $params): string
-    {
-        $normalizedQuery = preg_replace('/\s+/', ' ', trim($query));
-        return md5(serialize(['query' => $normalizedQuery, 'params' => $params]));
-    }
-
-    private function shouldCache(string $query): bool
-    {
-        if (!$this->_cacheConfig['enabled']) return false;
-
-        foreach ($this->_cacheConfig['include_patterns'] as $pattern) {
-            if (stripos($query, $pattern) === 0) return true;
-        }
-
-        return false;
-    }
-
-    private function getFromCache(string $key): ?array
-    {
-        if (!isset($this->_cache[$key])) {
-            $this->_cacheStats['misses']++;
-            return null;
-        }
-
-        if (time() > $this->_cache[$key]['expires']) {
-            unset($this->_cache[$key]);
-            $this->_cacheStats['misses']++;
-            return null;
-        }
-
-        $this->_cacheStats['hits']++;
-        return $this->_cache[$key]['data'];
-    }
-
-    private function setCache(string $key, array $data): void
-    {
-        $this->_cache[$key] = [
-            'data' => $data,
-            'created' => time(),
-            'expires' => time() + $this->_cacheConfig['ttl']
-        ];
-
-        $this->_cacheStats['sets']++;
-
-        if (count($this->_cache) > $this->_cacheConfig['max_size']) {
-            $this->removeOldestCache();
-        }
-    }
-
-    private function removeOldestCache(): void
-    {
-        uasort($this->_cache, fn($a, $b) => $a['created'] - $b['created']);
-        $this->_cache = array_slice($this->_cache, ceil(count($this->_cache) * 0.9), null, true);
-    }
-
     private function getBindings(): array
     {
         return $this->_bindings;
     }
 
-    private function setCachedResult(array $cached): void
-    {
-        $this->stsment = null;
-        $this->affectedRows = count($cached);
-        $this->endExecutionTime = microtime(true);
-        $this->error = null;
-    }
-
-    private function getResult(): array
-    {
-        return $this->stsment?->fetchAll(PDO::FETCH_ASSOC) ?? [];
-    }
-
     public function execute(): bool
-    {
-        if ($this->shouldCache($this->_query)) {
-            $cacheKey = $this->generateCacheKey($this->_query, $this->getBindings());
-            if ($cached = $this->getFromCache($cacheKey)) {
-                $this->setCachedResult($cached);
-                return true;
-            }
-        }
-
-        $result = $this->executeWithoutCache();
-
-        if ($result && $this->shouldCache($this->_query)) {
-            $this->setCache(
-                $this->generateCacheKey($this->_query, $this->getBindings()),
-                $this->getResult()
-            );
-        }
-
-        return $result;
-    }
-
-    private function executeWithoutCache(): bool
     {
         if (!$this->ensureConnection()) {
             $this->error = 'Database connection not established';
@@ -288,15 +187,18 @@ class QueryExecuter
         }
     }
 
-    public function configureCache(array $config): void
-    {
-        $this->_cacheConfig = array_merge($this->_cacheConfig, $config);
-    }
-
     public function secure(): void
     {
+        if ($this->db) {
+            DBPoolManager::getInstance()->release($this->db);
+        }
         $this->db = null;
         $this->stsment = null;
         $this->isConnected = false;
+    }
+
+    public function releaseConnection(): void
+    {
+        $this->secure();
     }
 }
