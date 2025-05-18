@@ -324,7 +324,13 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
-    && docker-php-ext-install zip pdo_mysql
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-install \
+        zip \
+        pdo_mysql \
+        mbstring \
+        xml
 
 # Set working directory
 WORKDIR /var/www
@@ -340,6 +346,9 @@ COPY . .
 
 # Generate autoloader
 RUN composer dump-autoload --optimize
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www
 
 # Expose port
 EXPOSE 9501
@@ -361,25 +370,46 @@ services:
       - .:/var/www
     environment:
       - APP_ENV=development
+      - SWOOLE_MODE=true
+      - OPENSWOOLE_WORKERS=4
+      - OPEN_SWOOLE_ACCEPT_REQUEST=0.0.0.0
+      - OPEN_SWOOLE_ACCPT_PORT=9501
       - DB_HOST=db
       - DB_PORT=3306
-      - DB_NAME=gemvc
+      - DB_NAME=gemvc_db
       - DB_USER=gemvc
       - DB_PASSWORD=secret
+      - DB_CHARSET=utf8mb4
+      - MIN_DB_CONNECTION_POOL=2
+      - MAX_DB_CONNECTION_POOL=10
+      - DB_CONNECTION_MAX_AGE=3600
+      - TOKEN_SECRET=your_secret
+      - TOKEN_ISSUER=your_api
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "if(!@fsockopen('localhost', 9501)) exit(1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   db:
     image: mysql:8.0
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_DATABASE=gemvc
+      - MYSQL_DATABASE=gemvc_db
       - MYSQL_USER=gemvc
       - MYSQL_PASSWORD=secret
       - MYSQL_ROOT_PASSWORD=root_secret
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   mysql_data:
