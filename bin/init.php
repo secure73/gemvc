@@ -884,6 +884,207 @@ EOT;
             }
         }
 
+        // Create helper functions
+        $helpers = <<<'EOT'
+<?php
+
+namespace Server\Utils;
+
+/**
+ * Utility functions for the Swoole server
+ */
+
+/**
+ * Preload application files into memory for better performance
+ * 
+ * @return int Number of files preloaded
+ */
+function preloadFiles(): int {
+    echo "Preloading application files...\n";
+    $directories = [
+        'app/api',
+        'app/controller',
+        'app/model',
+        'app/core',
+        'app/http',
+        'app/table',
+        'vendor/gemvc'
+    ];
+    
+    $count = 0;
+    foreach ($directories as $dir) {
+        if (!is_dir($dir)) {
+            echo "Directory not found: $dir\n";
+            continue;
+        }
+        
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        
+        foreach ($iterator as $file) {
+            if ($file->getExtension() === 'php') {
+                try {
+                    require_once $file->getPathname();
+                    $count++;
+                } catch (\Throwable $e) {
+                    echo "Error loading file {$file->getPathname()}: {$e->getMessage()}\n";
+                }
+            }
+        }
+    }
+    
+    echo "Preloaded $count PHP files\n";
+    return $count;
+}
+EOT;
+
+        file_put_contents($serverDir . '/utils/helpers.php', $helpers);
+        echo "Created server/utils/helpers.php\n";
+
+        // Create worker handlers
+        $workerHandlers = <<<'EOT'
+<?php
+
+namespace Server\Handlers;
+
+/**
+ * Register worker-related event handlers
+ * 
+ * @param mixed $server The Swoole server instance
+ * @param bool $isDev Whether in development mode
+ * @param string $timerClass The timer class to use
+ * @return void
+ */
+function registerWorkerEvents($server, bool $isDev, $timerClass): void
+{
+    // Store file hashes for hot reload
+    $fileHashes = [];
+
+    // Enable hot reload in development mode
+    if ($isDev) {
+        // Setup a file watcher that runs every second
+        $timerClass::tick(1000, function() use (&$fileHashes, $server) {
+            $dirs = ['app/api', 'app/controller', 'app/model', 'app/core', 'app/http', 'app/table'];
+            $changed = false;
+            
+            foreach ($dirs as $dir) {
+                if (!is_dir($dir)) continue;
+                
+                $files = glob("$dir/*.php");
+                foreach ($files as $file) {
+                    $currentHash = md5_file($file);
+                    if (!isset($fileHashes[$file]) || $fileHashes[$file] !== $currentHash) {
+                        echo "[Hot Reload] File changed: $file\n";
+                        $fileHashes[$file] = $currentHash;
+                        $changed = true;
+                    }
+                }
+            }
+            
+            if ($changed) {
+                echo "[Hot Reload] Reloading workers...\n";
+                $server->reload(); // Reload all worker processes
+            }
+        });
+    }
+
+    // Worker start event
+    $server->on('workerStart', function($server, $workerId) use ($isDev) {
+        echo "Worker #$workerId started\n";
+        
+        // Clear opcache on worker start in development mode (if enabled)
+        if ($isDev && function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+    });
+
+    // Worker stop event (graceful shutdown)
+    $server->on('workerStop', function($server, $workerId) {
+        echo "Worker #$workerId stopping...\n";
+        // Perform any needed cleanup here
+    });
+}
+EOT;
+
+        file_put_contents($serverDir . '/handlers/worker.php', $workerHandlers);
+        echo "Created server/handlers/worker.php\n";
+
+        // Create request handler
+        $requestHandler = <<<'EOT'
+<?php
+
+namespace Server\Handlers;
+
+use App\Core\SwooleBootstrap;
+use Gemvc\Http\SwooleRequest;
+use Gemvc\Http\NoCors;
+
+/**
+ * Register the main request handler
+ * 
+ * @param mixed $server The Swoole server instance
+ * @return void
+ */
+function registerRequestHandler($server): void
+{
+    $server->on('request', function ($request, $response) {
+        // Block direct access to app directory
+        $path = parse_url($request->server['request_uri'], PHP_URL_PATH);
+        if (preg_match('#^/app/#', $path)) {
+            $response->status(403);
+            $response->end(json_encode([
+                'response_code' => 403,
+                'message' => 'Access Forbidden',
+                'data' => null
+            ]));
+            return;
+        }
+        
+        try {
+            // Apply CORS headers
+            NoCors::NoCors();
+            
+            // Create GEMVC request from Swoole request
+            $webserver = new SwooleRequest($request);
+            
+            // Process the request
+            $bootstrap = new SwooleBootstrap($webserver->request);
+            $jsonResponse = $bootstrap->processRequest();
+            
+            // Capture the response using output buffering
+            ob_start();
+            $jsonResponse->show();
+            $jsonContent = ob_get_clean();
+            
+            // Set content type header
+            $response->header('Content-Type', 'application/json');
+            
+            // Send the JSON response
+            $response->end($jsonContent);
+            
+        } catch (\Throwable $e) {
+            // Handle any exceptions
+            $errorResponse = [
+                'response_code' => 500,
+                'message' => 'Internal Server Error',
+                'service_message' => $e->getMessage(),
+                'data' => null
+            ];
+            
+            // Set content type header
+            $response->header('Content-Type', 'application/json');
+            
+            // Send the error response
+            $response->end(json_encode($errorResponse));
+        }
+    });
+}
+EOT;
+
+        file_put_contents($serverDir . '/handlers/request.php', $requestHandler);
+        echo "Created server/handlers/request.php\n";
+
         // Create server configuration file
         $serverConfig = <<<'EOT'
 <?php
@@ -1075,7 +1276,7 @@ EOT;
         file_put_contents($this->basePath . '/index.php', $simpleIndex);
         echo "Created simplified index.php\n";
 
-        // Rest of the existing code...
+        echo "Modular Swoole structure created successfully!\n";
     }
     
     protected function determineProjectRoot(): string
