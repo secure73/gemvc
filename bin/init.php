@@ -1042,8 +1042,17 @@ function registerRequestHandler($server): void
         }
         
         try {
-            // Apply CORS headers using the new swoole method
-            NoCors::swoole($response);
+            // Handle CORS headers
+            $response->header('Access-Control-Allow-Origin', '*');
+            $response->header('Access-Control-Allow-Headers', '*');
+            $response->header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+            $response->header('Content-Type', 'application/json');
+
+            // Handle preflight requests
+            if ($request->server['request_method'] === 'OPTIONS') {
+                $response->end();
+                return;
+            }
             
             // Create GEMVC request from Swoole request
             $webserver = new SwooleRequest($request);
@@ -1057,9 +1066,6 @@ function registerRequestHandler($server): void
             $jsonResponse->show();
             $jsonContent = ob_get_clean();
             
-            // Set content type header
-            $response->header('Content-Type', 'application/json');
-            
             // Send the JSON response
             $response->end($jsonContent);
             
@@ -1071,9 +1077,6 @@ function registerRequestHandler($server): void
                 'service_message' => $e->getMessage(),
                 'data' => null
             ];
-            
-            // Set content type header
-            $response->header('Content-Type', 'application/json');
             
             // Send the error response
             $response->end(json_encode($errorResponse));
