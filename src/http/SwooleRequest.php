@@ -187,8 +187,17 @@ class SwooleRequest
     private function setCookies(): void
     {
         $cookieData = $this->incomingRequestObject->cookie ?? [];
-        $sanitizedCookies = $this->sanitizeData($cookieData);
-        $this->request->cookies = !empty($sanitizedCookies) ? json_encode($sanitizedCookies) : null;
+        if (empty($cookieData)) {
+            $this->request->cookies = null;
+            return;
+        }
+        
+        // Convert cookie array to string format like PHP's $_COOKIE
+        $cookieString = '';
+        foreach ($cookieData as $name => $value) {
+            $cookieString .= $name . '=' . urlencode($value) . '; ';
+        }
+        $this->request->cookies = rtrim($cookieString, '; ');
     }
 
     /**
