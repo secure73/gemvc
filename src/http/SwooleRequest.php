@@ -82,7 +82,7 @@ class SwooleRequest
         
         $this->setFiles();
         $this->setGet();
-        $this->setCookies();
+        //$this->setCookies();
     }
 
     /**
