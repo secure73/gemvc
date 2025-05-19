@@ -1042,8 +1042,8 @@ function registerRequestHandler($server): void
         }
         
         try {
-            // Apply CORS headers
-            NoCors::NoCors();
+            // Apply CORS headers using the new swoole method
+            NoCors::swoole($response);
             
             // Create GEMVC request from Swoole request
             $webserver = new SwooleRequest($request);

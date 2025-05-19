@@ -6,7 +6,8 @@ use Gemvc\Http\ApacheRequest;
 use Gemvc\Http\NoCors;
 use Symfony\Component\Dotenv\Dotenv;
 
-NoCors::NoCors();
+// Apply CORS headers using the new apache method
+NoCors::apache();
 
 $dotenv = new Dotenv();
 $dotenv->load(__DIR__.'/app/.env');

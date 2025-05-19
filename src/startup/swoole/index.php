@@ -182,15 +182,15 @@ $server->on('request', function ($request, $response) {
     }
     
     try {
-        // Apply CORS headers
-        NoCors::NoCors();
-        
         // Create GEMVC request from Swoole request
         $webserver = new SwooleRequest($request);
         
         // Process the request
         $bootstrap = new SwooleBootstrap($webserver->request);
         $jsonResponse = $bootstrap->processRequest();
+        
+        // Apply CORS headers
+        NoCors::swoole($response);
         
         // Capture the response using output buffering
         ob_start();
