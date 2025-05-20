@@ -34,31 +34,40 @@ composer require gemvc/library
 After installing the library, initialize your project with:
 
 ```bash
-# For Apache/Nginx
-php vendor/gemvc/library/bin/init.php apache
+# Initialize a new GEMVC project
+gemvc init
 
-# For OpenSwoole
-php vendor/gemvc/library/bin/init.php swoole
+# Configure for your platform
+gemvc setup apache    # For Apache/Nginx
+# or
+gemvc setup swoole   # For OpenSwoole
 ```
 
-This script will:
+This will:
 - Create the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
 - Generate a sample `.env` file with default configuration
 - Copy appropriate startup files to your project root based on platform choice
 - Set up local command wrappers
 
-> Note: If the above command doesn't work, check if the path exists. The script may be located at `vendor/gemvc/library/init.php` depending on your installation method.
-
 ### Generate Complete API Services
 
-GEMVC includes a powerful CLI command for generating complete API services with a single command:
+GEMVC includes a powerful CLI tool for managing your project. Here are some common commands:
 
 ```bash
+# Show all available commands
+gemvc --help
+
 # Create a new service (e.g., User)
-php vendor/bin/gemvc create:service User
+gemvc create:service User
+
+# Create a new model
+gemvc create:model User
+
+# Create a new table
+gemvc create:table User
 ```
 
-This command automatically generates:
+Each command automatically generates the necessary files with proper structure and boilerplate code:
 
 - **API Service** (`app/api/User.php`) - Handling requests with validation and routing
 - **Controller** (`app/controller/UserController.php`) - Processing business logic

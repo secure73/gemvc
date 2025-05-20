@@ -34,6 +34,33 @@ if (!$autoloaded) {
     exit(1);
 }
 
+// Basic environment checks for initialization
+function checkEnvironment() {
+    // PHP version check
+    if (version_compare(PHP_VERSION, '8.0.0', '<')) {
+        echo "\033[31mError: GEMVC requires PHP 8.0 or higher.\033[0m\n";
+        echo "Current PHP version: " . PHP_VERSION . "\n";
+        exit(1);
+    }
+
+    // Required extensions
+    $requiredExtensions = ['json', 'pdo', 'mbstring'];
+    $missingExtensions = [];
+    foreach ($requiredExtensions as $ext) {
+        if (!extension_loaded($ext)) {
+            $missingExtensions[] = $ext;
+        }
+    }
+    
+    if (!empty($missingExtensions)) {
+        echo "\033[31mError: Missing required PHP extensions:\033[0m\n";
+        foreach ($missingExtensions as $ext) {
+            echo "- $ext\n";
+        }
+        exit(1);
+    }
+}
+
 // Set up command paths
 $paths = [
     'framework' => [
@@ -49,6 +76,21 @@ $paths = [
 // Parse command line arguments
 $command = $argv[1] ?? '--help';
 $args = array_slice($argv, 2);
+
+// Special handling for initialization commands
+if ($command === 'init' || $command === 'setup') {
+    checkEnvironment();
+    
+    // For setup command, validate platform type
+    if ($command === 'setup' && !empty($args)) {
+        $platform = strtolower($args[0]);
+        if (!in_array($platform, ['apache', 'swoole'])) {
+            echo "\033[31mError: Unknown platform type: {$platform}\033[0m\n";
+            echo "Usage: gemvc setup [apache|swoole]\n";
+            exit(1);
+        }
+    }
+}
 
 // Convert command format (e.g., create:service -> CreateService)
 $commandParts = explode(':', $command);
@@ -78,15 +120,18 @@ foreach ($paths as $context) {
 
 if (!$commandFound) {
     if ($command === '--help' || $command === '-h') {
-        echo "GEMVC Framework CLI\n\n";
+        echo "\033[1mGEMVC Framework CLI\033[0m\n\n";
         echo "Usage: gemvc <command> [options]\n\n";
-        echo "Available commands:\n";
-        echo "  init                          Initialize GEMVC project structure\n";
-        echo "  setup [apache|swoole]         Configure project for Apache or OpenSwoole\n";
-        echo "  create:service <ServiceName>  Create a new service\n";
-        echo "  create:model <ModelName>      Create a new model\n";
-        echo "  create:table <TableName>      Create a new table class\n";
-        echo "  --help                        Show this help message\n";
+        echo "\033[1mProject Initialization:\033[0m\n";
+        echo "  \033[32minit\033[0m                          Initialize a new GEMVC project\n";
+        echo "  \033[32msetup [apache|swoole]\033[0m        Configure project for specific platform\n\n";
+        echo "\033[1mCode Generation:\033[0m\n";
+        echo "  \033[32mcreate:service\033[0m <ServiceName> Create a new service\n";
+        echo "  \033[32mcreate:model\033[0m <ModelName>     Create a new model\n";
+        echo "  \033[32mcreate:table\033[0m <TableName>     Create a new table class\n\n";
+        echo "\033[1mHelp & Information:\033[0m\n";
+        echo "  \033[32m--help\033[0m                       Show this help message\n";
+        echo "  \033[32m--version\033[0m                    Show GEMVC version\n";
     } else {
         echo "\033[31mError: Command '$command' not found.\033[0m\n";
         echo "Run 'gemvc --help' for available commands.\n";

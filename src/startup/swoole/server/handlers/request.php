@@ -4,7 +4,6 @@ namespace Server\Handlers;
 
 use App\Core\SwooleBootstrap;
 use Gemvc\Http\SwooleRequest;
-use Gemvc\Http\NoCors;
 
 /**
  * Register the main request handler
