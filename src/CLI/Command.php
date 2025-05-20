@@ -56,14 +56,16 @@ abstract class Command
         exit(1);
     }
 
-    protected function success(string $message): void
+    protected function success(string $message, bool $shouldExit = true): void
     {
         if ($this->supportsAnsiColors()) {
             echo "\033[32m{$message}\033[0m\n";
         } else {
             echo "Success: {$message}\n";
         }
-        exit(0);
+        if ($shouldExit) {
+            exit(0);
+        }
     }
 
     protected function info(string $message): void
