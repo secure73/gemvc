@@ -38,9 +38,16 @@ class InitProject extends Command
             $this->createGlobalCommand();
             
             $this->success("GEMVC project initialized successfully!");
+
+            // Windows PATH instructions (if on Windows)
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $this->write("\nFor global access on Windows:\n", 'blue');
+                $this->write("  1. Add this directory to your PATH: " . realpath($this->basePath . '/bin') . "\n", 'white');
+                $this->write("  2. Then you can run 'gemvc' from any location\n\n", 'white');
+            }
             
             // Add composer update reminder with development and production options
-            $this->write("\n\033[1;33m╭─ Next Steps ───────────────────────────────────────────────╮\033[0m\n", 'yellow');
+            $this->write("\033[1;33m╭─ Next Steps ───────────────────────────────────────────────╮\033[0m\n", 'yellow');
             
             // Development Environment
             $this->write("\033[1;33m│\033[0m \033[1;94mDevelopment Environment:\033[0m                                \033[1;33m│\033[0m\n", 'white');
