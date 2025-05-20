@@ -38,6 +38,25 @@ class InitProject extends Command
             $this->createGlobalCommand();
             
             $this->success("GEMVC project initialized successfully!");
+            
+            // Add composer update reminder with development and production options
+            $this->write("\n\033[1;33m╭─ Next Steps ───────────────────────────────────────────────╮\033[0m\n", 'yellow');
+            
+            // Development Environment
+            $this->write("\033[1;33m│\033[0m \033[1;94mDevelopment Environment:\033[0m                                \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m  \033[1;36m$ \033[1;95mcomposer update\033[0m                                      \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m    \033[90m# Includes development dependencies for testing/debugging\033[0m \033[1;33m│\033[0m\n", 'white');
+            
+            // Separator
+            $this->write("\033[1;33m│\033[0m                                                           \033[1;33m│\033[0m\n", 'white');
+            
+            // Production Environment
+            $this->write("\033[1;33m│\033[0m \033[1;91mProduction Environment:\033[0m                                 \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m  \033[1;36m$ \033[1;95mcomposer update \033[1;93m--no-dev \033[1;92m--prefer-dist \033[1;96m--optimize-autoloader\033[0m \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m    \033[90m# Optimized installation without development packages\033[0m    \033[1;33m│\033[0m\n", 'white');
+            
+            $this->write("\033[1;33m╰───────────────────────────────────────────────────────╯\033[0m\n\n", 'yellow');
+
         } catch (\Exception $e) {
             $this->error($e->getMessage());
         }
@@ -191,11 +210,11 @@ EOT;
         
         // If we have multiple templates and we're in interactive mode, let the user choose
         if (count($templateDirs) > 1 && !$this->nonInteractive) {
-            $this->info("Multiple templates available. Please choose one:");
+            $this->write("\n\033[1;33mAvailable Templates:\033[0m\n", 'yellow');  // Bright yellow header
             foreach ($templateDirs as $index => $dir) {
-                $this->info("[{$index}] {$dir}");
+                echo "  [\033[32m{$index}\033[0m] \033[1m{$dir}\033[0m\n";  // Green number, bold template name
             }
-            echo "Enter choice (number): ";
+            echo "\n\033[1;36mEnter choice (number):\033[0m ";  // Bright cyan prompt
             $handle = fopen("php://stdin", "r");
             $choice = trim(fgets($handle));
             fclose($handle);
@@ -207,7 +226,7 @@ EOT;
                 $this->copyTemplateFiles($templateDir);
                 return;
             } else {
-                throw new \RuntimeException("Invalid template choice");
+                throw new \RuntimeException("\033[31mInvalid template choice\033[0m");
             }
         }
         
