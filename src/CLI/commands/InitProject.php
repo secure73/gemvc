@@ -40,17 +40,17 @@ class InitProject extends Command
             $this->write("\033[1;33m╭─ Next Steps ───────────────────────────────────────────────╮\033[0m\n", 'yellow');
             
             // Development Environment
-            $this->write("\033[1;33m│\033[0m \033[1;94mDevelopment Environment:\033[0m                                \033[1;33m│\033[0m\n", 'white');
-            $this->write("\033[1;33m│\033[0m  \033[1;36m$ \033[1;95mcomposer update\033[0m                                      \033[1;33m│\033[0m\n", 'white');
-            $this->write("\033[1;33m│\033[0m    \033[90m# Includes development dependencies for testing/debugging\033[0m \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m \033[1;94mDevelopment Environment:\033[0m                                  \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m  \033[1;36m$ \033[1;95mcomposer update\033[0m                                        \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m    \033[90m# Includes development dependencies for testing/debugging\033[0m   \033[1;33m│\033[0m\n", 'white');
             
             // Separator
-            $this->write("\033[1;33m│\033[0m                                                           \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m                                                             \033[1;33m│\033[0m\n", 'white');
             
             // Production Environment
-            $this->write("\033[1;33m│\033[0m \033[1;91mProduction Environment:\033[0m                                 \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m \033[1;91mProduction Environment:\033[0m                                   \033[1;33m│\033[0m\n", 'white');
             $this->write("\033[1;33m│\033[0m  \033[1;36m$ \033[1;95mcomposer update \033[1;93m--no-dev \033[1;92m--prefer-dist \033[1;96m--optimize-autoloader\033[0m \033[1;33m│\033[0m\n", 'white');
-            $this->write("\033[1;33m│\033[0m    \033[90m# Optimized installation without development packages\033[0m    \033[1;33m│\033[0m\n", 'white');
+            $this->write("\033[1;33m│\033[0m    \033[90m# Optimized installation without development packages\033[0m      \033[1;33m│\033[0m\n", 'white');
             
             $this->write("\033[1;33m╰───────────────────────────────────────────────────────╯\033[0m\n\n", 'yellow');
 
