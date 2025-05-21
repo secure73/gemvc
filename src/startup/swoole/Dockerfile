@@ -1,9 +1,9 @@
 # Use our pre-built base image
-FROM secure73/gemvc-swoole-base-alpine:4.0
+FROM secure73/gemvc-swoole-base-alpine:latest
 
 # Set labels
 LABEL maintainer="GEMVC Team" \
-      version="4.0-alpine" \
+      version="4.2-alpine" \
       description="Official GEMVC Framework Swoole Alpine Image"
 
 
