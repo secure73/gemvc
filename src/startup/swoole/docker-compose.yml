@@ -1,5 +1,5 @@
 version: '3'
-
+#you can uncomment the db service if you want to use a database
 services:
   openswoole:
     build:
@@ -11,12 +11,12 @@ services:
       - ./app:/var/www/html/app
     environment:
       - PHP_MEMORY_LIMIT=256M
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=gemvc_db
-      - DB_CHARSET=utf8
-      - DB_USER=root
-      - DB_PASSWORD=rootpassword
+      # - DB_HOST=db
+      # - DB_PORT=3306
+      # - DB_NAME=gemvc_db
+      # - DB_CHARSET=utf8
+      # - DB_USER=root
+      # - DB_PASSWORD=rootpassword
       - TOKEN_SECRET=your_token_secret
       - TOKEN_ISSUER=gemvc_api
       - REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
@@ -28,29 +28,29 @@ services:
     restart: unless-stopped
     networks:
       - backend-network
-    depends_on:
-      - db
+    # depends_on:
+    #   - db
 
-  db:
-    image: mysql:8.0
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: gemvc_db
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - backend-network
+  # db:
+  #   image: mysql:8.0
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #     MYSQL_DATABASE: gemvc_db
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend-network
 
 volumes:
-  mysql-data:
+  # mysql-data:
 
 networks:
   backend-network:
