@@ -9,22 +9,70 @@ class RedisManager
 {
     private static ?RedisManager $instance = null;
     private ?Redis $redis = null;
-    private array $config = [];
     private bool $isConnected = false;
+    private string $_host;
+    private int $_port;
+    private float $_timeout;
+    private string $_password;
+    private int $_database;
+    private string $_prefix;
+    private bool $_persistent;
+    private float $_read_timeout;
+    private ?string $_error = null;
 
     private function __construct()
     {
-        $this->config = [
-            'host' => $this->getEnvString('REDIS_HOST', '127.0.0.1'),
-            'port' => $this->getEnvInt('REDIS_PORT', 6379),
-            'timeout' => $this->getEnvFloat('REDIS_TIMEOUT', 0.0),
-            'password' => $this->getEnvString('REDIS_PASSWORD'),
-            'database' => $this->getEnvInt('REDIS_DATABASE', 0),
-            'prefix' => $this->getEnvString('REDIS_PREFIX', 'gemvc:'),
-            'persistent' => $this->getEnvBool('REDIS_PERSISTENT', false),
-            'read_timeout' => $this->getEnvFloat('REDIS_READ_TIMEOUT', 0.0),
-        ];
+        $this->_error = null;
+        $this->_host = $this->getHost();
+        $this->_port = $this->getPort();
+        $this->_timeout = $this->getTimeout();
+        $this->_password = $this->getPassword();
+        $this->_database = $this->getDatabase();
+        $this->_prefix = $this->getPrefix();
+        $this->_persistent = $this->getPersistent();
+        $this->_read_timeout = $this->getReadTimeout();
     }
+
+    private function getHost(): string
+    {
+        return $this->getEnvString('REDIS_HOST', '127.0.0.1');
+    }
+
+    private function getPort(): int
+    {
+        return $this->getEnvInt('REDIS_PORT', 6379);
+    }
+
+    private function getTimeout(): float
+    {
+        return $this->getEnvFloat('REDIS_TIMEOUT', 0.0);
+    }
+
+    private function getPassword(): string  
+    {
+        return $this->getEnvString('REDIS_PASSWORD');
+    }
+
+    private function getDatabase(): int
+    {       
+        return $this->getEnvInt('REDIS_DATABASE', 0);
+    }
+
+    private function getPrefix(): string
+    {
+        return $this->getEnvString('REDIS_PREFIX', 'gemvc:');
+    }   
+
+    private function getPersistent(): bool
+    {
+        return $this->getEnvBool('REDIS_PERSISTENT', false);
+    }   
+
+    private function getReadTimeout(): float
+    {
+        return $this->getEnvFloat('REDIS_READ_TIMEOUT', 0.0);
+    }
+    
 
     private function getEnvString(string $key, ?string $default = null): ?string
     {
@@ -46,6 +94,13 @@ class RedisManager
         return (bool)($_ENV[$key] ?? $default);
     }
 
+    /**
+     * Get the singleton instance of RedisManager
+     * 
+     * @return self
+     * @example
+     * $redis = RedisManager::getInstance();
+     */
     public static function getInstance(): self
     {
         if (self::$instance === null) {
@@ -54,58 +109,74 @@ class RedisManager
         return self::$instance;
     }
 
-    public function connect(): void
+    /**
+     * Connect to Redis server
+     * 
+     * @return void
+     * @throws RedisConnectionException if connection fails
+     * @example
+     * $redis = RedisManager::getInstance();
+     * $redis->connect();
+     */
+    public function connect(): bool
     {
         if ($this->isConnected) {
-            return;
+            return true;
         }
 
         try {
             $this->redis = new Redis();
             
-            if ($this->config['persistent']) {
+            if ($this->_persistent) {
                 $this->redis->pconnect(
-                    $this->config['host'],
-                    $this->config['port'],
-                    $this->config['timeout']
+                    $this->_host,
+                    $this->_port,
+                    $this->_timeout
                 );
             } else {
                 $this->redis->connect(
-                    $this->config['host'],
-                    $this->config['port'],
-                    $this->config['timeout']
+                    $this->_host,
+                    $this->_port,
+                    $this->_timeout
                 );
             }
 
-            if ($this->config['password']) {
-                $this->redis->auth($this->config['password']);
+            if ($this->_password) {
+                $this->redis->auth($this->_password);
             }
 
-            if ($this->config['database'] > 0) {
-                $this->redis->select($this->config['database']);
+            if ($this->_database > 0) {
+                $this->redis->select($this->_database);
             }
 
-            $this->redis->setOption(Redis::OPT_PREFIX, $this->config['prefix']);
-            $this->redis->setOption(Redis::OPT_READ_TIMEOUT, $this->config['read_timeout']);
+            $this->redis->setOption(Redis::OPT_PREFIX, $this->_prefix);
+            $this->redis->setOption(Redis::OPT_READ_TIMEOUT, $this->_read_timeout);
 
             $this->isConnected = true;
+            return true;
         } catch (\Exception $e) {
-            throw new RedisConnectionException(
-                "Failed to connect to Redis: " . $e->getMessage(),
-                $e->getCode(),
-                $e
-            );
+            $this->_error = $e->getMessage();
+            return false;   
         }
     }
 
     public function disconnect(): void
     {
+
         if ($this->redis && $this->isConnected) {
             $this->redis->close();
             $this->isConnected = false;
         }
     }
 
+    /**
+     * Get the Redis instance. Will auto-connect if not connected.
+     * 
+     * @return Redis
+     * @example
+     * $redis = RedisManager::getInstance();
+     * $redisInstance = $redis->getRedis();
+     */
     public function getRedis(): Redis
     {
         if (!$this->isConnected) {
@@ -119,17 +190,22 @@ class RedisManager
         return $this->isConnected;
     }
 
-    public function getConfig(): array
+    public function getError(): ?string
     {
-        return $this->config;
+        return $this->_error;
     }
 
-    public function setConfig(array $config): void
-    {
-        $this->config = array_merge($this->config, $config);
-    }
-
-    // Basic Redis Operations
+    /**
+     * Set a value in Redis with optional TTL
+     * 
+     * @param string $key The key to set
+     * @param mixed $value The value to store
+     * @param int|null $ttl Time to live in seconds (optional)
+     * @return bool
+     * @example
+     * $redis->set('user:1', 'John', 3600); // Expires in 1 hour
+     * $redis->set('config', 'value'); // No expiration
+     */
     public function set(string $key, $value, ?int $ttl = null): bool
     {
         if ($ttl !== null) {
@@ -138,6 +214,14 @@ class RedisManager
         return $this->getRedis()->set($key, $value);
     }
 
+    /**
+     * Get a value from Redis
+     * 
+     * @param string $key The key to retrieve
+     * @return mixed The stored value or null if not found
+     * @example
+     * $value = $redis->get('user:1');
+     */
     public function get(string $key)
     {
         return $this->getRedis()->get($key);
@@ -163,7 +247,17 @@ class RedisManager
         return $this->getRedis()->flushDB();
     }
 
-    // Hash Operations
+    /**
+     * Store multiple fields in a Redis hash
+     * 
+     * @param string $key The hash key
+     * @param string $field The field name
+     * @param mixed $value The value to store
+     * @return int
+     * @example
+     * $redis->hSet('user:1', 'name', 'John');
+     * $redis->hSet('user:1', 'email', 'john@example.com');
+     */
     public function hSet(string $key, string $field, $value): int
     {
         return $this->getRedis()->hSet($key, $field, $value);
@@ -174,6 +268,15 @@ class RedisManager
         return $this->getRedis()->hGet($key, $field);
     }
 
+    /**
+     * Get all fields and values from a Redis hash
+     * 
+     * @param string $key The hash key
+     * @return array
+     * @example
+     * $userData = $redis->hGetAll('user:1');
+     * // Returns: ['name' => 'John', 'email' => 'john@example.com']
+     */
     public function hGetAll(string $key): array
     {
         return $this->getRedis()->hGetAll($key);
@@ -190,7 +293,7 @@ class RedisManager
         return $this->getRedis()->rPush($key, $value);
     }
 
-    public function lPop(string $key)
+    public function lPop(string $key)   
     {
         return $this->getRedis()->lPop($key);
     }
@@ -200,12 +303,30 @@ class RedisManager
         return $this->getRedis()->rPop($key);
     }
 
-    // Set Operations
+    /**
+     * Add a member to a Redis set
+     * 
+     * @param string $key The set key
+     * @param mixed $value The value to add
+     * @return int
+     * @example
+     * $redis->sAdd('tags', 'php');
+     * $redis->sAdd('tags', 'redis');
+     */
     public function sAdd(string $key, $value): int
     {
         return $this->getRedis()->sAdd($key, $value);
     }
 
+    /**
+     * Get all members of a Redis set
+     * 
+     * @param string $key The set key
+     * @return array
+     * @example
+     * $tags = $redis->sMembers('tags');
+     * // Returns: ['php', 'redis']
+     */
     public function sMembers(string $key): array
     {
         return $this->getRedis()->sMembers($key);
@@ -227,7 +348,15 @@ class RedisManager
         return $this->getRedis()->zRange($key, $start, $end, $withScores);
     }
 
-    // Pub/Sub Operations
+    /**
+     * Publish a message to a Redis channel
+     * 
+     * @param string $channel The channel name
+     * @param string $message The message to publish
+     * @return int
+     * @example
+     * $redis->publish('news', 'Hello World');
+     */
     public function publish(string $channel, string $message): int
     {
         return $this->getRedis()->publish($channel, $message);
@@ -238,7 +367,16 @@ class RedisManager
         $this->getRedis()->subscribe($channels, $callback);
     }
 
-    // Pipeline Operations
+    /**
+     * Start a Redis pipeline for multiple operations
+     * 
+     * @return \Redis
+     * @example
+     * $pipe = $redis->pipeline();
+     * $pipe->set('key1', 'value1');
+     * $pipe->set('key2', 'value2');
+     * $pipe->execute();
+     */
     public function pipeline(): \Redis
     {
         return $this->getRedis()->multi(Redis::PIPELINE);

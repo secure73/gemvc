@@ -809,6 +809,45 @@ return (new JsonResponse())->success($data)->show();
 - **Transaction Support**: All operations wrapped in transactions
 - **Column Constraints**: Support for NOT NULL, DEFAULT values, and CHECK constraints
 
+### 🔄 Redis Features
+- **Singleton Pattern**: Efficient Redis connection management
+- **Environment Configuration**: Flexible Redis settings via environment variables
+- **Persistent Connections**: Support for both regular and persistent connections
+- **Automatic Prefixing**: Configurable key prefixing for multi-tenant applications
+- **Type-Safe Operations**: Comprehensive Redis data type support:
+  - Basic: set, get, delete, exists, ttl
+  - Hash: hSet, hGet, hGetAll
+  - List: lPush, rPush, lPop, rPop
+  - Set: sAdd, sMembers, sIsMember
+  - Sorted Set: zAdd, zRange
+  - Pub/Sub: publish, subscribe
+- **Pipeline Support**: Efficient batch operations
+- **Error Handling**: Robust connection and operation error management
+
+Example usage:
+```php
+// Get Redis instance
+$redis = RedisManager::getInstance();
+
+// Basic operations
+$redis->set('key', 'value', 3600);     // Set with 1-hour TTL
+$value = $redis->get('key');           // Get value
+
+// Hash operations
+$redis->hSet('user:1', 'name', 'John');
+$userData = $redis->hGetAll('user:1');
+
+// Set operations
+$redis->sAdd('tags', 'php');
+$tags = $redis->sMembers('tags');
+
+// Pipeline operations
+$pipe = $redis->pipeline();
+$pipe->set('key1', 'value1');
+$pipe->set('key2', 'value2');
+$pipe->execute();
+```
+
 ### 📡 Real-Time Communication
 - **WebSocket Support**: Built-in OpenSwoole integration
 - **Channel Messaging**: Pub/Sub pattern for group communication
