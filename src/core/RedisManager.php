@@ -1,9 +1,9 @@
 <?php
 
-namespace GEMVC\Core;
+namespace Gemvc\Core;
 
 use Redis;
-use GEMVC\Core\RedisConnectionException;
+use Gemvc\Core\RedisConnectionException;
 
 class RedisManager
 {

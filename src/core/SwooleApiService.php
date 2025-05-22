@@ -1,6 +1,6 @@
 <?php
 //because die() is not available in Swoole
-namespace App\Core;
+namespace Gemvc\Core;
 
 use Gemvc\Http\Request;
 use Gemvc\Http\Response;

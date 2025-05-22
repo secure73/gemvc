@@ -311,12 +311,10 @@ class {$this->serviceName}Controller extends Controller
      */
     public function create(): JsonResponse
     {
-        \$model = new {$this->serviceName}Model();
-        //mapPost(\$model) is one of the most common and important method in controller layer
-        //it map the incomming post data to the target object!
-        //this method check all target object if can accept the data type! now you can enjoy php82+ features!
-        //also you can enjoy phpstan level 9! full type support without tedius type mapping!
-        \$this->mapPost(\$model);
+        \$model = \$this->request->mapPostToObject(new {$this->serviceName}Model());
+        if(!\$model) {
+            return \$this->request->returnResponse();
+        }
         return \$model->createModel();
     }
 
@@ -327,12 +325,10 @@ class {$this->serviceName}Controller extends Controller
      */
     public function read(): JsonResponse
     {
-        \$model = new {$this->serviceName}Model();
-        //mapPost(\$model) is one of the most common and important method in controller layer
-        //it map the incomming post data to the target object!
-        //this method check all target object if can accept the data type! now you can enjoy php82+ features!
-        //also you can enjoy phpstan level 9! full type support without tedius type mapping!
-        \$this->mapPost(\$model);
+        \$model = \$this->request->mapPostToObject(new {$this->serviceName}Model());
+        if(!\$model) {
+            return \$this->request->returnResponse();
+        }
         return \$model->readModel();
     }
 
@@ -343,12 +339,10 @@ class {$this->serviceName}Controller extends Controller
      */
     public function update(): JsonResponse
     {
-        \$model = new {$this->serviceName}Model();
-        //mapPost(\$model) is one of the most common and important method in controller layer
-        //it map the incomming post data to the target object!
-        //this method check all target object if can accept the data type! now you can enjoy php82+ features!
-        //also you can enjoy phpstan level 9! full type support without tedius type mapping!
-        \$this->mapPost(\$model);
+        \$model = \$this->request->mapPostToObject(new {$this->serviceName}Model());
+        if(!\$model) {
+            return \$this->request->returnResponse();
+        }
         return \$model->updateModel();
     }
 
@@ -359,12 +353,10 @@ class {$this->serviceName}Controller extends Controller
      */
     public function delete(): JsonResponse
     {
-        \$model = new {$this->serviceName}Model();
-        //mapPost(\$model) is one of the most common and important method in controller layer
-        //it map the incomming post data to the target object!
-        //this method check all target object if can accept the data type! now you can enjoy php82+ features!
-        //also you can enjoy phpstan level 9! full type support without tedius type mapping!
-        \$this->mapPost(\$model);
+        \$model = \$this->request->mapPostToObject(new {$this->serviceName}Model());
+        if(!\$model) {
+            return \$this->request->returnResponse();
+        }
         return \$model->deleteModel();
     }
 
@@ -376,10 +368,6 @@ class {$this->serviceName}Controller extends Controller
     public function list(): JsonResponse
     {
         \$model = new {$this->serviceName}Model();
-        //mapPost(\$model) is one of the most common and important method in controller layer
-        //it map the incomming post data to the target object!
-        //this method check all target object if can accept the data type! now you can enjoy php82+ features!
-        //also you can enjoy phpstan level 9! full type support without tedius type mapping!
         return \$this->createList(\$model);
     }
 }
@@ -418,7 +406,10 @@ class {$this->serviceName}Model extends {$this->serviceName}Table
      */
     public function createModel(): JsonResponse
     {
-        \$success = \$this->insert();
+        \$success = \$this->insertSingleQuery();
+        if (\$this->getError()) {
+            return Response::internalError("Failed to create {$this->serviceName}:" . \$this->getError());
+        }
         return Response::created(\$success, 1, "{$this->serviceName} created successfully");
     }
 
@@ -447,7 +438,10 @@ class {$this->serviceName}Model extends {$this->serviceName}Table
         if (!\$item) {
             return Response::notFound("{$this->serviceName} not found");
         }
-        \$success = \$this->update("id", \$this->id);
+        \$success = \$this->updateSingleQuery();
+        if (\$this->getError()) {
+            return Response::internalError("Failed to update {$this->serviceName}:" . \$this->getError());
+        }
         return Response::updated(\$success, 1, "{$this->serviceName} updated successfully");
     }
 
@@ -462,8 +456,11 @@ class {$this->serviceName}Model extends {$this->serviceName}Table
         if (!\$item) {
             return Response::notFound("{$this->serviceName} not found");
         }
-        \$this->delete(\$this->id);
-        return Response::deleted(null, 1, "{$this->serviceName} deleted successfully");
+        \$success = \$this->deleteByIdQuery(\$this->id);
+        if (\$this->getError()) {
+            return Response::internalError("Failed to delete {$this->serviceName}:" . \$this->getError());
+        }
+        return Response::deleted(\$success, 1, "{$this->serviceName} deleted successfully");
     }
 }
 EOT;
@@ -485,7 +482,7 @@ EOT;
  */
 namespace App\Table;
 
-use Gemvc\Core\CRUDTable;
+use Gemvc\Database\Table;
 
 /**
  * {$this->serviceName} table class for handling {$this->serviceName} database operations
@@ -494,7 +491,7 @@ use Gemvc\Core\CRUDTable;
  * @property string \$name {$this->serviceName}'s name column name in database table
  * @property string \$description {$this->serviceName}'s description column description in database table
  */
-class {$this->serviceName}Table extends CRUDTable
+class {$this->serviceName}Table extends Table
 {
     public int \$id;
     public string \$name;

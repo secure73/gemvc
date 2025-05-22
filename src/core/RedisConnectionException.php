@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace GEMVC\Core;
+namespace Gemvc\Core;
 
 class RedisConnectionException extends \Exception
 {
