@@ -8,8 +8,7 @@ services:
     ports:
       - "9501:9501"
     volumes:
-      - ./:/var/www/html
-      - /var/www/html/vendor
+      - ./app:/var/www/html/app
     environment:
       - PHP_MEMORY_LIMIT=256M
       - DB_HOST=db
