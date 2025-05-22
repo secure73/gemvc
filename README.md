@@ -76,6 +76,67 @@ Each command automatically generates the necessary files with proper structure a
 
 The generated code includes complete CRUD operations with proper validation, error handling, and documentation, following GEMVC's layered architecture pattern.
 
+---
+
+## 🛠️ Flexible Code Generation with CLI
+
+GEMVC now features a powerful, modular code generator system. You can generate a full CRUD stack or individual components (Service, Controller, Model, Table) with a single command and flexible flags.
+
+### Command Usage
+
+```bash
+# Create a full CRUD stack (API, Controller, Model, Table)
+gemvc create:crud User
+
+# Create only a service (API endpoint)
+gemvc create:service User
+
+# Create a service and controller
+gemvc create:service User -c
+
+# Create a service, controller, and model
+gemvc create:service User -cm
+
+# Create a service, controller, model, and table
+gemvc create:service User -cmt
+
+# Create only a controller
+gemvc create:controller User
+
+# Create a controller and model
+gemvc create:controller User -m
+
+# Create a controller, model, and table
+gemvc create:controller User -mt
+
+# Create only a model
+gemvc create:model User
+
+# Create a model and table
+gemvc create:model User -t
+
+# Create only a table
+gemvc create:table User
+```
+
+### How It Works
+
+- Each command generates the necessary files in the correct directories (`/app/api`, `/app/controller`, `/app/model`, `/app/table`).
+- The generator uses template files (`.template`) for each component. You can customize these templates in `src/CLI/templates/`.
+- The system prevents code duplication and ensures all generated code follows GEMVC's best practices.
+
+### Customizing Templates
+
+Want to change the default code for your services, controllers, models, or tables?  
+Just edit the corresponding `.template` files in `src/CLI/templates/`:
+
+- `service.template`
+- `controller.template`
+- `model.template`
+- `table.template`
+
+Your next generated files will use your custom templates!
+
 ## ⚡ Performance Powerhouse
 
 ### The Ultimate Performance Trio: OpenSwoole + DB Cache + Connection Pooling

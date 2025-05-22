@@ -4,7 +4,7 @@ namespace Gemvc\CLI\Commands;
 
 use Gemvc\CLI\Commands\BaseCrudGenerator;
 
-class CreateService extends BaseCrudGenerator
+class CreateController extends BaseCrudGenerator
 {
     protected $serviceName;
     protected $basePath;
@@ -29,15 +29,13 @@ class CreateService extends BaseCrudGenerator
     protected function parseFlags(): void
     {
         $this->flags = [
-            'controller' => false,
             'model' => false,
             'table' => false
         ];
 
-        // Check for combined flags (e.g., -cmt)
+        // Check for combined flags (e.g., -mt)
         if (isset($this->args[1]) && strpos($this->args[1], '-') === 0) {
             $flagStr = substr($this->args[1], 1);
-            $this->flags['controller'] = strpos($flagStr, 'c') !== false;
             $this->flags['model'] = strpos($flagStr, 'm') !== false;
             $this->flags['table'] = strpos($flagStr, 't') !== false;
         }
@@ -46,7 +44,7 @@ class CreateService extends BaseCrudGenerator
     public function execute(): void
     {
         if (empty($this->args[0])) {
-            $this->error("Service name is required. Usage: gemvc create:service ServiceName [-c|-m|-t]");
+            $this->error("Controller name is required. Usage: gemvc create:controller ControllerName [-m|-t]");
         }
 
         $this->serviceName = $this->formatServiceName($this->args[0]);
@@ -57,13 +55,10 @@ class CreateService extends BaseCrudGenerator
             // Create necessary directories
             $this->createDirectories($this->getRequiredDirectories());
 
-            // Create service file
-            $this->createService();
+            // Create controller file
+            $this->createController();
 
             // Create additional files based on flags
-            if ($this->flags['controller']) {
-                $this->createController();
-            }
             if ($this->flags['model']) {
                 $this->createModel();
             }
@@ -71,7 +66,7 @@ class CreateService extends BaseCrudGenerator
                 $this->createTable();
             }
 
-            $this->success("Service {$this->serviceName} created successfully!");
+            $this->success("Controller {$this->serviceName} created successfully!");
         } catch (\Exception $e) {
             $this->error($e->getMessage());
         }
@@ -114,211 +109,6 @@ class CreateService extends BaseCrudGenerator
             $this->error("Failed to create {$fileType} file: {$path}");
         }
         $this->info("Created {$fileType}: " . basename($path));
-    }
-
-    protected function createService(): void
-    {
-        $template = <<<EOT
-<?php
-/**
- * this is service layer. what so called url end point
- * this layer shall be extended from ApiService class
- * this layer is responsible for handling the request and response
- * this layer is responsible for handling the authentication
- * this layer is responsible for handling the authorization
- * this layer is responsible for handling the validation
- */
-namespace App\Api;
-
-use App\Controller\\{$this->serviceName}Controller;
-use Gemvc\Core\ApiService;
-use Gemvc\Http\Request;
-use Gemvc\Http\JsonResponse;
-
-class {$this->serviceName} extends ApiService
-{
-    /**
-     * Constructor
-     * 
-     * @param Request \$request The HTTP request object
-     */
-    public function __construct(Request \$request)
-    {
-        parent::__construct(\$request);
-    }
-
-    /**
-     * Create new {$this->serviceName}
-     * 
-     * @return JsonResponse
-     * @http POST
-     * @description Create new {$this->serviceName} in database
-     * @example /api/{$this->serviceName}/create
-     */
-    public function create(): JsonResponse
-    {
-        \$this->validatePosts([
-            'name' => 'string',
-            'description' => 'string'
-        ]);
-        return (new {$this->serviceName}Controller(\$this->request))->create();
-    }
-
-    /**
-     * Read {$this->serviceName} by ID
-     * 
-     * @return JsonResponse
-     * @http GET
-     * @description Get {$this->serviceName} by id from database
-     * @example /api/{$this->serviceName}/read/?id=1
-     */
-    public function read(): JsonResponse
-    {
-        // empty array define this service accept only get request, no post is allowed
-        \$this->validatePosts([]);
-        //get the id from the url and if not exist or not type of int return 400 die()
-        \$id = \$this->request->intValueGet("id");
-        \$this->request->post['id'] = \$id;
-        return (new {$this->serviceName}Controller(\$this->request))->read();
-    }
-
-    /**
-     * Update {$this->serviceName}
-     * 
-     * @return JsonResponse
-     * @http POST
-     * @description Update existing {$this->serviceName} in database
-     * @example /api/{$this->serviceName}/update
-     */
-    public function update(): JsonResponse
-    {
-        \$this->validatePosts([
-            'id' => 'int',
-            'name' => 'string',
-            'description' => 'string'
-        ]);
-        return (new {$this->serviceName}Controller(\$this->request))->update();
-    }
-
-    /**
-     * Delete {$this->serviceName}
-     * 
-     * @return JsonResponse
-     * @http POST
-     * @description Delete {$this->serviceName} from database
-     * @example /api/{$this->serviceName}/delete
-     */
-    public function delete(): JsonResponse
-    {
-        \$this->validatePosts(['id' => 'int']);
-        return (new {$this->serviceName}Controller(\$this->request))->delete();
-    }
-
-    /**
-     * List all {$this->serviceName}s
-     * 
-     * @return JsonResponse
-     * @http GET
-     * @description Get list of all {$this->serviceName}s with filtering and sorting
-     * @example /api/{$this->serviceName}/list/?sort_by=name&find_like=name=test
-     */
-    public function list(): JsonResponse
-    {
-        // Define searchable fields and their types
-        \$this->request->findable([
-            'name' => 'string',
-            'description' => 'string'
-        ]);
-
-        // Define sortable fields
-        \$this->request->sortable([
-            'id',
-            'name',
-            'description'
-        ]);
-        
-        return (new {$this->serviceName}Controller(\$this->request))->list();
-    }
-
-    /**
-     * Generates mock responses for API documentation
-     * 
-     * @param string \$method The API method name
-     * @return array<mixed> Example response data for the specified method
-     * @hidden
-     */
-    public static function mockResponse(string \$method): array
-    {
-        return match(\$method) {
-            'create' => [
-                'response_code' => 201,
-                'message' => 'created',
-                'count' => 1,
-                'service_message' => '{$this->serviceName} created successfully',
-                'data' => [
-                    'id' => 1,
-                    'name' => 'Sample {$this->serviceName}',
-                    'description' => '{$this->serviceName} description'
-                ]
-            ],
-            'read' => [
-                'response_code' => 200,
-                'message' => 'OK',
-                'count' => 1,
-                'service_message' => '{$this->serviceName} retrieved successfully',
-                'data' => [
-                    'id' => 1,
-                    'name' => 'Sample {$this->serviceName}',
-                    'description' => '{$this->serviceName} description'
-                ]
-            ],
-            'update' => [
-                'response_code' => 209,
-                'message' => 'updated',
-                'count' => 1,
-                'service_message' => '{$this->serviceName} updated successfully',
-                'data' => [
-                    'id' => 1,
-                    'name' => 'Updated {$this->serviceName}',
-                    'description' => 'Updated description'
-                ]
-            ],
-            'delete' => [
-                'response_code' => 210,
-                'message' => 'deleted',
-                'count' => 1,
-                'service_message' => '{$this->serviceName} deleted successfully',
-                'data' => null
-            ],
-            'list' => [
-                'response_code' => 200,
-                'message' => 'OK',
-                'count' => 2,
-                'service_message' => '{$this->serviceName}s retrieved successfully',
-                'data' => [
-                    [
-                        'id' => 1,
-                        'name' => '{$this->serviceName} 1',
-                        'description' => 'Description 1'
-                    ],
-                    [
-                        'id' => 2,
-                        'name' => '{$this->serviceName} 2',
-                        'description' => 'Description 2'
-                    ]
-                ]
-            ],
-            default => [
-                'success' => false,
-                'message' => 'Unknown method'
-            ]
-        };
-    }
-}
-EOT;
-
-        $path = $this->basePath . "/app/api/{$this->serviceName}.php";
-        $this->writeFile($path, $template, "Service");
     }
 
     protected function createController(): void

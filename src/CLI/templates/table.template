@@ -1,0 +1,57 @@
+<?php
+/**
+ * this is table layer. what so called Data access layer
+ * classes in this layer shall be extended from CRUDTable or Gemvc\Core\Table ;
+ * for each column in database table, you must define property in this class with same name and property type;
+ */
+namespace App\Table;
+
+use Gemvc\Database\Table;
+
+/**
+ * {$serviceName} table class for handling {$serviceName} database operations
+ * 
+ * @property int \$id {$serviceName}'s unique identifier column id in database table
+ * @property string \$name {$serviceName}'s name column name in database table
+ * @property string \$description {$serviceName}'s description column description in database table
+ */
+class {$serviceName}Table extends Table
+{
+    public int \$id;
+    public string \$name;
+    public string \$description;
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
+     * @return string
+     * the name of the database table
+     */
+    public function getTable(): string
+    {
+        //return the name of the table in database
+        return '{$tableName}';
+    }
+
+    /**
+     * @return null|static
+     * null or {$serviceName}Table Object
+     */
+    public function selectById(int \$id): null|static
+    {
+        \$result = \$this->select()->where('id', \$id)->limit(1)->run();
+        return \$result[0] ?? null;
+    }
+
+    /**
+     * @return null|static[]
+     * null or array of {$serviceName}Table Objects
+     */
+    public function selectByName(string \$name): null|array
+    {
+        return \$this->select()->whereLike('name', \$name)->run();
+    }
+} 
