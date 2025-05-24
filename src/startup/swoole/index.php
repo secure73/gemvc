@@ -20,8 +20,10 @@ $server->on("request", function ($request, $response) {
     $sr = new SwooleRequest($request);
 
     $bs = new SwooleBootstrap($sr->request);
-    $jsonResponse = $bs->processRequest();
-    $jsonResponse->showSwoole($response);
+    $jsonResponse = $bs->processRequest($response);
+    if ($jsonResponse instanceof \Gemvc\Http\JsonResponse) {
+        $jsonResponse->showSwoole($response);
+    }
 });
 
 //echo "Minimal OpenSwoole server running on http://localhost:9501\n";
