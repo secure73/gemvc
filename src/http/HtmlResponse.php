@@ -2,7 +2,7 @@
 
 namespace Gemvc\Http;
 
-class HtmlResponse
+class HtmlResponse implements ResponseInterface
 {
     private string $content;
     private int $status;

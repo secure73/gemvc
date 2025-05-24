@@ -3,8 +3,8 @@
 namespace Gemvc\Core;
 
 use Gemvc\Http\Request;
-use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
+use Gemvc\Http\ResponseInterface;
 
 /**
  * SwooleBootstrap - A Bootstrap alternative for OpenSwoole environment
@@ -54,9 +54,9 @@ class SwooleBootstrap
     /**
      * Process the request and return a response
      * 
-     * @return JsonResponse The API response
+     * @return ResponseInterface|null The API response
      */
-    public function processRequest($swooleResponse = null): ?JsonResponse
+    public function processRequest(): ?ResponseInterface
     {
         if (!file_exists('./app/api/'.$this->requested_service.'.php')) {
             return Response::notFound("The service path for '$this->requested_service' does not exist, check your service name if properly typed");
@@ -75,12 +75,6 @@ class SwooleBootstrap
         }
         
         $method = $this->requested_method;
-        // Special case: documentation endpoints output directly
-        if (in_array($method, ['document', 'documentSwoole']) && $swooleResponse) {
-            $serviceInstance->$method($swooleResponse);
-            return null;
-        } else {
-            return $serviceInstance->$method();
-        }
+        return $serviceInstance->$method();
     }
 } 

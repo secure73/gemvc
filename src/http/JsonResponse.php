@@ -5,7 +5,7 @@ namespace Gemvc\Http;
 /**
  * this class is responsible for creating consistently formatted structured JSON responses to use in API
  */
-class JsonResponse
+class JsonResponse implements ResponseInterface
 {
     public string|false $json_response;
     public int $response_code;
