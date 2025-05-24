@@ -86,37 +86,37 @@ GEMVC now features a powerful, modular code generator system. You can generate a
 
 ```bash
 # Create a full CRUD stack (API, Controller, Model, Table)
-gemvc create:crud User
+vendor/bin/gemvc create:crud User
 
 # Create only a service (API endpoint)
-gemvc create:service User
+vendor/bin/gemvc create:service User
 
 # Create a service and controller
-gemvc create:service User -c
+vendor/bin/gemvc create:service User -c
 
 # Create a service, controller, and model
-gemvc create:service User -cm
+vendor/bin/gemvc create:service User -cm
 
 # Create a service, controller, model, and table
-gemvc create:service User -cmt
+vendor/bin/gemvc create:service User -cmt
 
 # Create only a controller
-gemvc create:controller User
+vendor/bin/gemvc create:controller User
 
 # Create a controller and model
-gemvc create:controller User -m
+vendor/bin/gemvc create:controller User -m
 
 # Create a controller, model, and table
-gemvc create:controller User -mt
+vendor/bin/gemvc create:controller User -mt
 
 # Create only a model
-gemvc create:model User
+vendor/bin/gemvc create:model User
 
 # Create a model and table
-gemvc create:model User -t
+vendor/bin/gemvc create:model User -t
 
 # Create only a table
-gemvc create:table User
+vendor/bin/gemvc create:table User
 ```
 
 ### How It Works
@@ -519,9 +519,15 @@ $userRole = $request->userRole(); // Returns string or null with proper error re
 // --- APACHE/NGINX with PHP-FPM ---
 function processUser($request) {
     if ($request->auth(['admin'])) {
+        // Return JSON response
         return (new JsonResponse())->success([
             'message' => 'Hello ' . $request->userId()
         ]);
+        
+        // Or return HTML response
+        return (new HtmlResponse())->success(
+            '<h1>Welcome ' . htmlspecialchars($request->userId()) . '</h1>'
+        );
     }
     return $request->returnResponse(); // Returns error response
 }
@@ -529,7 +535,7 @@ function processUser($request) {
 // Apache handler
 $request = new ApacheRequest(); // Handles traditional PHP request
 $response = processUser($request->request);
-$response->show(); // Output JSON
+$response->show(); // Output JSON or HTML based on response type
 
 // --- OPENSWOOLE HIGH-PERFORMANCE SERVER ---
 // In index.php (Swoole server startup)
@@ -549,10 +555,16 @@ $server->on('request', function ($request, $response) {
     // Same code, different environment!
     $webserver = new SwooleRequest($request);
     $bootstrap = new SwooleBootstrap($webserver->request);
-    $jsonResponse = $bootstrap->processRequest();
+    $apiResponse = $bootstrap->processRequest();
     
-    $response->header('Content-Type', 'application/json');
-    $response->end($jsonResponse->toJson());
+    // Set appropriate content type based on response type
+    if ($apiResponse instanceof JsonResponse) {
+        $response->header('Content-Type', 'application/json');
+        $response->end($apiResponse->toJson());
+    } else if ($apiResponse instanceof HtmlResponse) {
+        $response->header('Content-Type', 'text/html');
+        $response->end($apiResponse->getContent());
+    }
 });
 
 $server->start();
@@ -832,6 +844,7 @@ return (new JsonResponse())->success($data)->show();
 - **Smart Patterns**: Factory, Builder, Traits
 - **Clean Structure**: Intuitive organization
 - **Consistent Naming**: camelCase conventions throughout
+- **Response Interface**: Unified handling of JSON and HTML responses
 
 ### 🔋 Efficient Resource Management
 - **Lazy Database Connections**: Connections only established when actually needed
@@ -923,7 +936,7 @@ $pipe->execute();
 - **Image Handling**: WebP conversion and optimization
 - **Type System**: Comprehensive validation
 - **Value Extraction**: Type-safe methods for validated data access
-- **CLI Tools**: Command-line utilities for project setup and service generation
+
 
 ### ⚡ Performance
 - **Connection Pooling**: Smart database connections
@@ -943,6 +956,7 @@ $pipe->execute();
 | **Schema Management** | Manual SQL CREATE TABLE statements | Automatic table generation from PHP objects |
 | **Error Handling** | Inconsistent error responses | Standardized responses with proper status codes |
 | **Authentication** | Manual token parsing, unclear errors | Built-in JWT handling with specific error responses |
+| **Response Types** | Manual content type handling | Unified ResponseInterface for JSON and HTML |
 | **WebSockets** | Manual implementation, no scaling | Ready-to-use handler with Redis scaling |
 | **File Handling** | Manual validation, no encryption | Built-in validation, one-line encryption |
 | **Server Support** | Either Apache OR Swoole | Same code on BOTH platforms |
