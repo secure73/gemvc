@@ -180,4 +180,11 @@ class JsonResponse
         }
     }
 
+    public function showSwoole($swooleResponse): void
+    {
+        $swooleResponse->header('Content-Type', 'application/json');
+        $swooleResponse->status($this->response_code);
+        $swooleResponse->end($this->json_response);
+    }
+
 }

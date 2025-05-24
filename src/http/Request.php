@@ -98,6 +98,10 @@ class Request
         $this->_pageNumber = 1;
         /**@phpstan-ignore-next-line */
         $this->_per_page = $_ENV["QUERY_LIMIT"] ?? 10;
+        $this->post = [];
+        $this->put = [];
+        $this->patch = [];
+        $this->files = [];
 
     }
 

@@ -56,7 +56,7 @@ class SwooleBootstrap
      * 
      * @return JsonResponse The API response
      */
-    public function processRequest(): JsonResponse
+    public function processRequest($swooleResponse = null): ?JsonResponse
     {
         if (!file_exists('./app/api/'.$this->requested_service.'.php')) {
             return Response::notFound("The service path for '$this->requested_service' does not exist, check your service name if properly typed");
@@ -75,12 +75,12 @@ class SwooleBootstrap
         }
         
         $method = $this->requested_method;
-        $response = $serviceInstance->$method();
-        
-        if(!$response instanceof JsonResponse) {
-            return Response::internalError("Method '$method' does not provide JsonResponse as return value");
+        // Special case: documentation endpoints output directly
+        if (in_array($method, ['document', 'documentSwoole']) && $swooleResponse) {
+            $serviceInstance->$method($swooleResponse);
+            return null;
+        } else {
+            return $serviceInstance->$method();
         }
-        
-        return $response;
     }
 } 

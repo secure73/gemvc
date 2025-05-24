@@ -259,6 +259,16 @@ EOT;
             $sourcePath = $templateDir . '/' . $file;
             $destPath = $this->basePath . '/' . $file;
             
+            // Special handling for Swoole's appIndex.php
+            if ($file === 'appIndex.php' && strpos($templateDir, 'swoole') !== false) {
+                $destPath = $this->basePath . '/app/api/index.php';
+                
+                // Create app/api directory if it doesn't exist
+                if (!is_dir(dirname($destPath))) {
+                    mkdir(dirname($destPath), 0755, true);
+                }
+            }
+            
             // Skip directories, we just want files
             if (is_dir($sourcePath)) {
                 continue;
@@ -285,7 +295,7 @@ EOT;
                 throw new \RuntimeException("Failed to copy file: {$sourcePath} to {$destPath}");
             }
             
-            $this->info("Copied: {$file}");
+            $this->info("Copied: {$file}" . ($file === 'appIndex.php' ? " to app/api/index.php" : ""));
         }
     }
     
