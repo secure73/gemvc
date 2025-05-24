@@ -7,6 +7,7 @@ use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
 use Gemvc\Core\Documentation;
+use Gemvc\Http\HtmlResponse;
 class Index extends ApiService
 {
     /**
@@ -32,11 +33,11 @@ class Index extends ApiService
 
     /**
      * Summary of document this method is special and reserved for documentation
-     * @param mixed $swooleResponse
-     * @return void
+     * @return HtmlResponse
+     * @http GET
      * @hidden
      */
-    public function document($swooleResponse): void
+    public function document(): HtmlResponse
     {
         $doc = new Documentation();
         $generator = new \Gemvc\Core\ApiDocGenerator();
@@ -47,9 +48,7 @@ class Index extends ApiService
         $method->setAccessible(true);
         $html = $method->invoke($doc, $documentation);
 
-        $swooleResponse->header('Content-Type', 'text/html');
-        $swooleResponse->status(200);
-        $swooleResponse->end($html);
+        return new HtmlResponse($html);
     }
 
    

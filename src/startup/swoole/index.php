@@ -20,9 +20,12 @@ $server->on("request", function ($request, $response) {
     $sr = new SwooleRequest($request);
 
     $bs = new SwooleBootstrap($sr->request);
-    $jsonResponse = $bs->processRequest($response);
-    if ($jsonResponse instanceof \Gemvc\Http\JsonResponse) {
-        $jsonResponse->showSwoole($response);
+    $result = $bs->processRequest();
+    
+    if ($result instanceof \Gemvc\Http\JsonResponse) {
+        $result->showSwoole($response);
+    } elseif ($result instanceof \Gemvc\Http\HtmlResponse) {
+        $result->showSwoole($response);
     }
 });
 
