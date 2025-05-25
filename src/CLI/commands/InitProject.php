@@ -122,29 +122,24 @@ class InitProject extends Command
         // Get the template name (apache or swoole)
         $templateName = $this->templateName ?? 'apache';
         
-        // Try multiple possible paths for example.env
-        $possiblePaths = [
-            $this->packagePath . '/src/startup/' . $templateName . '/example.env',
-            $this->packagePath . '/startup/' . $templateName . '/example.env',
-            dirname(dirname(dirname(__DIR__))) . '/startup/' . $templateName . '/example.env'
-        ];
+        // Try to find example.env in the template directory
+        $exampleEnvPath = $this->packagePath . '/src/startup/' . $templateName . '/example.env';
         
-        $exampleEnvPath = null;
-        foreach ($possiblePaths as $path) {
-            if (file_exists($path)) {
-                $exampleEnvPath = $path;
-                $this->info("Found example.env at: {$path}");
-                break;
+        if (!file_exists($exampleEnvPath)) {
+            // If not found in template directory, try to use swoole's example.env as fallback
+            $fallbackPath = $this->packagePath . '/src/startup/swoole/example.env';
+            if (file_exists($fallbackPath)) {
+                $this->info("Using example.env from swoole template as fallback");
+                $exampleEnvPath = $fallbackPath;
+            } else {
+                $this->error("Could not find example.env file. Please ensure it exists in either:");
+                $this->error("- {$this->packagePath}/src/startup/{$templateName}/example.env");
+                $this->error("- {$this->packagePath}/src/startup/swoole/example.env");
+                throw new \RuntimeException("Example .env file not found for template: {$templateName}");
             }
         }
         
-        if ($exampleEnvPath === null) {
-            $this->error("Could not find example.env file. Tried paths:");
-            foreach ($possiblePaths as $path) {
-                $this->error("- {$path}");
-            }
-            throw new \RuntimeException("Example .env file not found for template: {$templateName}");
-        }
+        $this->info("Found example.env at: {$exampleEnvPath}");
         
         $envContent = file_get_contents($exampleEnvPath);
         if ($envContent === false) {
