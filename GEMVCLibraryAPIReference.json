@@ -1,866 +1,263 @@
 {
   "libraryName": "GEMVC Library",
   "version": "3.27.8",
-  "description": "A lightweight PHP library for building microservice-based RESTful APIs.",
+  "description": "A lightweight PHP framework for building RESTful APIs with dual server support (Apache/OpenSwoole).",
   "author": "Ali Khorsandfard <ali.khorsandfard@gmail.com>",
   "repository": "https://github.com/secure73/gemvc",
   "phpVersion": ">=8.0",
   "requiredExtensions": ["pdo", "openssl", "gd"],
-  "architecture": "Microservice-based RESTful API",
+  "optionalExtensions": ["openswoole"],
+  "architecture": "MVC-based RESTful API",
   "components": {
-    "database": {
-      "description": "Handles database interactions with PDO.",
+    "core": {
+      "description": "Core framework components for request handling and routing.",
       "classes": {
-        "PdoConnection": {
-          "description": "Manages database connections and provides connection pooling.",
-          "methods": {
-            "connect": {
-              "description": "Establishes a database connection, retrieving from pool when available.",
-              "returns": "\\PDO|null",
-              "throws": ["DatabaseException"],
-              "example": "$pdo = (new PdoConnection())->connect();"
-            },
-            "isConnected": {
-              "description": "Checks if a database connection is active.",
-              "returns": "bool",
-              "example": "$isConnected = (new PdoConnection())->isConnected();"
-            },
-            "getError": {
-              "description": "Returns the last database error message.",
-              "returns": "string|null",
-              "example": "$error = (new PdoConnection())->getError();"
-            },
-            "releaseConnection": {
-              "description": "Returns the current connection to the pool after validating health.",
-              "returns": "bool",
-              "example": "$connection->releaseConnection();"
-            },
-            "getMinPoolSize": {
-              "description": "Gets the minimum pool size from environment variables.",
-              "returns": "int",
-              "example": "$minSize = PdoConnection::getMinPoolSize();"
-            },
-            "getMaxPoolSize": {
-              "description": "Gets the maximum pool size from environment variables.",
-              "returns": "int",
-              "example": "$maxSize = PdoConnection::getMaxPoolSize();"
-            },
-            "getMaxConnectionAge": {
-              "description": "Gets the maximum connection age in seconds from environment variables.",
-              "returns": "int",
-              "example": "$maxAge = PdoConnection::getMaxConnectionAge();"
-            },
-            "getPoolSize": {
-              "description": "Gets the current size of the connection pool.",
-              "parameters": ["string|null $key"],
-              "returns": "int",
-              "example": "$poolSize = PdoConnection::getPoolSize();"
-            },
-            "getTotalConnections": {
-              "description": "Gets the total number of active connections across all pools.",
-              "returns": "int",
-              "example": "$totalConnections = PdoConnection::getTotalConnections();"
-            },
-            "cleanExpiredConnections": {
-              "description": "Removes expired connections from the pool.",
-              "parameters": ["string|null $key"],
-              "returns": "int",
-              "example": "$removed = PdoConnection::cleanExpiredConnections();"
-            },
-            "clearPool": {
-              "description": "Clears all connections from the pool.",
-              "parameters": ["string|null $key"],
-              "returns": "void",
-              "example": "PdoConnection::clearPool();"
-            }
-          },
-          "environmentVariables": {
-            "MIN_DB_CONNECTION_POOL": "Minimum connections to maintain per pool",
-            "MAX_DB_CONNECTION_POOL": "Maximum connections allowed per pool",
-            "DB_CONNECTION_MAX_AGE": "Maximum age in seconds before a connection expires"
-          },
-          "connectionPooling": {
-            "parameterBased": "Connections are grouped by database parameters",
-            "connectionAging": "Connections expire after a configurable time period",
-            "healthVerification": "Connections are tested before reuse and before storage"
-          },
-          "errorHandling": {
-            "connectionFailed": "Check credentials and server status.",
-            "sqlExceptions": "Handle PDOExceptions for connection and query issues."
-          }
-        },
-        "QueryBuilder": {
-          "description": "Provides a fluent interface for constructing SQL queries.",
-          "methods": {
-            "select": {
-              "description": "Creates a SELECT query.",
-              "parameters": ["string ...$columns"],
-              "returns": "Select",
-              "example": "$query = QueryBuilder::select('id', 'name')->from('users');"
-            },
-            "insert": {
-              "description": "Creates an INSERT query.",
-              "parameters": ["string $table"],
-              "returns": "Insert",
-              "example": "$query = QueryBuilder::insert('users')->columns('name', 'email')->values('John Doe', 'john@example.com');"
-            },
-             "update": {
-              "description": "Creates an UPDATE query.",
-              "parameters": ["string $table"],
-              "returns": "Update",
-              "example": "$query = QueryBuilder::update('users')->set('status', 'active')->whereEqual('id', 1);"
-            },
-            "delete": {
-              "description": "Creates a DELETE query.",
-              "parameters": ["string $table"],
-              "returns": "Delete",
-              "example": "$query = QueryBuilder::delete('users')->whereEqual('id', 1);"
-            }
-          },
-          "features": {
-            "parameterBinding": "Automatic type-safe parameter binding.",
-            "joinSupport": ["leftJoin", "innerJoin"],
-            "whereConditions": ["whereEqual", "whereLike", "whereBetween", "whereNull"]
-          }
-        },
-        "TableGenerator": {
-          "description": "Automatically creates database tables from PHP objects using reflection.",
-          "methods": {
-            "createTableFromObject": {
-              "description": "Creates a database table based on an object's properties.",
-              "parameters": ["object $object", "string|null $tableName"],
-              "returns": "bool",
-              "example": "$generator = new TableGenerator();\n$generator->createTableFromObject(new User());"
-            },
-            "makeColumnUnique": {
-              "description": "Makes a column in an existing table unique.",
-              "parameters": ["string $tableName", "string $columnName", "bool $dropExistingIndex"],
-              "returns": "bool",
-              "example": "$generator->makeColumnUnique('users', 'email');"
-            },
-            "makeColumnsUniqueTogether": {
-              "description": "Creates a composite unique constraint across multiple columns.",
-              "parameters": ["string $tableName", "array $columnNames", "string|null $indexName", "bool $dropExistingIndexes"],
-              "returns": "bool",
-              "example": "$generator->makeColumnsUniqueTogether('users', ['first_name', 'last_name']);"
-            },
-            "addIndex": {
-              "description": "Marks a property to be indexed in the database.",
-              "parameters": ["string $propertyName", "bool $unique"],
-              "returns": "self",
-              "example": "$generator->addIndex('email', true);"
-            },
-            "removeIndex": {
-              "description": "Removes indexing from a property.",
-              "parameters": ["string $propertyName"],
-              "returns": "self",
-              "example": "$generator->removeIndex('temporary_field');"
-            },
-            "setColumnProperties": {
-              "description": "Sets custom SQL properties for a column.",
-              "parameters": ["string $propertyName", "string $columnProperties"],
-              "returns": "self",
-              "example": "$generator->setColumnProperties('status', 'NOT NULL DEFAULT \"active\"');"
-            },
-            "setNotNull": {
-              "description": "Makes a column NOT NULL.",
-              "parameters": ["string $propertyName"],
-              "returns": "self",
-              "example": "$generator->setNotNull('username');"
-            },
-            "setDefault": {
-              "description": "Sets a default value for a column.",
-              "parameters": ["string $propertyName", "mixed $defaultValue"],
-              "returns": "self",
-              "example": "$generator->setDefault('created_at', 'CURRENT_TIMESTAMP');"
-            },
-            "addCheck": {
-              "description": "Adds a CHECK constraint to a column.",
-              "parameters": ["string $propertyName", "string $checkExpression"],
-              "returns": "self",
-              "example": "$generator->addCheck('age', 'age >= 18');"
-            },
-            "removeColumn": {
-              "description": "Removes a column from an existing table.",
-              "parameters": ["string $tableName", "string $columnName"],
-              "returns": "bool",
-              "example": "$generator->removeColumn('users', 'temporary_field');"
-            },
-            "updateTable": {
-              "description": "Updates an existing table based on changes in object properties.",
-              "parameters": ["object $object", "string|null $tableName", "bool $removeExtraColumns"],
-              "returns": "bool",
-              "example": "$generator->updateTable(new User(), null, true);"
-            }
-          },
-          "features": {
-            "reflection": "Uses PHP reflection to analyze object properties.",
-            "typeDetection": "Automatically detects property types and maps to SQL types.",
-            "propertyFiltering": "Skips static properties, underscore-prefixed properties, and constants.",
-            "indexManagement": "Support for regular and unique indexes including composite indexes.",
-            "columnConstraints": "Support for NOT NULL, DEFAULT values, and CHECK constraints.",
-            "transactions": "All operations wrapped in transactions for atomicity.",
-            "schemaUpdates": "Ability to update existing tables by adding, modifying, or removing columns."
-          },
-          "propertyTypes": {
-            "int/integer": "INT(11)",
-            "float/double": "DOUBLE",
-            "bool/boolean": "TINYINT(1)",
-            "string": "VARCHAR(255)",
-            "datetime": "DATETIME",
-            "array": "JSON"
-          },
-          "specialHandling": {
-            "id": "Auto-increment primary key",
-            "*_id": "Foreign key columns as INT(11)",
-            "*email": "Email columns as VARCHAR(320)"
-          }
-        },
-        "QueryExecuter": {
-          "description": "Executes SQL queries built by QueryBuilder with lazy database connection loading.",
-          "methods": {
-            "execute": {
-              "description": "Executes the SQL query, establishing a connection if needed.",
-              "parameters": [],
-              "returns": "bool",
-              "throws": ["\\PDOException"],
-              "example": "$queryExecuter->query(\"SELECT * FROM users\");\n$queryExecuter->execute();"
-            },
-            "query": {
-              "description": "Prepares an SQL query for execution, establishing a connection if needed.",
-              "parameters": ["string $query"],
-              "returns": "void",
-              "example": "$queryExecuter->query(\"SELECT * FROM users WHERE id = :id\");"
-            },
-            "bind": {
-              "description": "Binds a parameter to the prepared statement with automatic type detection.",
-              "parameters": ["string $param", "mixed $value"],
-              "returns": "void",
-              "example": "$queryExecuter->bind(':id', 1);"
-            },
-            "fetchAll": {
-              "description": "Fetches all rows as associative arrays.",
-              "parameters": [],
-              "returns": "array|false",
-              "example": "$rows = $queryExecuter->fetchAll();"
-            },
-            "fetchAllObjects": {
-              "description": "Fetches all rows as stdClass objects.",
-              "parameters": [],
-              "returns": "array|false",
-              "example": "$objects = $queryExecuter->fetchAllObjects();"
-            },
-            "fetchAllClass": {
-              "description": "Fetches all rows as instances of a specific class.",
-              "parameters": ["string $targetClassName"],
-              "returns": "array|false",
-              "example": "$users = $queryExecuter->fetchAllClass('User');"
-            },
-            "fetchColumn": {
-              "description": "Fetches a single column from the first row.",
-              "parameters": [],
-              "returns": "mixed",
-              "example": "$count = $queryExecuter->fetchColumn();"
-            },
-            "ensureConnection": {
-              "description": "Lazy-loads the database connection when needed.",
-              "parameters": [],
-              "returns": "bool",
-              "example": "// Called internally when a database operation is requested"
-            },
-            "secure": {
-              "description": "Releases database resources and closes the connection.",
-              "parameters": [],
-              "returns": "void",
-              "example": "$queryExecuter->secure();"
-            }
-          },
-          "features": {
-            "lazyConnection": "Database connections established only when needed for query operations.",
-            "resourceEfficiency": "Child classes can be instantiated without creating unnecessary database connections.",
-            "autoCleanup": "Connections automatically closed when the object is destroyed.",
-            "parameterBinding": "Automatic type detection for parameter binding.",
-            "resultFetching": ["fetchAll", "fetchAllObjects", "fetchAllClass", "fetchColumn"]
-          }
-        },
-        "SqlEnumCondition": {
-          "description": "Defines constants for SQL conditions.",
-          "constants": ["Equal", "Bigger", "Less", "Like", "IsNull", "NotNull"]
-        },
-        "Table": {
-          "description": "Base table class providing ORM capabilities and fluent query building",
+        "ApiService": {
+          "description": "Base class for API services, handling request validation and response formatting.",
           "methods": {
             "__construct": {
-              "description": "Initialize a new Table instance",
-              "parameters": ["string $tableName"],
-              "returns": "void",
-              "example": "$table = new UserTable('users');"
+              "description": "Initialize a new API service",
+              "parameters": ["Request $request"],
+              "returns": "void"
             },
-            "insertSingleQuery": {
-              "description": "Inserts a single row into the database table",
-              "returns": "null|static",
-              "example": "$user->insertSingleQuery();"
+            "index": {
+              "description": "Default welcome endpoint",
+              "returns": "JsonResponse"
             },
-            "updateSingleQuery": {
-              "description": "Updates a record based on its ID property",
-              "returns": "null|static",
-              "example": "$user->updateSingleQuery();"
+            "validatePosts": {
+              "description": "Validates POST data against a schema",
+              "parameters": ["array $post_schema"],
+              "returns": "void"
             },
-            "deleteByIdQuery": {
-              "description": "Deletes a record by ID",
-              "parameters": ["int $id"],
-              "returns": "null|int",
-              "example": "$table->deleteByIdQuery(1);"
-            },
-            "safeDeleteQuery": {
-              "description": "Marks a record as deleted (soft delete)",
-              "returns": "null|static",
-              "example": "$user->safeDeleteQuery();"
-            },
-            "restoreQuery": {
-              "description": "Restores a soft-deleted record",
-              "returns": "null|static",
-              "example": "$user->restoreQuery();"
-            },
-            "select": {
-              "description": "Starts building a SELECT query",
-              "parameters": ["string|null $columns"],
-              "returns": "self",
-              "example": "$table->select('id, name, email');"
-            },
-            "where": {
-              "description": "Adds a basic WHERE equality condition",
-              "parameters": ["string $column", "mixed $value"],
-              "returns": "self",
-              "example": "$table->where('is_active', true);"
-            },
-            "whereOr": {
-              "description": "Adds a WHERE condition using OR operator",
-              "parameters": ["string $column", "mixed $value"],
-              "returns": "self",
-              "example": "$table->whereOr('role', 'admin');"
-            },
-            "whereBetween": {
-              "description": "Adds a BETWEEN condition",
-              "parameters": ["string $columnName", "int|string|float $lowerBand", "int|string|float $higherBand"],
-              "returns": "self",
-              "example": "$table->whereBetween('created_at', '2023-01-01', '2023-12-31');"
-            },
-            "whereNull": {
-              "description": "Adds a WHERE IS NULL condition",
-              "parameters": ["string $column"],
-              "returns": "self",
-              "example": "$table->whereNull('deleted_at');"
-            },
-            "whereNotNull": {
-              "description": "Adds a WHERE IS NOT NULL condition",
-              "parameters": ["string $column"],
-              "returns": "self",
-              "example": "$table->whereNotNull('email');"
-            },
-            "run": {
-              "description": "Executes a SELECT query and returns results",
-              "returns": "null|array",
-              "example": "$users = $table->select()->where('is_active', true)->run();"
-            },
-            "selectById": {
-              "description": "Selects a single row by ID",
-              "parameters": ["int $id"],
-              "returns": "null|static",
-              "example": "$user = $table->selectById(1);"
-            },
-            "skipCount": {
-              "description": "Disables count subqueries for performance optimization",
-              "returns": "self",
-              "example": "$table->skipCount()->select()->run();"
-            },
-            "setPage": {
-              "description": "Sets the current page for pagination",
-              "parameters": ["int $page"],
-              "returns": "void",
-              "example": "$table->setPage(2);"
-            },
-            "getCount": {
-              "description": "Gets the number of pages from the last query",
-              "returns": "int",
-              "example": "$totalPages = $table->getCount();"
-            },
-            "getTotalCounts": {
-              "description": "Gets the total number of records from the last query",
-              "returns": "int",
-              "example": "$totalRecords = $table->getTotalCounts();"
+            "validateStringPosts": {
+              "description": "Validates string lengths in POST data",
+              "parameters": ["array $post_string_schema"],
+              "returns": "void"
             }
-          },
-          "features": {
-            "ormCapabilities": "Maps database rows to PHP objects and vice versa",
-            "fluentInterface": "Method chaining for readable query construction",
-            "pagination": "Automatic result counting and page calculation",
-            "softDelete": "Support for both hard and soft deletion with restore capability",
-            "typeSafety": "PHP 8 type declarations with automatic type mapping/conversion",
-            "performanceOptimizations": "Optional count query skipping for better performance"
-          },
-          "typeMapping": {
-            "int": "Converts to PHP integer",
-            "float": "Converts to PHP float",
-            "bool": "Converts to PHP boolean",
-            "datetime": "Creates a PHP DateTime object"
+          }
+        },
+        "SwooleApiService": {
+          "description": "OpenSwoole-compatible API service base class.",
+          "methods": {
+            "__construct": {
+              "description": "Initialize a new Swoole API service",
+              "parameters": ["Request $request"],
+              "returns": "void"
+            },
+            "index": {
+              "description": "Default welcome endpoint",
+              "returns": "JsonResponse"
+            },
+            "validatePosts": {
+              "description": "Validates POST data against a schema",
+              "parameters": ["array $post_schema"],
+              "returns": "JsonResponse|null"
+            },
+            "validateStringPosts": {
+              "description": "Validates string lengths in POST data",
+              "parameters": ["array $post_string_schema"],
+              "returns": "JsonResponse|null"
+            }
+          }
+        },
+        "Bootstrap": {
+          "description": "Handles request routing and service initialization.",
+          "methods": {
+            "__construct": {
+              "description": "Initialize the bootstrap process",
+              "parameters": ["Request $request"],
+              "returns": "void"
+            }
+          }
+        },
+        "SwooleBootstrap": {
+          "description": "OpenSwoole-compatible request handling and routing.",
+          "methods": {
+            "processRequest": {
+              "description": "Process the request and return a response",
+              "returns": "ResponseInterface|null"
+            }
+          }
+        },
+        "ApiDocGenerator": {
+          "description": "Generates API documentation from service classes.",
+          "methods": {
+            "__construct": {
+              "description": "Initialize the documentation generator",
+              "parameters": ["string $apiPath"],
+              "returns": "void"
+            },
+            "generate": {
+              "description": "Generate API documentation",
+              "returns": "array"
+            }
           }
         }
       }
     },
     "http": {
-      "description": "Handles HTTP requests and responses.",
+      "description": "HTTP request and response handling components.",
       "classes": {
-        "ApacheRequest": {
-          "description": "Processes incoming HTTP requests and sanitizes input.",
-          "properties": {
-            "request": {
-              "type": "Request",
-              "description": "Contains request data (GET, POST, PUT, etc.)."
-            }
-          },
+        "Request": {
+          "description": "Handles HTTP request data with validation and authentication.",
           "methods": {
-            "getPost": {
-              "description": "Returns sanitized POST data.",
-              "returns": "array"
+            "auth": {
+              "description": "Authenticates and optionally authorizes the request",
+              "parameters": ["array $authRules = null"],
+              "returns": "bool"
             },
-            "getQuery": {
-              "description": "Returns sanitized GET parameters.",
-              "returns": "array"
+            "definePostSchema": {
+              "description": "Validates POST data against a schema",
+              "parameters": ["array $schema"],
+              "returns": "bool"
+            },
+            "validateStringPosts": {
+              "description": "Validates string lengths in POST data",
+              "parameters": ["array $stringPosts"],
+              "returns": "bool"
+            },
+            "mapPostToObject": {
+              "description": "Maps POST data to an object's properties",
+              "parameters": ["object $object", "array $manualMap = null"],
+              "returns": "object|null"
+            },
+            "findable": {
+              "description": "Handles findable query parameters",
+              "parameters": ["array $searchableGetValues"],
+              "returns": "bool"
+            },
+            "sortable": {
+              "description": "Handles sortable query parameters",
+              "parameters": ["array $sortableGetValues"],
+              "returns": "bool"
+            },
+            "filterable": {
+              "description": "Handles filterable query parameters",
+              "parameters": ["array $filterableGetValues"],
+              "returns": "bool"
             }
-          },
-          "security": {
-            "inputSanitization": "Uses FILTER_SANITIZE_* functions.",
-            "xssPrevention": "Escapes special characters."
           }
         },
         "JsonResponse": {
-          "description": "Provides a standardized format for API responses.",
+          "description": "Provides standardized JSON response formatting.",
           "methods": {
             "success": {
-              "description": "Returns a success response with data.",
+              "description": "Returns a success response",
               "parameters": ["mixed $data", "int $count", "string $service_message"],
-              "returns": "JsonResponse",
-              "example": "return (new JsonResponse())->success(['message' => 'OK'], 1);"
+              "returns": "JsonResponse"
             },
-            "error": {
-              "description": "Returns an error response.",
-              "parameters": ["string $message", "int $statusCode"],
-              "returns": "JsonResponse",
-              "example": "return (new JsonResponse())->error('Not found', 404);"
-            }
-          },
-          "statusCodes": {
-            "200": "OK",
-            "201": "Created",
-            "400": "Bad Request",
-            "404": "Not Found",
-            "500": "Internal Server Error"
-          }
-        },
-        "Request": {
-          "description": "Manages HTTP request data with validation, authentication, and error handling capabilities.",
-          "properties": {
-            "post": {
-              "type": "array",
-              "description": "Contains POST data."
+            "created": {
+              "description": "Returns a created response",
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse"
             },
-            "get": {
-              "type": "array",
-              "description": "Contains GET parameters."
+            "updated": {
+              "description": "Returns an updated response",
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse"
             },
-            "put": {
-              "type": "array",
-              "description": "Contains PUT data."
+            "badRequest": {
+              "description": "Returns a bad request response",
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
             },
-            "patch": {
-              "type": "array",
-              "description": "Contains PATCH data."
-            },
-            "files": {
-              "type": "array",
-              "description": "Contains uploaded files."
-            },
-            "isAuthenticated": {
-              "type": "bool",
-              "description": "Indicates if the request has been authenticated."
-            },
-            "isAuthorized": {
-              "type": "bool",
-              "description": "Indicates if the request has been authorized."
-            },
-            "error": {
-              "type": "string|null",
-              "description": "Contains error message if validation or authentication fails."
-            },
-            "response": {
-              "type": "JsonResponse|null",
-              "description": "Contains error response if validation or authentication fails."
-            }
-          },
-          "methods": {
-            "auth": {
-              "description": "Authenticates and optionally authorizes the request.",
-              "parameters": ["array $authRules = null"],
-              "returns": "bool",
-              "example": "if ($request->auth(['admin', 'editor'])) { /* authorized */ }"
-            },
-            "userRole": {
-              "description": "Returns the authenticated user's role with enhanced error handling.",
-              "returns": "string|null",
-              "example": "$role = $request->userRole();",
-              "features": "Sets appropriate 401/403 responses with detailed error messages."
-            },
-            "userId": {
-              "description": "Returns the authenticated user's ID with enhanced error handling.",
-              "returns": "int|null",
-              "example": "$userId = $request->userId();",
-              "features": "Validates ID existence and type with appropriate error responses."
-            },
-            "definePostSchema": {
-              "description": "Validates POST data against a schema.",
-              "parameters": ["array $schema"],
-              "returns": "bool",
-              "example": "$request->definePostSchema(['email' => 'email', 'name' => 'string', '?bio' => 'string']);"
-            },
-            "defineGetSchema": {
-              "description": "Validates GET data against a schema.",
-              "parameters": ["array $schema"],
-              "returns": "bool",
-              "example": "$request->defineGetSchema(['id' => 'int', '?search' => 'string']);"
-            },
-            "definePutSchema": {
-              "description": "Validates PUT data against a schema.",
-              "parameters": ["array $schema"],
-              "returns": "bool",
-              "example": "$request->definePutSchema(['name' => 'string', '?email' => 'email']);"
-            },
-            "definePatchSchema": {
-              "description": "Validates PATCH data against a schema.",
-              "parameters": ["array $schema"],
-              "returns": "bool",
-              "example": "$request->definePatchSchema(['?name' => 'string', '?email' => 'email']);"
-            },
-            "validateStringPosts": {
-              "description": "Validates string lengths in POST data.",
-              "parameters": ["array $stringPosts"],
-              "returns": "bool",
-              "example": "$request->validateStringPosts(['username' => '3|15', 'password' => '8|']);"
-            },
-            "mapPostToObject": {
-              "description": "Maps POST data to an object's properties using consistent naming.",
-              "parameters": ["object $object", "array $manualMap = null"],
-              "returns": "object|null",
-              "example": "$user = $request->mapPostToObject(new User());"
-            },
-            "mapPutToObject": {
-              "description": "Maps PUT data to an object's properties using consistent naming.",
-              "parameters": ["object $object", "array $manualMap = null"],
-              "returns": "object|null",
-              "example": "$user = $request->mapPutToObject(new User());"
-            },
-            "intValuePost": {
-              "description": "Gets and validates an integer from POST data.",
-              "parameters": ["string $key"],
-              "returns": "int|false",
-              "example": "$id = $request->intValuePost('user_id');"
-            },
-            "floatValuePost": {
-              "description": "Gets and validates a float from POST data.",
-              "parameters": ["string $key"],
-              "returns": "float|false",
-              "example": "$price = $request->floatValuePost('price');"
-            },
-            "intValueGet": {
-              "description": "Gets and validates an integer from GET data.",
-              "parameters": ["string $key"],
-              "returns": "int|false",
-              "example": "$page = $request->intValueGet('page');"
-            },
-            "floatValueGet": {
-              "description": "Gets and validates a float from GET data.",
-              "parameters": ["string $key"],
-              "returns": "float|false",
-              "example": "$amount = $request->floatValueGet('amount');"
-            },
-            "setErrorResponse": {
-              "description": "Centralized method for setting error responses with appropriate status codes.",
-              "parameters": ["array $errors", "int $responseCode = 400"],
-              "returns": "false",
-              "example": "$this->setErrorResponse(['Invalid data format'], 422);"
-            },
-            "forwardPost": {
-              "description": "Forwards the current POST request to a remote API.",
-              "parameters": ["string $remoteApiUrl", "string $authorizationHeader = null"],
-              "returns": "JsonResponse",
-              "example": "$response = $request->forwardPost('https://api.example.com/users');"
-            },
-            "filterable": {
-              "description": "Handles filterable query parameters.",
-              "parameters": ["array $searchableGetValues"],
-              "returns": "bool",
-              "example": "$request->filterable(['email' => 'email', 'status' => 'string']);"
-            },
-            "findable": {
-              "description": "Handles findable query parameters.",
-              "parameters": ["array $filterableGetValues"],
-              "returns": "bool",
-              "example": "$request->findable(['name' => 'string', 'email' => 'email']);"
-            },
-            "sortable": {
-              "description": "Handles sortable query parameters.",
-              "parameters": ["array $sortableGetValues"],
-              "returns": "bool",
-              "example": "$request->sortable(['created_at', 'name', 'id']);"
-            },
-            "returnResponse": {
-              "description": "Returns the response object if set.",
-              "returns": "JsonResponse",
-              "example": "return $request->returnResponse();"
-            }
-          },
-          "features": {
-            "validation": "Schema-based validation with support for required and optional fields.",
-            "authentication": "Integrated JWT-based authentication with role verification and token handling.",
-            "objectMapping": "Maps request data to PHP objects with selective field mapping.",
-            "pagination": "Support for page_number and per_page parameters.",
-            "filtering": "Support for filter_by and find_like parameters.",
-            "sorting": "Support for sort_by and sort_by_asc parameters.",
-            "errorHandling": "Centralized error handling with consistent responses and appropriate status codes.",
-            "valueExtraction": "Type-safe methods for getting validated integers and floats.",
-            "namingConsistency": "Consistent camelCase variable naming (manualArray)"
-          }
-        },
-        "SwooleWebSocketHandler": {
-          "description": "Manages WebSocket connections using OpenSwoole with support for real-time messaging and horizontal scaling.",
-          "requirements": {
-            "extensions": ["openswoole", "redis (optional)"]
-          },
-          "properties": {
-            "connectionTimeout": {
-              "type": "int",
-              "description": "Time in seconds before inactive connections are closed.",
-              "default": 300
-            },
-            "maxMessagesPerMinute": {
-              "type": "int",
-              "description": "Rate limiting threshold for client messages.",
-              "default": 60
-            },
-            "heartbeatInterval": {
-              "type": "int",
-              "description": "Time in seconds between ping messages.",
-              "default": 30
-            },
-            "useRedis": {
-              "type": "bool",
-              "description": "Whether Redis is used for scalable multi-server deployments.",
-              "default": false
-            },
-            "redis": {
-              "type": "mixed",
-              "description": "Redis connection instance if Redis integration is enabled.",
-              "default": null
-            },
-            "redisPrefix": {
-              "type": "string",
-              "description": "Key prefix for Redis entries.",
-              "default": "websocket:"
-            }
-          },
-          "methods": {
-            "__construct": {
-              "description": "Initializes the WebSocket handler with configuration options.",
-              "parameters": ["array $config = []"],
-              "example": "$handler = new SwooleWebSocketHandler(['connectionTimeout' => 600]);"
-            },
-            "registerHeartbeat": {
-              "description": "Sets up heartbeat and cleanup timers with the Swoole server.",
-              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
-              "returns": "void",
-              "example": "$handler->registerHeartbeat($server);"
-            },
-            "onOpen": {
-              "description": "Handles new WebSocket connections with authentication.",
-              "parameters": ["$server", "$request"],
-              "returns": "void",
-              "example": "$server->on('open', [$handler, 'onOpen']);"
-            },
-            "onMessage": {
-              "description": "Processes incoming WebSocket messages with rate limiting.",
-              "parameters": ["$server", "$frame"],
-              "returns": "void",
-              "example": "$server->on('message', [$handler, 'onMessage']);"
-            },
-            "onClose": {
-              "description": "Handles WebSocket connection closures and cleanup.",
-              "parameters": ["$server", "$fd"],
-              "returns": "void",
-              "example": "$server->on('close', [$handler, 'onClose']);"
-            },
-            "initRedis": {
-              "description": "Initializes Redis connection with fallback to local storage.",
-              "parameters": ["array $config"],
-              "returns": "void"
-            },
-            "performHeartbeat": {
-              "description": "Sends ping messages to maintain connections and detect broken ones.",
-              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
-              "returns": "void"
-            },
-            "cleanupExpiredConnections": {
-              "description": "Removes inactive connections with notification.",
-              "parameters": ["\\Swoole\\WebSocket\\Server $server"],
-              "returns": "void"
-            }
-          },
-          "features": {
-            "connectionManagement": "Automatic tracking and cleanup of connections with timeout detection.",
-            "rateLimiting": "Per-connection message rate limiting with sliding window implementation.",
-            "heartbeatMechanism": "Ping/pong protocol with explicit timeout notifications.",
-            "channelMessaging": "Publisher/subscriber pattern with per-connection channel tracking.",
-            "redisIntegration": "Optional Redis support for scalable multi-server deployments with TTL for memory management.",
-            "authentication": "Integration with Request authentication system.",
-            "gracefulFallback": "Automatic fallback to local storage if Redis is unavailable."
-          },
-          "messageProtocol": {
-            "clientToServer": {
-              "subscribe": "Join a messaging channel",
-              "unsubscribe": "Leave a messaging channel",
-              "message": "Send a message to a channel",
-              "pong": "Response to server ping"
-            },
-            "serverToClient": {
-              "welcome": "Initial connection data",
-              "ping": "Connection heartbeat check",
-              "message": "Message from a channel",
-              "timeout": "Connection timeout notification"
+            "unprocessableEntity": {
+              "description": "Returns an unprocessable entity response",
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
             }
           }
         }
       }
     },
-    "email": {
-      "description": "Handles email sending with SMTP.",
+    "database": {
+      "description": "Database interaction components.",
       "classes": {
-        "GemSMTP": {
-          "description": "Sends emails with attachments and embedded images.",
+        "Table": {
+          "description": "Base table class providing ORM capabilities.",
           "methods": {
-            "createMail": {
-              "description": "Creates a new email message.",
-              "parameters": ["string $receiverEmail", "string $receiverName", "string $subject", "string $htmlContent"],
-              "returns": "bool",
-              "example": "$mail = (new GemSMTP())->createMail('user@example.com', 'John Doe', 'Hello', '<p>Hello!</p>');"
+            "select": {
+              "description": "Starts building a SELECT query",
+              "parameters": ["string|null $columns"],
+              "returns": "self"
             },
-            "addAttachment": {
-              "description": "Adds an attachment to the email.",
-              "parameters": ["string $filePath", "string $showName"],
-              "returns": "bool"
+            "where": {
+              "description": "Adds a WHERE condition",
+              "parameters": ["string $column", "mixed $value"],
+              "returns": "self"
             },
-            "send": {
-              "description": "Sends the email.",
-              "returns": "bool"
-            }
-          },
-          "configuration": {
-            "maxFileSize": "10MB",
-            "maxContentSize": "25MB",
-            "retryAttempts": 3
-          }
-        }
-      }
-    },
-    "helper": {
-      "description": "Provides utility classes for common tasks.",
-      "classes": {
-        "FileHelper": {
-          "description": "Provides secure file operations with encryption support.",
-          "methods": {
-            "moveAndEncrypt": {
-              "description": "Moves and encrypts a file.",
-              "parameters": ["string $sourceFile", "string $destinationFile", "string $encryptionKey"],
-              "returns": "bool",
-              "example": "$file = new FileHelper('temp.txt', 'secure.dat'); $file->moveAndEncrypt('secretkey');"
-            },
-            "getFileSize": {
-              "description": "Returns the human-readable file size.",
-              "parameters": ["string $filePath"],
-              "returns": "string"
-            }
-          }
-        },
-        "ImageHelper": {
-          "description": "Provides image processing functionalities.",
-          "methods": {
-            "convertToWebP": {
-              "description": "Converts an image to WebP format.",
-              "parameters": ["string $sourceFile", "string $destinationFile", "int $quality"],
-              "returns": "bool",
-              "example": "$image = new ImageHelper('image.png', 'image.webp'); $image->convertToWebP(80);"
-            }
-          }
-        },
-        "StringHelper": {
-          "description": "Provides string manipulation and validation methods.",
-          "methods": {
-            "randomString": {
-              "description": "Generates a secure random string.",
-              "parameters": ["int $length"],
-              "returns": "string",
-              "example": "$token = StringHelper::randomString(32);"
-            },
-            "safeEmail": {
-              "description": "Validates and sanitizes an email address.",
-              "parameters": ["string $email"],
-              "returns": "string|null"
-            }
-          }
-        },
-        "TypeChecker": {
-          "description": "Provides data type validation.",
-          "methods": {
-            "check": {
-              "description": "Checks if a value matches a given type.",
-              "parameters": ["string $type", "mixed $value", "array $options"],
-              "returns": "bool",
-              "example": "if (TypeChecker::check('email', 'user@example.com')) { ... }"
+            "run": {
+              "description": "Executes the query and returns results",
+              "returns": "array|null"
             }
           }
         }
       }
     }
+  },
+  "cli": {
+    "description": "Command-line interface tools for code generation.",
+    "commands": {
+      "create:service": {
+        "description": "Creates a new API service with optional components",
+        "options": {
+          "-c": "Create controller",
+          "-m": "Create model",
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:service User -cmt"
+      },
+      "create:controller": {
+        "description": "Creates a new controller with optional components",
+        "options": {
+          "-m": "Create model",
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:controller User -mt"
+      },
+      "create:model": {
+        "description": "Creates a new model with optional table",
+        "options": {
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:model User -t"
+      },
+      "create:table": {
+        "description": "Creates a new table class",
+        "example": "vendor/bin/gemvc create:table User"
+      }
+    }
+  },
+  "documentation": {
+    "description": "API documentation generation and tags.",
+    "tags": {
+      "@http": "Specifies the HTTP method (GET, POST, etc.)",
+      "@description": "Describes the endpoint's purpose",
+      "@example": "Provides an example URL for the endpoint"
+    },
+    "access": "Available at yourdomain/index/document"
   },
   "security": {
-    "inputSanitization": "Uses FILTER_SANITIZE_* functions and custom validation.",
-    "encryption": "AES-256-CBC for symmetric encryption, Argon2i for password hashing.",
-    "fileHandling": "Prevents path traversal and shell command injection."
+    "features": [
+      "JWT-based authentication",
+      "Role-based authorization",
+      "Input validation",
+      "String length validation",
+      "Type-safe parameter binding"
+    ]
   },
-  "bestPractices": [
-    "Use parameterized queries to prevent SQL injection.",
-    "Validate all user inputs.",
-    "Implement proper error handling and logging."
-  ],
-  "fileLocations": {
-    "sourceCode": "src/",
-    "documentation": "Documentation.md",
-    "aiAssistFile": "AIAssist.jsonc"
-  },
-  "dependencies": {
-    "required": {
-      "firebase/php-jwt": "^6.8",
-      "phpmailer/phpmailer": "^6.8",
-      "symfony/dotenv": "^7.0"
+  "fileStructure": {
+    "app": {
+      "api": "API service classes",
+      "controller": "Controller classes",
+      "model": "Model classes",
+      "table": "Table classes"
     },
-    "development": {
-      "phpstan/phpstan": "^2.1"
-    }
-  },
-  "autoloading": {
-    "psr-4": {
-      "App\\Api\\": "app/api/",
-      "App\\Controller\\": "app/controller/",
-      "App\\Model\\": "app/model/",
-      "App\\Table\\": "app/table/"
+    "src": {
+      "core": "Core framework components",
+      "http": "HTTP handling components",
+      "database": "Database components",
+      "CLI": "Command-line tools"
     }
   }
 }

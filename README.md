@@ -72,6 +72,14 @@ class User extends ApiService {
 }
 ```
 
+### 3. Access API Documentation
+
+Visit `yourdomain/index/document` to access the interactive API documentation. The documentation is automatically generated from your API service classes and includes:
+- Endpoint details
+- Request/response examples
+- Parameter documentation
+- Postman collection export
+
 ## 🎯 Core Features
 
 - **Modern Architecture**: Type-safe, modular design with clean structure
@@ -80,10 +88,11 @@ class User extends ApiService {
 - **Database Abstraction**: Type-safe queries, ORM capabilities, and table generation
 - **Real-time Ready**: WebSocket support with Redis scaling
 - **Developer Experience**: CLI tools, code generation, and comprehensive documentation
+- **Auto Documentation**: Interactive API documentation with Postman export
 
 ## 📚 Documentation
 
-For a comprehensive overview of all components, features, and architecture, please refer to our [GEMVC Framework Index](GEMVC_INDEX.md)
+For a comprehensive overview of all components, features, and architecture, please refer to our [Documentation.md](Documentation.md)
 
 ## 📋 Requirements
 - PHP 8.0+

@@ -1,435 +1,252 @@
 {
   "framework": {
     "name": "GEMVC Framework",
-    "version": "5.9.14",
-    "extends": "GEMVC Library v3.27.8",
-    "architecture": "layered-microservice",
+    "version": "3.27.8",
+    "description": "A lightweight PHP framework for building RESTful APIs with dual server support (Apache/OpenSwoole)",
     "phpVersion": ">=8.0",
+    "requiredExtensions": ["pdo", "openssl", "gd"],
+    "optionalExtensions": ["openswoole"],
+    "architecture": "MVC-based RESTful API",
     "aiSupport": {
       "cursor": true,
       "copilot": true,
       "codeium": true
-    },
-    "libraryIntegration": {
-      "path": "vendor/gemvc/library",
-      "documentation": {
-        "main": "Documentation.md",
-        "aiAssist": "AIAssist.jsonc",
-        "apiReference": "GEMVCLibraryAPIReference.json"
-      },
-      "components": {
-        "http": "HTTP handling",
-        "helper": "Utility functions",
-        "database": "Database operations",
-        "email": "Email functionality"
-      }
-    },
-    "platformSupport": {
-      "apache": {
-        "enabled": true,
-        "components": ["Bootstrap", "ApacheRequest"],
-        "configuration": "app/.env",
-        "startup": "index.php"
-      },
-      "swoole": {
-        "enabled": true,
-        "components": ["SwooleBootstrap", "SwooleRequest", "SwooleApiService"],
-        "configuration": "app/.env (SWOOLE_MODE=true)",
-        "startup": "index.php",
-        "docker": {
-          "compose": "docker-compose.yml",
-          "dockerfile": "Dockerfile"
-        }
-      }
-    },
-    "cli": {
-      "enabled": true,
-      "commands": {
-        "init": {
-          "description": "Initialize project structure",
-          "usage": "vendor/bin/gemvc init",
-          "features": [
-            "Create directory structure",
-            "Set up configuration files",
-            "Configure global CLI command wrapper"
-          ]
+    }
+  },
+
+  "components": {
+    "core": {
+      "description": "Core framework components for request handling and routing",
+      "classes": {
+        "ApiService": {
+          "description": "Base class for API services",
+          "methods": {
+            "__construct": {
+              "parameters": ["Request $request"],
+              "returns": "void"
+            },
+            "index": {
+              "returns": "JsonResponse"
+            },
+            "validatePosts": {
+              "parameters": ["array $post_schema"],
+              "returns": "void"
+            },
+            "validateStringPosts": {
+              "parameters": ["array $post_string_schema"],
+              "returns": "void"
+            }
+          }
         },
-        "setup": {
-          "description": "Configure platform-specific environment",
-          "usage": "vendor/bin/gemvc setup [apache|swoole]",
-          "features": [
-            "Copy platform-specific files",
-            "Configure environment settings",
-            "Set up Docker files for Swoole"
-          ]
+        "SwooleApiService": {
+          "description": "OpenSwoole-compatible API service base class",
+          "methods": {
+            "__construct": {
+              "parameters": ["Request $request"],
+              "returns": "void"
+            },
+            "index": {
+              "returns": "JsonResponse"
+            },
+            "validatePosts": {
+              "parameters": ["array $post_schema"],
+              "returns": "JsonResponse|null"
+            },
+            "validateStringPosts": {
+              "parameters": ["array $post_string_schema"],
+              "returns": "JsonResponse|null"
+            }
+          }
         },
-        "create:service": {
-          "description": "Creates a complete service with CRUD operations",
-          "usage": "vendor/bin/gemvc create:service ServiceName",
-          "generates": {
-            "service": {
-              "path": "app/api/{ServiceName}.php",
-              "extends": "ApiService",
-              "methods": {
-                "create": {
-                  "http": "POST",
-                  "validation": ["name: string", "description: string"]
-                },
-                "read": {
-                  "http": "GET",
-                  "params": ["id: int"]
-                },
-                "update": {
-                  "http": "POST",
-                  "validation": ["id: int", "name: string", "description: string"]
-                },
-                "delete": {
-                  "http": "POST",
-                  "validation": ["id: int"]
-                },
-                "list": {
-                  "http": "GET",
-                  "features": ["filtering", "sorting", "pagination"]
-                }
-              }
+        "Bootstrap": {
+          "description": "Handles request routing and service initialization",
+          "methods": {
+            "__construct": {
+              "parameters": ["Request $request"],
+              "returns": "void"
+            }
+          }
+        },
+        "SwooleBootstrap": {
+          "description": "OpenSwoole-compatible request handling and routing",
+          "methods": {
+            "processRequest": {
+              "returns": "ResponseInterface|null"
+            }
+          }
+        },
+        "ApiDocGenerator": {
+          "description": "Generates API documentation from service classes",
+          "methods": {
+            "__construct": {
+              "parameters": ["string $apiPath"],
+              "returns": "void"
             },
-            "controller": {
-              "path": "app/controller/{ServiceName}Controller.php",
-              "extends": "Controller",
-              "features": ["type-safe mapping", "CRUD operations"]
-            },
-            "model": {
-              "path": "app/model/{ServiceName}Model.php",
-              "extends": "{ServiceName}Table",
-              "features": ["data logic", "response formatting"]
-            },
-            "table": {
-              "path": "app/table/{ServiceName}Table.php",
-              "extends": "CRUDTable",
-              "properties": {
-                "id": "int",
-                "name": "string",
-                "description": "string"
-              }
+            "generate": {
+              "returns": "array"
             }
           }
         }
       }
     },
-    "requirements": {
-      "php": ">=8.0",
-      "library": ">=3.27.8",
-      "phpstan": "level 9",
-      "openswoole": "optional for Swoole platform"
-    }
-  },
-
-  "layers": {
-    "service": "Authentication and validation layer",
-    "controller": "Business logic layer",
-    "model": "Data logic and response layer",
-    "table": "Database interaction layer"
-  },
-
-  "patterns": {
-    "request": {
-      "flow": "Frontend → Service → Controller → Model → Table",
-      "validation": {
-        "service": "Input validation",
-        "controller": "Business rules",
-        "model": "Data integrity"
-      }
-    },
-    "response": {
-      "flow": "Table → Model → Controller → Service → Frontend",
-      "types": {
-        "JsonResponse": "Direct API response",
-        "object": "Further processing",
-        "primitive": "Simple returns"
-      }
-    },
-    "authentication": {
-      "flow": "Request.auth() → JWT Validation → userRole()/userId() → Role-based Access",
-      "components": {
-        "Request": "Handles authentication and authorization directly",
-        "auth()": "Authenticates request and optionally checks roles",
-        "userRole()": "Returns authenticated user's role with enhanced error handling",
-        "userId()": "Returns authenticated user's ID with enhanced error handling"
-      }
-    }
-  },
-
-  "database": {
-    "queryBuilder": {
-      "description": "A fluent interface for building SQL queries without writing raw SQL",
+    "http": {
+      "description": "HTTP request and response handling components",
       "classes": {
-        "QueryBuilder": {
-          "description": "Main entry point for creating database queries",
+        "Request": {
+          "description": "Handles HTTP request data with validation and authentication",
+          "methods": {
+            "auth": {
+              "parameters": ["array $authRules = null"],
+              "returns": "bool"
+            },
+            "definePostSchema": {
+              "parameters": ["array $schema"],
+              "returns": "bool"
+            },
+            "validateStringPosts": {
+              "parameters": ["array $stringPosts"],
+              "returns": "bool"
+            },
+            "mapPostToObject": {
+              "parameters": ["object $object", "array $manualMap = null"],
+              "returns": "object|null"
+            },
+            "findable": {
+              "parameters": ["array $searchableGetValues"],
+              "returns": "bool"
+            },
+            "sortable": {
+              "parameters": ["array $sortableGetValues"],
+              "returns": "bool"
+            },
+            "filterable": {
+              "parameters": ["array $filterableGetValues"],
+              "returns": "bool"
+            }
+          }
+        },
+        "JsonResponse": {
+          "description": "Provides standardized JSON response formatting",
+          "methods": {
+            "success": {
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "created": {
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "updated": {
+              "parameters": ["mixed $data", "int $count", "string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "badRequest": {
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "unprocessableEntity": {
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
+            }
+          }
+        }
+      }
+    },
+    "database": {
+      "description": "Database interaction components",
+      "classes": {
+        "Table": {
+          "description": "Base table class providing ORM capabilities",
           "methods": {
             "select": {
-              "parameters": [{"name": "columns", "type": "string..."}],
-              "returns": "Select",
-              "description": "Creates a new SELECT query with the specified columns"
-            },
-            "insert": {
-              "parameters": [{"name": "table", "type": "string"}],
-              "returns": "Insert",
-              "description": "Creates a new INSERT query for the specified table"
-            },
-            "update": {
-              "parameters": [{"name": "table", "type": "string"}],
-              "returns": "Update",
-              "description": "Creates a new UPDATE query for the specified table"
-            },
-            "delete": {
-              "parameters": [{"name": "table", "type": "string"}],
-              "returns": "Delete",
-              "description": "Creates a new DELETE query for the specified table"
-            },
-            "getError": {
-              "parameters": [],
-              "returns": "string|null",
-              "description": "Returns the error message from the last executed query"
-            }
-          }
-        },
-        "Select": {
-          "description": "Builds SELECT queries with a fluent interface",
-          "methods": {
-            "from": {
-              "parameters": [
-                {"name": "table", "type": "string"},
-                {"name": "alias", "type": "string|null"}
-              ],
-              "returns": "self",
-              "description": "Specifies the table to select from with optional alias"
+              "parameters": ["string|null $columns"],
+              "returns": "self"
             },
             "where": {
-              "parameters": [
-                {"name": "column", "type": "string"},
-                {"name": "operator", "type": "string"},
-                {"name": "value", "type": "mixed"}
-              ],
-              "returns": "self",
-              "description": "Adds a WHERE condition to the query"
-            },
-            "orderBy": {
-              "parameters": [
-                {"name": "column", "type": "string"},
-                {"name": "descending", "type": "bool|null"}
-              ],
-              "returns": "self",
-              "description": "Adds an ORDER BY clause to the query"
-            },
-            "limit": {
-              "parameters": [
-                {"name": "limit", "type": "int"},
-                {"name": "offset", "type": "int|null"}
-              ],
-              "returns": "self",
-              "description": "Limits the number of results returned"
-            },
-            "leftJoin": {
-              "parameters": [{"name": "join", "type": "string..."}],
-              "returns": "self",
-              "description": "Adds LEFT JOIN clauses to the query"
-            },
-            "innerJoin": {
-              "parameters": [{"name": "join", "type": "string..."}],
-              "returns": "self",
-              "description": "Adds INNER JOIN clauses to the query"
+              "parameters": ["string $column", "mixed $value"],
+              "returns": "self"
             },
             "run": {
-              "parameters": [],
-              "returns": "array|false",
-              "description": "Executes the SELECT query and returns the results"
-            },
-            "json": {
-              "parameters": [],
-              "returns": "string|false",
-              "description": "Executes the query and returns results as JSON"
-            },
-            "getError": {
-              "parameters": [],
-              "returns": "string|null",
-              "description": "Returns the error message if the query failed"
-            }
-          }
-        },
-        "Insert": {
-          "description": "Builds INSERT queries with a fluent interface",
-          "methods": {
-            "columns": {
-              "parameters": [{"name": "columns", "type": "string..."}],
-              "returns": "self",
-              "description": "Specifies the columns to insert into"
-            },
-            "values": {
-              "parameters": [{"name": "values", "type": "mixed..."}],
-              "returns": "self",
-              "description": "Specifies the values to insert"
-            },
-            "run": {
-              "parameters": [],
-              "returns": "int|false",
-              "description": "Executes the INSERT query and returns the last insert ID"
-            },
-            "getError": {
-              "parameters": [],
-              "returns": "string|null",
-              "description": "Returns the error message if the query failed"
-            }
-          }
-        },
-        "Update": {
-          "description": "Builds UPDATE queries with a fluent interface",
-          "methods": {
-            "set": {
-              "parameters": [
-                {"name": "column", "type": "string"},
-                {"name": "value", "type": "mixed"}
-              ],
-              "returns": "self",
-              "description": "Sets a column value to update"
-            },
-            "where": {
-              "parameters": [
-                {"name": "column", "type": "string"},
-                {"name": "operator", "type": "string"},
-                {"name": "value", "type": "mixed"}
-              ],
-              "returns": "self",
-              "description": "Adds a WHERE condition to the query"
-            },
-            "run": {
-              "parameters": [],
-              "returns": "int|false",
-              "description": "Executes the UPDATE query and returns the number of affected rows"
-            },
-            "getError": {
-              "parameters": [],
-              "returns": "string|null",
-              "description": "Returns the error message if the query failed"
-            }
-          }
-        },
-        "Delete": {
-          "description": "Builds DELETE queries with a fluent interface",
-          "methods": {
-            "where": {
-              "parameters": [
-                {"name": "column", "type": "string"},
-                {"name": "operator", "type": "string"},
-                {"name": "value", "type": "mixed"}
-              ],
-              "returns": "self",
-              "description": "Adds a WHERE condition to the query"
-            },
-            "run": {
-              "parameters": [],
-              "returns": "int|false",
-              "description": "Executes the DELETE query and returns the number of affected rows"
-            },
-            "getError": {
-              "parameters": [],
-              "returns": "string|null",
-              "description": "Returns the error message if the query failed"
+              "returns": "array|null"
             }
           }
         }
+      }
+    }
+  },
+
+  "cli": {
+    "description": "Command-line interface tools for code generation",
+    "commands": {
+      "create:service": {
+        "description": "Creates a new API service with optional components",
+        "options": {
+          "-c": "Create controller",
+          "-m": "Create model",
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:service User -cmt"
       },
-      "interface": {
-        "QueryBuilderInterface": {
-          "description": "Interface implemented by all query classes",
-          "methods": {
-            "run": {
-              "description": "Executes the query and returns the result",
-              "returns": "mixed"
-            },
-            "getError": {
-              "description": "Returns the error message if the query failed",
-              "returns": "string|null"
-            }
-          }
-        }
+      "create:controller": {
+        "description": "Creates a new controller with optional components",
+        "options": {
+          "-m": "Create model",
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:controller User -mt"
       },
-      "examples": {
-        "select": [
-          "// Basic select",
-          "$users = $queryBuilder->select('id', 'name')",
-          "    ->from('users')",
-          "    ->where('status', '=', 'active')",
-          "    ->run();",
-          "",
-          "// With error handling",
-          "$users = $queryBuilder->select('id', 'name')",
-          "    ->from('users')",
-          "    ->run();",
-          "if ($users === false) {",
-          "    echo $queryBuilder->getError();",
-          "}"
-        ],
-        "insert": [
-          "// Basic insert",
-          "$id = $queryBuilder->insert('users')",
-          "    ->columns('name', 'email')",
-          "    ->values('John Doe', 'john@example.com')",
-          "    ->run();",
-          "",
-          "// With error handling",
-          "$id = $queryBuilder->insert('users')",
-          "    ->columns('name', 'email')",
-          "    ->values('John Doe', 'john@example.com')",
-          "    ->run();",
-          "if ($id === false) {",
-          "    echo $queryBuilder->getError();",
-          "}"
-        ],
-        "update": [
-          "// Basic update",
-          "$affected = $queryBuilder->update('users')",
-          "    ->set('status', 'inactive')",
-          "    ->where('last_login', '<', '2023-01-01')",
-          "    ->run();",
-          "",
-          "// With error handling",
-          "$affected = $queryBuilder->update('users')",
-          "    ->set('status', 'inactive')",
-          "    ->where('last_login', '<', '2023-01-01')",
-          "    ->run();",
-          "if ($affected === false) {",
-          "    echo $queryBuilder->getError();",
-          "}"
-        ],
-        "delete": [
-          "// Basic delete",
-          "$affected = $queryBuilder->delete('users')",
-          "    ->where('status', '=', 'inactive')",
-          "    ->run();",
-          "",
-          "// With error handling",
-          "$affected = $queryBuilder->delete('users')",
-          "    ->where('status', '=', 'inactive')",
-          "    ->run();",
-          "if ($affected === false) {",
-          "    echo $queryBuilder->getError();",
-          "}"
-        ]
+      "create:model": {
+        "description": "Creates a new model with optional table",
+        "options": {
+          "-t": "Create table"
+        },
+        "example": "vendor/bin/gemvc create:model User -t"
       },
-      "bestPractices": [
-        "Always check the return value of run() for false to detect errors",
-        "Use getError() on the QueryBuilder to retrieve error messages",
-        "Chain the run() method at the end for concise operation",
-        "Store query objects in variables when you need to reuse them or perform multiple operations",
-        "Use QueryBuilder for all database operations to maintain consistent SQL structure",
-        "Prefer parameterized queries with where() over raw SQL to prevent SQL injection"
-      ]
+      "create:table": {
+        "description": "Creates a new table class",
+        "example": "vendor/bin/gemvc create:table User"
+      }
+    }
+  },
+
+  "documentation": {
+    "description": "API documentation generation and tags",
+    "tags": {
+      "@http": "Specifies the HTTP method (GET, POST, etc.)",
+      "@description": "Describes the endpoint's purpose",
+      "@example": "Provides an example URL for the endpoint"
+    },
+    "access": "Available at yourdomain/index/document"
+  },
+
+  "security": {
+    "features": [
+      "JWT-based authentication",
+      "Role-based authorization",
+      "Input validation",
+      "String length validation",
+      "Type-safe parameter binding"
+    ]
+  },
+
+  "fileStructure": {
+    "app": {
+      "api": "API service classes",
+      "controller": "Controller classes",
+      "model": "Model classes",
+      "table": "Table classes"
+    },
+    "src": {
+      "core": "Core framework components",
+      "http": "HTTP handling components",
+      "database": "Database components",
+      "CLI": "Command-line tools"
     }
   },
 
   "bestPractices": {
     "services": [
-      "Always extend ApiService (or SwooleApiService for Swoole)",
+      "Always extend ApiService",
       "Validate inputs first",
       "Use Request.auth() for authentication"
     ],
@@ -444,204 +261,9 @@
       "Type-safe properties"
     ],
     "authentication": [
-      "Always use Request.auth() for authentication",
+      "Always use Request->auth() for authentication",
       "Check authentication before performing operations",
-      "Use proper role checks with Request.auth(['admin', 'editor'])",
-      "Handle Request.userId() and Request.userRole() return values properly"
+      "Use proper role checks with Request.auth(['admin', 'editor'])"
     ]
-  },
-
-  "bootstrap": {
-    "initialization": {
-      "apache": {
-        "location": "index.php",
-        "required": {
-          "autoload": "vendor/autoload.php",
-          "environment": "app/.env",
-          "components": [
-            "Gemvc\\Core\\Bootstrap",
-            "Gemvc\\Http\\ApacheRequest",
-            "Gemvc\\Http\\NoCors"
-          ]
-        }
-      },
-      "swoole": {
-        "location": "index.php",
-        "required": {
-          "autoload": "vendor/autoload.php",
-          "environment": "app/.env",
-          "components": [
-            "App\\Core\\SwooleBootstrap",
-            "Gemvc\\Http\\SwooleRequest",
-            "Gemvc\\Http\\NoCors",
-            "OpenSwoole\\HTTP\\Server"
-          ]
-        },
-        "features": [
-          "Hot reload in development mode",
-          "Connection pooling",
-          "File preloading in production mode",
-          "App directory access protection"
-        ]
-      },
-      "dependencies": {
-        "symfony/dotenv": "Environment variable loading",
-        "openswoole/openswoole": "OpenSwoole server (optional)"
-      }
-    },
-    "sequence": [
-      "CORS configuration",
-      "Environment loading",
-      "Request initialization",
-      "Framework bootstrap"
-    ]
-  },
-
-  "ApiService": {
-    "methods": {
-      "auth": {
-        "parameters": [{"name": "roles", "type": "array<string>|null"}],
-        "returns": "bool",
-        "description": "Authenticate request and optionally check roles",
-        "examples": [
-          "if (!$this->request->auth()) { return $this->request->returnResponse(); }",
-          "if (!$this->request->auth(['admin', 'editor'])) { return $this->request->returnResponse(); }"
-        ]
-      },
-      "validatePosts": {
-        "parameters": [{"name": "schema", "type": "array<string, string>"}],
-        "returns": "bool",
-        "description": "Validate POST data against schema",
-        "examples": ["$this->validatePosts(['email' => 'email', 'password' => 'string']);"]
-      }
-    }
-  },
-
-  "exceptions": {
-    "ValidationException": {
-      "when": "Input validation fails",
-      "properties": ["errors", "message"],
-      "handling": "example code"
-    }
-  },
-
-  "traits": {
-    "CreateTrait": {
-      "methods": ["create", "createWithValidation"],
-      "properties": ["required", "optional"],
-      "usage": "example code",
-      "combinations": ["with other traits"]
-    }
-  },
-
-  "examples": {
-    "requests": {
-      "create": {
-        "endpoint": "/api/users/create",
-        "method": "POST",
-        "body": {"name": "string", "email": "string"},
-        "headers": {"Authorization": "Bearer ..."}
-      }
-    },
-    "responses": {
-      "success": {"code": 200, "body": {"...": "..."}},
-      "validation": {"code": 422, "body": {"...": "..."}},
-      "error": {"code": 500, "body": {"...": "..."}}
-    },
-    "authentication": {
-      "basic": {
-        "service": "if (!$this->request->auth()) { return $this->request->returnResponse(); }",
-        "roleCheck": "if (!$this->request->auth(['admin'])) { return $this->request->returnResponse(); }",
-        "userId": "$userId = $this->request->userId(); // Returns null with 401 response if not authenticated",
-        "userRole": "$userRole = $this->request->userRole(); // Returns null with 401 response if not authenticated"
-      }
-    },
-    "fullCycle": {
-      "request": {
-        "url": "/api/users/create",
-        "method": "POST",
-        "headers": {},
-        "body": {}
-      },
-      "processing": {
-        "service": "code example",
-        "controller": "code example",
-        "model": "code example"
-      },
-      "response": {
-        "success": {},
-        "error": {}
-      }
-    }
-  },
-
-  "lifecycle": {
-    "request": {
-      "stages": [
-        {
-          "name": "Bootstrap",
-          "class": "Bootstrap or SwooleBootstrap",
-          "methods": ["initialize", "route", "processRequest"],
-          "example": "code example"
-        },
-        {
-          "name": "Service",
-          "validations": ["input", "auth"],
-          "example": "code example"
-        }
-        // ... other stages
-      ]
-    }
-  },
-  
-  "swoole": {
-    "components": {
-      "SwooleBootstrap": {
-        "purpose": "Routes and processes requests in OpenSwoole environment",
-        "methods": {
-          "processRequest": "Processes HTTP request and returns JsonResponse"
-        }
-      },
-      "SwooleApiService": {
-        "purpose": "Base class for API services in OpenSwoole environment",
-        "methods": {
-          "validatePosts": "Safe validation method that returns error response",
-          "validateStringPosts": "Safe string validation that returns error response"
-        }
-      },
-      "SwooleRequest": {
-        "purpose": "Adapts Swoole request to GEMVC Request"
-      },
-      "SwooleWebSocketHandler": {
-        "purpose": "Manages WebSocket connections with advanced features",
-        "features": [
-          "Connection management with timeout detection",
-          "Rate limiting with sliding window",
-          "Heartbeat mechanism with ping/pong",
-          "Channel-based messaging (pub/sub)",
-          "Redis integration for horizontal scaling"
-        ]
-      }
-    },
-    "server": {
-      "configuration": {
-        "worker_num": "Number of worker processes",
-        "max_request": "Maximum requests per worker",
-        "enable_coroutine": "Enables coroutines for concurrency",
-        "document_root": "Root directory for static files",
-        "enable_static_handler": "Enables static file serving",
-        "static_handler_locations": "Directories for static files"
-      },
-      "features": {
-        "hotReload": "Automatic code reloading in development",
-        "preloading": "File preloading for performance in production",
-        "securityProtection": "Prevents direct access to app directory"
-      },
-      "docker": {
-        "compose": "Multi-container setup with MySQL",
-        "healthChecks": "Database connectivity verification",
-        "networking": "Custom bridge network"
-      }
-    }
   }
 }
