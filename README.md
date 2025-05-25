@@ -29,18 +29,78 @@ Transform your PHP development with GEMVC - a modern PHP framework where securit
 composer require gemvc/library
 ```
 
+## 🔄 Request Lifecycle Flow
+
+```mermaid
+graph TD
+    A[Client Request] --> B[Apache/Swoole Server]
+    B --> C[index.php]
+    C --> D{Service Exists?}
+    D -->|Yes| E[API Layer]
+    D -->|No| F[404 Response]
+    E --> G[Service]
+    G --> H[Controller]
+    H --> I[Model]
+    I --> J[Table]
+    J -->|Database Logic| K[Model]
+    K -->|Response| L[Controller]
+    L -->|Response| M[Service]
+    M -->|Final Response| N[Client]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#bfb,stroke:#333,stroke-width:2px
+    style D fill:#fbb,stroke:#333,stroke-width:2px
+    style E fill:#bfb,stroke:#333,stroke-width:2px
+    style F fill:#fbb,stroke:#333,stroke-width:2px
+    style G fill:#bfb,stroke:#333,stroke-width:2px
+    style H fill:#bfb,stroke:#333,stroke-width:2px
+    style I fill:#bfb,stroke:#333,stroke-width:2px
+    style J fill:#bfb,stroke:#333,stroke-width:2px
+    style K fill:#bfb,stroke:#333,stroke-width:2px
+    style L fill:#bfb,stroke:#333,stroke-width:2px
+    style M fill:#bfb,stroke:#333,stroke-width:2px
+    style N fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+### Request Flow Explanation
+
+1. **Client Request**: Request arrives at the server (Apache or Swoole)
+2. **Server**: Routes request to `index.php`
+3. **index.php**: Entry point that:
+   - Validates request
+   - Checks for matching service
+   - Routes to appropriate service
+4. **Service Layer** (`/app/api`):
+   - Handles request validation
+   - Manages authentication
+   - Routes to appropriate controller
+5. **Controller Layer** (`/app/controller`):
+   - Processes business logic
+   - Manages data flow
+   - Calls appropriate model
+6. **Model Layer** (`/app/model`):
+   - Handles data logic
+   - Interacts with table layer
+   - Returns processed data
+7. **Table Layer** (`/app/table`):
+   - Manages database operations
+   - Handles data persistence
+   - Returns raw data to model
+8. **Response Flow**:
+   - Table → Model: Raw data
+   - Model → Controller: Processed data
+   - Controller → Service: Business logic result
+   - Service → Client: Final response
+
 ### Initialize Your Project
 
 After installing the library, initialize your project with:
 
 ```bash
 # Initialize a new GEMVC project
-gemvc init
+vendor/bin/gemvc init
 
-# Configure for your platform
-gemvc setup apache    # For Apache/Nginx
-# or
-gemvc setup swoole   # For OpenSwoole
 ```
 
 This will:
@@ -55,16 +115,16 @@ GEMVC includes a powerful CLI tool for managing your project. Here are some comm
 
 ```bash
 # Show all available commands
-gemvc --help
+vendor/bin/gemvc --help
 
 # Create a new service (e.g., User)
-gemvc create:service User
+vendor/bin/gemvc create:service User
 
 # Create a new model
-gemvc create:model User
+vendor/bin/gemvc create:model User
 
 # Create a new table
-gemvc create:table User
+vendor/bin/gemvc create:table User
 ```
 
 Each command automatically generates the necessary files with proper structure and boilerplate code:
@@ -272,83 +332,71 @@ IS_OPENSWOOLE=true
 OPENSWOOLE_WORKERS=3
 ```
 
-### 2. Start Building Your API
+### 2. Start Building Your API EndPoint
 
 ```php
-// Create an API endpoint
-class UserController {
-    public function getUsers(ApacheRequest $request) {
-        // Smart type-safe value extraction
-        $limit = $request->intValueGet('limit') ?: 10;
+namespace App\Api;
+
+use Gemvc\Core\ApiService;
+use Gemvc\Http\Request;
+use Gemvc\Http\JsonResponse;
+// Create an API endpoint in app/api
+class User extends ApiService {
+    public function __construct(Request $request)
+    {
+        parent::__construct($request);
+    }
+    public function yourApiEndPint():JsonResponse {
+        // authentication only incomming request with auth()
+        //authentication and authorization with auth(["array sting role name ]) 
+        if(!$this->request->auth(['admin','super_admin'])) {
+            return $this->request->returnResponse();
+        }
+        // incomming request validation
+        $this->validatePosts([
+            'name' => 'string', //post name is type string and required
+            '?email' => 'email' // post description is optional and type must be valid email 
+        ]);
         
-        $users = QueryBuilder::select('id', 'name')
-            ->from('users')
-            ->whereEqual('status', 'active')
-            ->limit($limit)
-            ->run();
-            
-        return (new JsonResponse())->success($users);
+       //hire you can call any controller as you wish, but return type must be JsonResponse
+       return (new ExampleController($this->request))->exampleMethod();
     }
 }
 ```
 
-## 📘 Getting Started Guide
+## 📘 Create Controller 
 
-Create a complete API endpoint with authentication, validation, and error handling:
-
+Controller is responsible to communication with Model and pass Response to Service Layer (App/Api):
+Controller can call any Model as the same as Service can call any Controller!
 ```php
-<?php
-// api/UserController.php
 
-use Gemvc\Http\ApacheRequest;
+namespace App\Controller;
+
+use App\Model\UserModel;
+use Gemvc\Core\Controller;
+use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
-use Gemvc\Database\QueryBuilder;
-
-class UserController {
-    
-    public function getUsers(ApacheRequest $request) {
-        // 1. Authenticate & authorize
-        if (!$request->auth(['admin', 'system_manager'])) {
-            return $request->returnResponse(); // Returns 401 or 403 with details
-        }
-        
-        // 2. Validate query parameters
-        if (!$request->defineGetSchema([
-            '?limit' => 'int',
-            '?page' => 'int',
-            '?status' => 'string'
-        ])) {
-            return $request->returnResponse(); // Returns 400 with validation details
-        }
-        
-        // 3. Type-safe parameter extraction
-        $limit = $request->intValueGet('limit') ?: 10;
-        $page = $request->intValueGet('page') ?: 1;
-        $status = $request->get['status'] ?? 'active';
-        
-        // 4. Build and execute query
-        $query = QueryBuilder::select('id', 'name', 'email', 'created_at')
-            ->from('users')
-            ->whereEqual('status', $status);
-            
-        // 5. Pagination
-        $total = $query->count();
-        $users = $query->limit($limit)
-            ->offset(($page - 1) * $limit)
-            ->run();
-            
-        // 6. Return structured response
-        return (new JsonResponse())->success([
-            'users' => $users,
-            'pagination' => [
-                'total' => $total,
-                'page' => $page,
-                'limit' => $limit,
-                'pages' => ceil($total / $limit)
-            ]
-        ]);
+//Controllers shall extends Controller Base Class
+class UserController extends Controller
+{
+    public function __construct(Request $request)
+    {
+        parent::__construct($request);
     }
-}
+
+    /**
+     * Create new User
+     * 
+     * @return JsonResponse
+     */
+    public function create(): JsonResponse
+    {
+        $model = $this->request->mapPostToObject(new UserModel());
+        if(!$model) {
+            return $this->request->returnResponse();
+        }
+        //in this case Model return JsonResponse depends on Model Logic 
+        return $model->createModel();
 ```
 
 ## 🧩 Key Components
