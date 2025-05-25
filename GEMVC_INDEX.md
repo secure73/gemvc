@@ -1,371 +1,392 @@
 # GEMVC Framework Index
 
-## 1. Database Components
+## 1. Core Components (src/core/)
 
-### Core Database Classes (src/database/)
-- **Table.php**: ORM-like database abstraction layer with fluent interface
-  - Extends PdoQuery
-  - Provides typed CRUD operations
-  - Supports pagination, filtering, and sorting
-  - Includes property type mapping system
-  - Implements soft delete and restoration capabilities
+### Application Bootstrap
+- **Bootstrap.php** (7.9KB, 223 lines)
+  - Routes HTTP requests
+  - Handles API and web requests
+  - Manages error responses
+  - Integrates with service layer
 
-- **PdoQuery.php**: Higher-level database operations
+- **SwooleBootstrap.php** (2.5KB, 80 lines)
+  - Adapts Bootstrap for OpenSwoole
+  - Handles async request processing
+  - Manages Swoole-specific responses
+
+### Service Layer
+- **ApiService.php** (2.5KB, 79 lines)
+  - Defines API endpoint structure
+  - Implements request validation
+  - Handles response formatting
+  - Provides authentication methods
+
+- **SwooleApiService.php** (3.1KB, 107 lines)
+  - Extends ApiService for Swoole
+  - Adapts for async processing
+  - Maintains Swoole compatibility
+
+### Controller Layer
+- **Controller.php** (7.0KB, 220 lines)
+  - Handles request processing
+  - Manages model interactions
+  - Implements security features
+  - Provides response formatting
+
+### Documentation
+- **Documentation.php** (32KB, 849 lines)
+  - Generates API documentation
+  - Supports annotations
+  - Creates OpenAPI specs
+
+- **ApiDocGenerator.php** (13KB, 385 lines)
+  - Analyzes API services
+  - Generates documentation
+  - Supports multiple formats
+
+### System Components
+- **Runner.php** (1.9KB, 78 lines)
+  - Processes CLI commands
+  - Manages system operations
+  - Handles maintenance tasks
+
+- **RedisManager.php** (9.9KB, 389 lines)
+  - Handles Redis connections
+  - Implements connection pooling
+  - Manages Redis operations
+
+- **RedisConnectionException.php** (288B, 12 lines)
+  - Handles Redis connection errors
+  - Provides specific error messages
+  - Implements error handling
+
+## 2. Database Components (src/database/)
+
+### Core Database Classes
+- **Table.php** (31KB, 1043 lines)
+  - Provides ORM-like interface
+  - Implements CRUD operations
+  - Supports type mapping
+  - Handles relationships
+
+- **PdoQuery.php** (9.1KB, 247 lines)
   - Extends QueryExecuter
-  - Provides methods for select, insert, update, and delete operations
-  - Handles parameter binding and result formatting
+  - Implements query building
+  - Handles parameter binding
 
-- **QueryExecuter.php**: Core query execution layer
-  - Aggregates PdoConnection
-  - Manages SQL execution and error handling
-  - Provides fetch methods and affected row counts
-  - Implements automatic binding based on value types
+- **QueryExecuter.php** (12KB, 409 lines)
+  - Manages SQL execution
+  - Handles error management
+  - Provides result formatting
 
-- **PdoConnection.php**: Database connection management
-  - Handles connection pooling with parametric-based keys
-  - Supports connection reuse, health verification, and expiration
-  - Provides efficient resource tracking
-  - Configurable through environment variables
+- **PdoConnection.php** (9.9KB, 335 lines)
+  - Implements connection pooling
+  - Handles connection health
+  - Manages resource tracking
 
-- **TableGenerator.php**: Schema management
-  - Creates and updates database tables from PHP objects
-  - Maps PHP types to SQL datatypes
-  - Supports indexes, constraints, and relationships
-  - Provides schema migration capabilities
+### Database Management
+- **DBPoolManager.php** (7.3KB, 256 lines)
+  - Manages database connections
+  - Implements connection reuse
+  - Handles pool configuration
 
-- **QueryBuilder.php**: SQL query builder
-  - Provides a fluent interface for building SQL queries
-  - Creates instances of query classes (Select, Insert, Update, Delete)
-  - Maintains reference to the last executed query for error retrieval
-  - Provides getError() method for consistent error handling
+- **DBConnection.php** (1.6KB, 67 lines)
+  - Manages database connections
+  - Implements connection options
+  - Handles connection state
 
-- **QueryBuilderInterface.php**: Interface for query classes
-  - Defines run() method for executing queries
-  - Defines getError() method for retrieving error messages
+### Schema Management
+- **TableGenerator.php** (35KB, 900 lines)
+  - Creates database tables
+  - Manages schema updates
+  - Handles migrations
 
-- **SqlEnumCondition.php**: Enumeration for SQL condition types
-  - Defines standard SQL conditions for query building
+### Query Building
+- **QueryBuilder.php** (1.9KB, 79 lines)
+  - Builds SQL queries
+  - Manages query state
+  - Handles error tracking
+
+- **QueryBuilderInterface.php** (156B, 9 lines)
+  - Defines query methods
+  - Standardizes query operations
+
+- **SqlEnumCondition.php** (418B, 28 lines)
+  - Defines SQL operators
+  - Standardizes conditions
 
 ### Query Components (src/database/query/)
-- **Insert.php**: Insert query building
-  - Builds INSERT SQL statements with fluent interface
-  - Supports columns() and values() methods
-  - Returns last inserted ID
-  - Implements QueryBuilderInterface
+- **Select.php** (5.9KB, 240 lines)
+  - Builds SELECT queries
+  - Implements query conditions
+  - Handles result formatting
 
-- **Select.php**: Select query building
-  - Builds SELECT SQL statements with fluent interface
-  - Supports from(), where(), orderBy(), limit() methods
-  - Provides join functionality (innerJoin, leftJoin)
-  - Includes JSON output capability
-  - Implements QueryBuilderInterface
+- **Insert.php** (2.9KB, 128 lines)
+  - Builds INSERT queries
+  - Handles value binding
+  - Manages auto-increment
 
-- **Update.php**: Update query building 
-  - Builds UPDATE SQL statements with fluent interface
-  - Supports set() and where() methods
-  - Returns affected rows count
-  - Implements QueryBuilderInterface
+- **Update.php** (2.7KB, 116 lines)
+  - Builds UPDATE queries
+  - Implements set operations
+  - Handles conditions
 
-- **Delete.php**: Delete query building
-  - Builds DELETE SQL statements with fluent interface
-  - Supports where() conditions
-  - Returns affected rows count
-  - Implements QueryBuilderInterface
+- **Delete.php** (2.2KB, 99 lines)
+  - Builds DELETE queries
+  - Implements conditions
+  - Handles cascading
 
-- **WhereTrait.php**: Where clause functionality
-  - Provides where condition building for query classes
+- **WhereTrait.php** (2.7KB, 92 lines)
+  - Provides WHERE clause functionality
+  - Implements condition building
+  - Handles operators
 
-- **LimitTrait.php**: Pagination limit functionality
-  - Provides limit and offset functionality for Select queries
+- **LimitTrait.php** (1.3KB, 60 lines)
+  - Provides LIMIT functionality
+  - Implements pagination
+  - Handles offsets
 
-## 2. HTTP Components (src/http/)
+## 3. HTTP Components (src/http/)
 
-- **Request.php**: Base request handling
-  - Provides validation, filtering, and authentication
-  - Supports type-safe value extraction
-  - Implements schema validation for request data
-  - Handles JWT token management and role-based authorization
-  - Provides built-in authentication methods (auth, userId, userRole)
+### Request Handling
+- **Request.php** (30KB, 899 lines)
+  - Handles request validation
+  - Manages authentication
+  - Processes input data
 
-- **ApacheRequest.php**: Apache/Nginx HTTP request adapter
-  - Specializes Request for traditional PHP environments
+- **ApacheRequest.php** (8.4KB, 246 lines)
+  - Adapts for Apache
+  - Handles traditional PHP
 
-- **SwooleRequest.php**: OpenSwoole HTTP request adapter
-  - Specializes Request for high-performance Swoole server
+- **SwooleRequest.php** (11KB, 307 lines)
+  - Adapts for Swoole
+  - Handles async requests
 
-- **Response.php**: HTTP response handling
-  - Manages HTTP status codes and headers
-  - Provides consistent error formatting
+### Response Handling
+- **Response.php** (4.3KB, 93 lines)
+  - Manages HTTP responses
+  - Handles status codes
+  - Formats output
 
-- **JsonResponse.php**: JSON response formatting
-  - Standardizes API responses with success/error states
+- **JsonResponse.php** (6.3KB, 191 lines)
+  - Formats JSON output
+  - Handles API responses
 
-- **JWTToken.php**: JWT token management
-  - Handles token generation, validation, and parsing
-  - Supports role-based authentication
+- **HtmlResponse.php** (997B, 36 lines)
+  - Formats HTML output
+  - Handles web responses
 
-- **ApiCall.php**: External API request client
-  - Manages outgoing HTTP requests
-  - Supports request forwarding
+- **ResponseInterface.php** (118B, 8 lines)
+  - Defines response methods
+  - Standardizes responses
 
-- **NoCors.php**: CORS header management
-  - Provides cross-origin request support
+### Authentication
+- **JWTToken.php** (8.3KB, 255 lines)
+  - Manages JWT tokens
+  - Handles authentication
+  - Implements security
 
-- **SwooleWebSocketHandler.php**: WebSocket server functionality
-  - Manages WebSocket connections with heartbeat
-  - Supports channels for pub/sub messaging
-  - Includes Redis integration for horizontal scaling
-  - Implements rate limiting and authentication
+### WebSocket
+- **SwooleWebSocketHandler.php** (27KB, 814 lines)
+  - Manages WebSocket connections
+  - Handles real-time communication
+  - Implements channels
 
-## 3. Helper Components (src/helper/)
+### Utilities
+- **ApiCall.php** (5.5KB, 201 lines)
+  - Makes HTTP requests
+  - Handles responses
+  - Manages errors
 
-- **TypeHelper.php**: Type utility functions
-  - Provides GUID generation and timestamp formatting
-  - Supports reflection-based property discovery
+- **NoCors.php** (3.5KB, 88 lines)
+  - Manages CORS headers
+  - Handles cross-origin requests
 
-- **TypeChecker.php**: Value validation
-  - Validates values against types
-  - Supports primitive types and complex validation
+## 4. CLI Components (src/CLI/)
 
-- **FileHelper.php**: File manipulation
-  - Handles secure file uploads
-  - Supports file encryption/decryption
-  - Provides path safety checks
+### Command System
+- **Command.php** (2.2KB, 88 lines)
+  - Defines command structure
+  - Handles command execution
+  - Manages output
 
-- **ImageHelper.php**: Image processing
-  - Handles image manipulation and optimization
-  - Supports WebP conversion
-  - Implements image resizing and cropping
+- **InstallationTest.php** (809B, 27 lines)
+  - Tests installation
+  - Verifies setup
+  - Checks requirements
 
-- **StringHelper.php**: String utility functions
-  - Provides string manipulation and validation
+### Code Generation
+- **CreateService.php** (18KB, 589 lines)
+  - Creates API services
+  - Generates endpoints
+  - Implements CRUD
 
-- **JsonHelper.php**: JSON utility functions
-  - Handles JSON parsing and formatting with error handling
+- **CreateController.php** (11KB, 379 lines)
+  - Creates controllers
+  - Implements actions
+  - Handles models
 
-- **CryptHelper.php**: Encryption utilities
-  - Provides secure encryption/decryption functions
-  - Implements password hashing and verification
+- **CreateModel.php** (8.3KB, 282 lines)
+  - Creates models
+  - Implements traits
+  - Handles data
 
-- **WebHelper.php**: Web-related utilities
-  - HTTP request handling functions
+- **CreateTable.php** (4.9KB, 165 lines)
+  - Creates tables
+  - Implements schema
+  - Handles migrations
 
-- **ChatGptClient.php**: AI integration
-  - Provides interface for OpenAI API requests
+### Project Management
+- **InitProject.php** (18KB, 461 lines)
+  - Creates project structure
+  - Sets up configuration
+  - Initializes environment
 
-## 4. Email Component (src/email/)
+- **Setup.php** (7.1KB, 196 lines)
+  - Configures environment
+  - Sets up server
+  - Manages settings
 
-- **GemSMTP.php**: Email sending functionality
-  - Implements secure SMTP connections with retry support
-  - Provides HTML email formatting
-  - Handles attachments and embedded images
-  - Includes content security checks
+- **Migrate.php** (2.5KB, 75 lines)
+  - Handles migrations
+  - Updates schema
+  - Manages versions
 
-## 5. Core Components (src/core/)
+### Base Generators
+- **BaseGenerator.php** (3.7KB, 139 lines)
+  - Base class for generators
+  - Implements common functionality
+  - Handles file operations
 
-- **Bootstrap.php**: Application bootstrap
-  - Routes and handles HTTP requests
-  - Determines whether to handle requests as API or web
-  - Executes appropriate service/controller methods
-  - Handles errors with proper HTTP responses
+- **BaseCrudGenerator.php** (4.0KB, 146 lines)
+  - Base class for CRUD generators
+  - Implements CRUD operations
+  - Handles model generation
 
-- **SwooleBootstrap.php**: Swoole application bootstrap
-  - Adapted version of Bootstrap for OpenSwoole
-  - Returns responses instead of using die()
-  - Maintains same functionality with Swoole compatibility
+- **CreateCrud.php** (1.7KB, 58 lines)
+  - Generates complete CRUD
+  - Creates all necessary files
+  - Implements full stack
 
-- **Controller.php**: Base controller functionality
-  - Provides request handling and error management
-  - Implements pagination, filtering, and sorting
-  - Offers security features like input sanitization
-  - Includes methods for handling database models
+## 5. Helper Components (src/helper/)
 
-- **ApiService.php**: API service base class
-  - Defines structure for REST API endpoints
-  - Implements validation methods for request data
-  - Provides error handling and response formatting
-  - Includes mock response support for documentation
+### Type Handling
+- **TypeHelper.php** (2.6KB, 106 lines)
+  - Handles type conversion
+  - Manages validation
+  - Provides utilities
 
-- **SwooleApiService.php**: Swoole API service base class
-  - Adapted version of ApiService for OpenSwoole
-  - Returns responses instead of using die()
-  - Maintains same functionality with Swoole compatibility
+- **TypeChecker.php** (7.3KB, 192 lines)
+  - Validates types
+  - Checks values
+  - Handles errors
 
-- **Runner.php**: Command execution system
-  - Processes CLI commands
-  - Manages table creation and other operations
-  - Supports migrations and other maintenance tasks
+### File Handling
+- **FileHelper.php** (7.2KB, 251 lines)
+  - Manages files
+  - Handles uploads
+  - Implements security
 
-- **Documentation.php**: Documentation generation
-  - Creates API documentation from source code
-  - Supports annotations for endpoint documentation
-  - Generates Swagger/OpenAPI specifications
+- **ImageHelper.php** (8.0KB, 296 lines)
+  - Processes images
+  - Handles optimization
+  - Manages formats
 
-- **ApiDocGenerator.php**: API documentation tool
-  - Analyzes API services to create documentation
-  - Supports multiple output formats
-  - Provides examples and request/response samples
+### Utilities
+- **StringHelper.php** (5.2KB, 157 lines)
+  - Manages strings
+  - Handles formatting
+  - Provides utilities
 
-## 6. CLI Components (src/CLI/)
+- **JsonHelper.php** (1.8KB, 66 lines)
+  - Processes JSON
+  - Handles encoding
+  - Manages errors
 
-- **Command.php**: Base command class
-  - Provides structure for console commands
-  - Includes colorized output with ANSI support
-  - Handles command arguments and options
-  - Implements common command functionality
+- **CryptHelper.php** (2.9KB, 83 lines)
+  - Handles encryption
+  - Manages security
+  - Provides hashing
 
-- **InstallationTest.php**: Framework installation verification
-  - Checks if framework is properly installed
-  - Verifies autoloader configuration
-  - Validates directory permissions and structure
+- **WebHelper.php** (4.1KB, 125 lines)
+  - Handles web operations
+  - Manages requests
+  - Provides helpers
 
-### CLI Commands (src/CLI/commands/)
+- **ChatGptClient.php** (1.2KB, 43 lines)
+  - Interfaces with AI
+  - Handles requests
+  - Manages responses
 
-- **CreateService.php**: Service generation command
-  - Creates boilerplate code for new API services
-  - Generates controller, model, and table classes
-  - Implements common CRUD operations
-  - Creates proper directory structure
+## 6. Email Component (src/email/)
 
-- **InitProject.php**: Project initialization command
-  - Creates basic directory structure
-  - Sets up configuration files
-  - Configures global CLI command wrapper
-
-- **Setup.php**: Platform configuration command
-  - Sets up environment for specific platforms (Apache/Swoole)
-  - Copies platform-specific files and configurations
-  - Configures environment settings for the chosen platform
-
-- **Migrate.php**: Database migration command
-  - Executes database migrations
-  - Tracks migration status
-  - Ensures database schema is up-to-date
+- **GemSMTP.php** (14KB, 410 lines)
+  - Manages SMTP
+  - Handles sending
+  - Implements security
 
 ## 7. Traits (src/traits/)
 
-### Model Traits (src/traits/model/)
+### Model Traits
+- **CreateModelTrait.php** (1.4KB, 54 lines)
+- **UpdateTrait.php** (545B, 22 lines)
+- **DeleteTrait.php** (1.3KB, 48 lines)
+- **IdTrait.php** (1.7KB, 77 lines)
+- **ListTrait.php** (6.3KB, 211 lines)
+- **ActivateTrait.php** (1.6KB, 55 lines)
+- **DeactivateTrait.php** (323B, 19 lines)
+- **RemoveTrait.php** (1.3KB, 48 lines)
+- **RestoreTrait.php** (822B, 33 lines)
+- **SafeDeleteModelTrait.php** (327B, 19 lines)
+- **ListObjectTrait.php** (1.0KB, 42 lines)
+- **ListObjectTrashTrait.php** (1.0KB, 41 lines)
+- **ListTrashTrait.php** (1.1KB, 43 lines)
 
-- **ActivateTrait.php**: Model activation functionality
-  - Implements activation/deactivation methods
-  - Provides response formatting for activation operations
-
-- **CreateTrait.php**: Creation operations
-  - Handles database record creation
-  - Formats responses for create operations
-
-- **DeleteTrait.php**: Deletion operations
-  - Manages record deletion
-  - Provides standardized delete functionality
-
-- **DeactivateTrait.php**: Deactivation operations
-  - Implements deactivation methods
-  - Handles deactivation response formatting
-
-- **IdTrait.php**: ID-based operations
-  - Implements record retrieval by ID
-  - Handles validation for ID parameters
-
-- **ListTrait.php**: List operations
-  - Implements pagination, sorting, and filtering
-  - Provides standardized list functionality
-
-- **RemoveTrait.php**: Record removal
-  - Handles permanent deletion of records
-  - Formats responses for removal operations
-
-- **RestoreTrait.php**: Restoration operations
-  - Restores soft-deleted records
-  - Provides standardized restore functionality
-
-- **UpdateTrait.php**: Update operations
-  - Handles record updates
-  - Formats responses for update operations
-
-- **ListObjectTrait.php**: Object listing
-  - Specialized listing for object collections
-  - Object-oriented approach to listing
-
-- **ListObjectTrashTrait.php**: Object trash listing
-  - Lists soft-deleted objects
-  - Provides trash management for objects
-
-- **ListTrashTrait.php**: Trash listing
-  - Lists soft-deleted records
-  - Provides trash management operations
-
-### Controller Traits (src/traits/controller/)
-
-- **ActivateTrait.php**: Controller activation methods
-  - Exposes activation endpoints
-  - Handles activation request validation
-
-- **DeactivateTrait.php**: Deactivation functionality
-  - Exposes deactivation endpoints
-  - Validates deactivation requests
-
-- **DeleteTrait.php**: Deletion endpoints
-  - Provides delete operation handlers
-  - Validates deletion requests
-
-- **IdTrait.php**: ID-based operations
-  - Implements ID validation and handling
-  - Provides methods for ID-based operations
-
-- **RemoveTrait.php**: Removal endpoints
-  - Exposes permanent deletion operations
-  - Validates removal requests
-
-- **RestoreTrait.php**: Restoration endpoints
-  - Implements soft-delete restoration
-  - Validates restoration requests
-
-- **TrashTrait.php**: Trash management
-  - Provides endpoints for trash viewing and management
-  - Implements trash-related operations
+### Controller Traits
+- **IdTrait.php** (430B, 20 lines)
+- **DeleteTrait.php** (444B, 19 lines)
+- **RemoveTrait.php** (446B, 20 lines)
+- **RestoreTrait.php** (448B, 19 lines)
+- **TrashTrait.php** (538B, 18 lines)
+- **ActivateTrait.php** (454B, 20 lines)
+- **DeactivateTrait.php** (462B, 20 lines)
 
 ## 8. Startup Components (src/startup/)
 
-- **apache/**: Apache-specific startup files
-  - Contains initialization files for Apache server environment
+### Server Configuration
+- **apache/**: Apache setup
+  - Apache configuration
+  - PHP-FPM setup
+  - Server settings
 
-- **swoole/**: Swoole-specific startup files
-  - Contains initialization files for OpenSwoole server environment
+- **swoole/**: Swoole setup
+  - Swoole configuration
+  - Server settings
+  - Async setup
 
-## 9. Binary Components (src/bin/)
+## 9. Architecture Flow
 
-- **gemvc**: Command-line entry point
-  - Provides CLI command execution
-  - Entry point for framework commands
-
-## 10. Architecture Summary
-
-### Database Flow
+### Request Flow
 ```
-Request → Controller → Table/QueryBuilder → PdoQuery → QueryExecuter → PdoConnection → MySQL/MariaDB
-```
-
-### Query Builder Flow
-```
-QueryBuilder → Select/Insert/Update/Delete (implements QueryBuilderInterface) → PdoQuery → QueryExecuter
+Client Request → Server (Apache/Swoole) → Bootstrap → Service → Controller → Model → Table → Database
 ```
 
-### HTTP Request Flow
+### Response Flow
 ```
-Client Request → Apache/Swoole → ApacheRequest/SwooleRequest → Request → Bootstrap → ApiService/Controller → JsonResponse → Client
-```
-
-### WebSocket Flow
-```
-Client WebSocket → OpenSwoole → SwooleWebSocketHandler → [Redis for scaling] → Client WebSocket
-```
-
-### CLI Flow
-```
-Terminal → Command Entry Point → Command → Runner → Database/File Operations
+Database → Table → Model → Controller → Service → Response → Client
 ```
 
 ### Authentication Flow
 ```
-Client Request → Request.auth() → JWT Validation → userRole()/userId() → Role-based Access
+Request → JWT Validation → Role Check → Service/Controller → Response
+```
+
+### WebSocket Flow
+```
+Client → SwooleWebSocketHandler → Redis (optional) → Client
+```
+
+### CLI Flow
+```
+Command → Runner → Generator/Manager → File System/Database
 ``` 
