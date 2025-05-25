@@ -36,9 +36,8 @@ graph TD
     A[Client Request] --> B[Apache/Swoole Server]
     B --> C[index.php]
     C --> D{Service Exists?}
-    D -->|Yes| E[API Layer]
+    D -->|Yes| G[Service]
     D -->|No| F[404 Response]
-    E --> G[Service]
     G --> H[Controller]
     H --> I[Model]
     I --> J[Table]
@@ -47,11 +46,11 @@ graph TD
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#bfb,stroke:#333,stroke-width:2px
     style D fill:#fbb,stroke:#333,stroke-width:2px
-    style E fill:#bfb,stroke:#333,stroke-width:2px
     style F fill:#fbb,stroke:#333,stroke-width:2px
     style G fill:#bfb,stroke:#333,stroke-width:2px
     style H fill:#bfb,stroke:#333,stroke-width:2px
     style I fill:#bfb,stroke:#333,stroke-width:2px
+    style J fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
 ### Request Flow Explanation
@@ -74,7 +73,6 @@ graph TD
    - Extends From Table
    - Handles data logic
    - Interacts with table layer
-   - Returns processed data
 7. **Table Layer** (`/app/table`):
    - Manages database operations
    - Handles data persistence
