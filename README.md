@@ -28,6 +28,21 @@ Transform your PHP development with GEMVC - a modern PHP framework where securit
 ```bash
 composer require gemvc/library
 ```
+### Initialize Your Project
+
+After installing the library, initialize your project with:
+
+```bash
+# Initialize a new GEMVC project
+vendor/bin/gemvc init
+
+```
+
+This will:
+- Create the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
+- Generate a sample `.env` file with default configuration
+- Copy appropriate startup files to your project root based on platform choice
+- Set up local command wrappers
 
 ## 🔄 Request Lifecycle Flow
 
@@ -83,21 +98,6 @@ graph TD
    - Controller → Service: Business logic result
    - Service → Client: Final response
 
-### Initialize Your Project
-
-After installing the library, initialize your project with:
-
-```bash
-# Initialize a new GEMVC project
-vendor/bin/gemvc init
-
-```
-
-This will:
-- Create the necessary directory structure (`/app`, `/app/api`, `/app/controller`, `/app/model`, `/app/table`)
-- Generate a sample `.env` file with default configuration
-- Copy appropriate startup files to your project root based on platform choice
-- Set up local command wrappers
 
 ### Generate Complete API Services
 
