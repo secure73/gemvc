@@ -42,10 +42,6 @@ graph TD
     G --> H[Controller]
     H --> I[Model]
     I --> J[Table]
-    J -->|Database Logic| K[Model]
-    K -->|Response| L[Controller]
-    L -->|Response| M[Service]
-    M -->|Final Response| N[Client]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
@@ -56,11 +52,6 @@ graph TD
     style G fill:#bfb,stroke:#333,stroke-width:2px
     style H fill:#bfb,stroke:#333,stroke-width:2px
     style I fill:#bfb,stroke:#333,stroke-width:2px
-    style J fill:#bfb,stroke:#333,stroke-width:2px
-    style K fill:#bfb,stroke:#333,stroke-width:2px
-    style L fill:#bfb,stroke:#333,stroke-width:2px
-    style M fill:#bfb,stroke:#333,stroke-width:2px
-    style N fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 ### Request Flow Explanation
@@ -68,18 +59,19 @@ graph TD
 1. **Client Request**: Request arrives at the server (Apache or Swoole)
 2. **Server**: Routes request to `index.php`
 3. **index.php**: Entry point that:
-   - Validates request
+   - Validates Service existance
    - Checks for matching service
    - Routes to appropriate service
 4. **Service Layer** (`/app/api`):
    - Handles request validation
    - Manages authentication
-   - Routes to appropriate controller
+   - call appropriate controller
 5. **Controller Layer** (`/app/controller`):
    - Processes business logic
    - Manages data flow
    - Calls appropriate model
 6. **Model Layer** (`/app/model`):
+   - Extends From Table
    - Handles data logic
    - Interacts with table layer
    - Returns processed data
