@@ -9,6 +9,7 @@ class InitProject extends Command
     private string $basePath;
     private string $packagePath;
     private bool $nonInteractive = false;
+    private ?string $templateName = null;
     
     public function execute()
     {
@@ -117,41 +118,38 @@ class InitProject extends Command
         } elseif (file_exists($envPath) && $this->nonInteractive) {
             $this->info("File already exists (non-interactive mode): {$envPath} - will be overwritten");
         }
+
+        // Get the template name (apache or swoole)
+        $templateName = $this->templateName ?? 'apache';
         
-        $envContent = <<<EOT
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=your_db
-DB_CHARSET=utf8mb4
-DB_USER=root
-DB_PASSWORD=''
-QUERY_LIMIT=10
-
-# Database Connection Pool
-MIN_DB_CONNECTION_POOL=2
-MAX_DB_CONNECTION_POOL=10
-DB_CONNECTION_MAX_AGE=3600
-
-# Security Settings
-TOKEN_SECRET='your_secret'
-TOKEN_ISSUER='your_api'
-REFRESH_TOKEN_VALIDATION_IN_SECONDS=43200
-ACCESS_TOKEN_VALIDATION_IN_SECONDS=15800
-
-# URL Configuration
-SERVICE_IN_URL_SECTION=2
-METHOD_IN_URL_SECTION=3
-
-# OpenSwoole Configuration (optional)
-SWOOLE_MODE=false
-OPENSWOOLE_WORKERS=3
-
-# WebSocket Settings (optional)
-WS_CONNECTION_TIMEOUT=300
-WS_MAX_MESSAGES_PER_MINUTE=60
-WS_HEARTBEAT_INTERVAL=30
-EOT;
+        // Try multiple possible paths for example.env
+        $possiblePaths = [
+            $this->packagePath . '/src/startup/' . $templateName . '/example.env',
+            $this->packagePath . '/startup/' . $templateName . '/example.env',
+            dirname(dirname(dirname(__DIR__))) . '/startup/' . $templateName . '/example.env'
+        ];
+        
+        $exampleEnvPath = null;
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                $exampleEnvPath = $path;
+                $this->info("Found example.env at: {$path}");
+                break;
+            }
+        }
+        
+        if ($exampleEnvPath === null) {
+            $this->error("Could not find example.env file. Tried paths:");
+            foreach ($possiblePaths as $path) {
+                $this->error("- {$path}");
+            }
+            throw new \RuntimeException("Example .env file not found for template: {$templateName}");
+        }
+        
+        $envContent = file_get_contents($exampleEnvPath);
+        if ($envContent === false) {
+            throw new \RuntimeException("Failed to read example .env file: {$exampleEnvPath}");
+        }
         
         if (!file_put_contents($envPath, $envContent)) {
             throw new \RuntimeException("Failed to create .env file: {$envPath}");
@@ -208,6 +206,7 @@ EOT;
             
             if ($templateName) {
                 $this->info("Using template: {$templateName}");
+                $this->templateName = $templateName;  // Store the template name
                 $templateDir = $startupPath . '/' . $templateName;
                 $this->copyTemplateFiles($templateDir);
                 return;
@@ -227,6 +226,7 @@ EOT;
             
             if (isset($templateDirs[(int)$choice])) {
                 $templateName = $templateDirs[(int)$choice];
+                $this->templateName = $templateName;  // Store the template name
                 $templateDir = $startupPath . '/' . $templateName;
                 $this->info("Using template: {$templateName}");
                 $this->copyTemplateFiles($templateDir);
@@ -239,6 +239,7 @@ EOT;
         // If there are no template directories, try to use the startup dir itself
         if (empty($templateDirs)) {
             $this->info("No specific templates found, using startup directory directly");
+            $this->templateName = 'default';  // Store default template name
             $this->copyTemplateFiles($startupPath);
         }
     }
