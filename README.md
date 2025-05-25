@@ -51,11 +51,11 @@ graph TD
     A[Client Request] --> B[Apache/Swoole Server]
     B --> C[index.php]
     C --> D{Service Exists?}
-    D -->|Yes| G[Service]
+    D -->|Yes| G[Service Layer]
     D -->|No| F[404 Response]
-    G --> H[Controller]
-    H --> I[Model]
-    I --> J[Table]
+    G --> H[Controller Layer]
+    H --> I[Model Layer]
+    I --> J[Table Layer]
     
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
