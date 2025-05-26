@@ -5,6 +5,7 @@ Transform your PHP development with GEMVC - a modern PHP framework where securit
 ## 📋 Table of Contents
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Development Environment](#-development-environment)
 - [Core Features](#-core-features)
 - [Documentation](#-documentation)
 - [Requirements](#-requirements)
@@ -30,7 +31,36 @@ This will:
 
 ## 🔄 Quick Start
 
-### 1. Basic Configuration
+### 1. Development Environment Setup
+
+GEMVC comes with a complete Docker development environment that includes:
+- PHP server (Apache or OpenSwoole)
+- MySQL 8.0 database
+- PHPMyAdmin for easy database management
+
+To start the development environment:
+
+```bash
+# Start all services
+docker-compose up --build
+```
+
+This will start:
+- Web server on port 9501
+- MySQL database on port 3306
+- PHPMyAdmin on port 8080
+
+#### Database Access
+- **PHPMyAdmin**: http://localhost:8080
+  - Username: `root`
+  - Password: `rootpassword`
+- **MySQL Direct Access**:
+  - Host: `localhost`
+  - Port: `3306`
+  - Username: `root`
+  - Password: `rootpassword`
+
+### 2. Basic Configuration
 
 Create an `.env` file in your app directory:
 
@@ -47,7 +77,7 @@ TOKEN_SECRET='your_secret'
 TOKEN_ISSUER='your_api'
 ```
 
-### 2. Create Your First API
+### 3. Create Your First API
 
 ```php
 namespace App\Api;
@@ -72,7 +102,7 @@ class User extends ApiService {
 }
 ```
 
-### 3. Access API Documentation
+### 4. Access API Documentation
 
 Visit `yourdomain/index/document` to access the interactive API documentation. The documentation is automatically generated from your API service classes and includes:
 - Endpoint details
@@ -101,6 +131,7 @@ For a comprehensive overview of all components, features, and architecture, plea
 - GD Library
 - OpenSwoole Extension (optional)
 - Redis Extension (optional)
+- Docker and Docker Compose (for development environment)
 
 ## About
 **Author:** Ali Khorsandfard <ali.khorsandfard@gmail.com>  
