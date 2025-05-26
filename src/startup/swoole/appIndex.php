@@ -8,6 +8,7 @@ use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
 use Gemvc\Core\Documentation;
 use Gemvc\Http\HtmlResponse;
+use Gemvc\Core\RedisManager;
 class Index extends ApiService
 {
     /**
@@ -39,6 +40,13 @@ class Index extends ApiService
      */
     public function document(): HtmlResponse
     {
+        //how to call redis
+        $redis = RedisManager::getInstance();
+        //how to get cache from redis
+        $html = $redis->get('API_HTML_DOCUMENTATION');
+        if($html){
+            return new HtmlResponse($html);
+        }
         $doc = new Documentation();
         $generator = new \Gemvc\Core\ApiDocGenerator();
         $documentation = $generator->generate();
@@ -47,7 +55,8 @@ class Index extends ApiService
         $method = $reflection->getMethod('generateHtmlView');
         $method->setAccessible(true);
         $html = $method->invoke($doc, $documentation);
-
+        //set cache for 1 minute 
+        $redis->set('API_HTML_DOCUMENTATION', $html,time() + 60);
         return new HtmlResponse($html);
     }
 

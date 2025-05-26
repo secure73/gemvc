@@ -4,6 +4,7 @@ namespace Gemvc\Core;
 
 use Redis;
 use Gemvc\Core\RedisConnectionException;
+use Gemvc\Http\JsonResponse;
 
 class RedisManager
 {
@@ -212,6 +213,24 @@ class RedisManager
             return $this->getRedis()->setex($key, $ttl, $value);
         }
         return $this->getRedis()->set($key, $value);
+    }
+
+    public function setJsonResponse(string $key, JsonResponse $response, ?int $ttl = null): bool
+    {
+        return $this->set($key, serialize($response), $ttl);
+    }
+
+    public function getJsonResponse(string $key): null|JsonResponse
+    {
+        $data = $this->get($key);
+        if ($data === null) {
+            return null;
+        }
+        $response = unserialize($data);
+        if ($response instanceof JsonResponse) {
+            return $response;
+        }
+        return null;
     }
 
     /**

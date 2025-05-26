@@ -85,6 +85,7 @@ namespace App\Api;
 use Gemvc\Core\ApiService;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
+use Gemvc\Core\RedisManager;
 
 class User extends ApiService {
     public function __construct(Request $request)
@@ -96,8 +97,17 @@ class User extends ApiService {
         if(!$this->request->auth(['admin'])) {
             return $this->request->returnResponse();
         }
-        
-        return (new UserController($this->request))->list();
+        $redis = new RedisManager::getInstance();
+        $redis_key = md5($this->request->requestedUrl);
+        $response = $redis->getJsonResponse($redis_key);
+        if(!$response)
+        {
+            $response = (new UserController($this->request))->list();
+            //cach for 10 minutes 600 seconds
+            $redis->setJsonResponse($redis_key,$response,time()+600);
+            return $response;
+        }
+        return $response;
     }
 }
 ```
@@ -113,12 +123,18 @@ Visit `yourdomain/index/document` to access the interactive API documentation. T
 ## 🎯 Core Features
 
 - **Modern Architecture**: Type-safe, modular design with clean structure
+- **Swoole Ready**: Seamlessly switch between OpenSwoole and Apache servers - your code works identically on both without any modifications
 - **Dual Server Support**: Works with both Apache and OpenSwoole
 - **Security First**: Built-in JWT authentication, input sanitization, and protection
 - **Database Abstraction**: Type-safe queries, ORM capabilities, and table generation
 - **Real-time Ready**: WebSocket support with Redis scaling
 - **Developer Experience**: CLI tools, code generation, and comprehensive documentation
+- **Database Connection Pooling**: Optimized connection management for maximum performance and resource efficiency
+- **Built-in ORM**: Powerful query builder and ORM with intuitive CRUD operations
+- **Built-in Redis Support**: Seamless Redis integration for caching and real-time features
 - **Auto Documentation**: Interactive API documentation with Postman export
+- **AI Ready**: Built-in APIs and interfaces optimized for AI assistant integration and automation
+
 
 ## 📚 Documentation
 

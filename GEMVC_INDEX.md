@@ -54,6 +54,9 @@
   - Handles Redis connections
   - Implements connection pooling
   - Manages Redis operations
+  - Provides JsonResponse caching
+  - Supports serialized response storage
+  - Handles TTL for cached responses
 
 - **RedisConnectionException.php** (288B, 12 lines)
   - Handles Redis connection errors

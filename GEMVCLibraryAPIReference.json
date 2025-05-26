@@ -92,6 +92,27 @@
               "returns": "array"
             }
           }
+        },
+        "RedisManager": {
+          "description": "Manages Redis connections and operations with built-in response caching.",
+          "methods": {
+            "setJsonResponse": {
+              "description": "Caches a JsonResponse object in Redis with optional TTL",
+              "parameters": [
+                "string $key",
+                "JsonResponse $response",
+                "int|null $ttl"
+              ],
+              "returns": "bool",
+              "example": "redis->setJsonResponse('users_list', $response, 600)"
+            },
+            "getJsonResponse": {
+              "description": "Retrieves a cached JsonResponse from Redis",
+              "parameters": ["string $key"],
+              "returns": "JsonResponse|null",
+              "example": "redis->getJsonResponse('users_list')"
+            }
+          }
         }
       }
     },
