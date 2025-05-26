@@ -54,6 +54,55 @@ vendor/bin/gemvc create:model User
 vendor/bin/gemvc create:table User
 ```
 
+### Database Migration
+
+#### CLI Migrate Command
+
+GEMVC provides a powerful CLI migration tool to manage your database schema directly from your PHP Table classes.
+
+##### Usage
+```bash
+# Migrate a specific table
+vendor/bin/gemvc migrate UserTable
+
+# Migrate all detected tables
+vendor/bin/gemvc migrate
+```
+
+##### How It Works
+- The `migrate` command scans your `app/table` directory for Table classes.
+- It automatically generates and executes the necessary SQL to create or update tables in your database, based on your PHP class definitions.
+- No manual SQL or migration files are required—schema changes are detected and applied automatically.
+- The migration process includes:
+  - Creating new tables if they do not exist
+  - Adding new columns
+  - Updating column types and attributes
+  - Managing primary keys and indexes
+
+##### Example Table Class
+```php
+namespace App\Table;
+
+use Gemvc\Database\Table;
+
+class UserTable extends Table {
+    public int $id;
+    public string $name;
+    public ?string $description;
+}
+```
+
+##### Example Output
+```
+Info: Migrating table: UserTable
+Success: Table migrated successfully: UserTable
+```
+
+##### Benefits
+- **Rapid development:** Instantly reflect your PHP model changes in the database.
+- **Consistency:** Your PHP code and database schema stay in sync.
+- **No manual migrations:** Focus on your application logic, not SQL scripts.
+
 ## Command Structure
 
 ### Basic Command

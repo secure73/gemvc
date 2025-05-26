@@ -97,6 +97,25 @@ class InitProject extends Command
             }
             $this->info("Created directory: {$this->basePath}/bin");
         }
+
+        // Copy README.md to project root
+        $this->copyReadmeToRoot();
+    }
+
+    private function copyReadmeToRoot()
+    {
+        $sourceReadme = $this->packagePath . '/src/startup/README.md';
+        $targetReadme = $this->basePath . '/README.md';
+        
+        if (!file_exists($sourceReadme)) {
+            throw new \RuntimeException("Source README.md not found: {$sourceReadme}");
+        }
+        
+        if (!copy($sourceReadme, $targetReadme)) {
+            throw new \RuntimeException("Failed to copy README.md to project root");
+        }
+        
+        $this->info("Copied README.md to project root");
     }
     
     private function createEnvFile()
