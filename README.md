@@ -49,6 +49,7 @@ This will start:
 - Web server on port 9501
 - MySQL database on port 3306
 - PHPMyAdmin on port 8080
+- Redis 
 
 #### Database Access
 - **PHPMyAdmin**: http://localhost:8080
