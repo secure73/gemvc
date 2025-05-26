@@ -46,7 +46,7 @@ docker-compose up --build
 ```
 
 This will start:
-- Web server on port 9501
+- Web server on port 9501 for swoole or 80 for apache depends on init selected option
 - MySQL database on port 3306
 - PHPMyAdmin on port 8080
 - Redis 
