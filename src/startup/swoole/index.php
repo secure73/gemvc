@@ -26,6 +26,17 @@ $server->on("start", function ($server) {
 
 // Handle worker start
 $server->on("workerStart", function ($server, $workerId) {
+    if ($workerId === 0 && isDev()) {  // Only in first worker AND in dev environment
+        $lastCheck = time();
+        $server->tick(2000, function () use ($server, &$lastCheck) {
+            // Only reload if files have changed
+            $currentTime = time();
+            if ($currentTime - $lastCheck >= 2) {  // Check every 2 seconds
+                $lastCheck = $currentTime;
+                $server->reload();
+            }
+        });
+    }
     echo "Worker #$workerId started\n";
 });
 
@@ -60,21 +71,6 @@ $server->on("workerError", function ($server, $workerId, $workerPid, $exitCode, 
     error_log("Worker #$workerId crashed. Exit code: $exitCode, Signal: $signal");
 });
 
-/**
- * it is my .env file data
- * IS_OPENSWOOLE=true
-*SWOOLE_WORKERS=3
-*SWOOLE_RUN_FOREGROUND=0   #1 == true
-*SWOOLE_MAX_REQUEST=5000
-*SWOOLE_MAX_CONN=1024
-*SWOOLE_MAX_WAIT_TIME=60
-*SWOOLE_ENABLE_COROUTINE=1 #0 == false
-*SWOOLE_MAX_COROUTINE=3000
-*SWOOLE_DISPLAY_ERRORS=1 #0 ==false
-*SWOOLE_HEARTBEAT_IDLE_TIME=600
-*SWOOLE__HEARTBEAT_INTERVAL=60
-*SWOOLE_SERVER_PORT=9501
- */
 function getServerConfig():array {
     return [
         'worker_num' => (int)($_ENV["SWOOLE_WORKERS"] ?? 1),    // Number of worker processes
@@ -88,9 +84,16 @@ function getServerConfig():array {
         'heartbeat_idle_time' => (int)($_ENV["SWOOLE_HEARTBEAT_IDLE_TIME"] ?? 600),  // Connection idle timeout
         'heartbeat_check_interval' => (int)($_ENV["SWOOLE__HEARTBEAT_INTERVAL"] ?? 60),  // Heartbeat check interval
         'log_level' => (int)(($_ENV["SWOOLE_SERVER_LOG_INFO"] ?? 0) ? SWOOLE_LOG_INFO : SWOOLE_LOG_ERROR),  // Log level
+        'reload_async' => true
     ];
 }
 
+function isDev():bool {
+    if(isset($_ENV["APP_ENV"])){
+        return $_ENV["APP_ENV"] === "dev";
+    }
+    return false;
+}
 function serverPort():int {
     return (int)($_ENV["SWOOLE_SERVER_PORT"] ?? 9501);
 }
