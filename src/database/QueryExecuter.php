@@ -54,14 +54,46 @@ class QueryExecuter
         $this->secure();
     }
 
+    private function debug(string $message): void
+    {
+        if (($_ENV['APP_ENV'] ?? '') === 'dev') {
+            echo $message;
+        }
+    }
+
+    public function isConnected(): bool
+    {
+        $this->debug("Debug - QueryExecuter::isConnected() called\n");
+        $this->debug("Debug - Current connection status: " . ($this->isConnected ? 'true' : 'false') . "\n");
+        $this->debug("Debug - DB instance exists: " . ($this->db !== null ? 'yes' : 'no') . "\n");
+        
+        if (!$this->isConnected && $this->db === null) {
+            $this->debug("Debug - Attempting to ensure connection...\n");
+            $result = $this->ensureConnection();
+            if (!$result) {
+                $this->debug("Debug - Connection failed: " . $this->getError() . "\n");
+            }
+            return $result;
+        }
+        
+        return $this->isConnected;
+    }
+
     private function ensureConnection(): bool
     {
+        $this->debug("Debug - Ensuring connection in QueryExecuter\n");
+        
         if (!$this->db) {
             try {
+                $this->debug("Debug - Getting connection from pool manager\n");
                 $this->db = DBPoolManager::getInstance()->getConnection();
+                $this->debug("Debug - Got connection from pool manager\n");
+                
                 $this->isConnected = $this->db instanceof PDO;
+                $this->debug("Debug - Connection is PDO instance: " . ($this->isConnected ? 'yes' : 'no') . "\n");
                 
                 if ($this->isConnected) {
+                    $this->debug("Debug - Connection successful, setting attributes\n");
                     // Set connection attributes
                     $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                     $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -69,15 +101,23 @@ class QueryExecuter
                     
                     try {
                         $this->db->setAttribute(PDO::ATTR_TIMEOUT, $this->queryTimeout);
+                        $this->debug("Debug - Connection attributes set successfully\n");
                     } catch (\PDOException $e) {
+                        $this->debug("Debug - Error setting timeout: " . $e->getMessage() . "\n");
                         $this->setError('Error setting timeout: ' . $e->getMessage());
                         return false;
                     }
+                } else {
+                    $this->debug("Debug - Connection failed: Not a PDO instance\n");
+                    $this->setError('Connection failed: Not a PDO instance');
                 }
             } catch (\Throwable $e) {
+                $this->debug("Debug - Failed to get DB connection: " . $e->getMessage() . "\n");
                 $this->setError('Failed to get DB connection: ' . $e->getMessage());
                 $this->isConnected = false;
             }
+        } else {
+            $this->debug("Debug - Connection already exists\n");
         }
         return $this->isConnected;
     }
@@ -90,11 +130,6 @@ class QueryExecuter
     public function getError(): ?string
     {
         return $this->error;
-    }
-
-    public function isConnected(): bool
-    {
-        return $this->isConnected;
     }
 
     public function query(string $query): void
@@ -136,9 +171,9 @@ class QueryExecuter
         }
     }
 
-    public function setError(string $error): void
+    public function setError(?string $error): void
     {
-        $this->error = $error;
+        $this->error = $error ?? '';
     }
 
     public function bind(string $param, mixed $value): void

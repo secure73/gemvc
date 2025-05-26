@@ -43,28 +43,58 @@ class DBPoolManager
      */
     public function getConnection(): PDO
     {
+        if ($this->debugMode()) {
+            echo "Debug - DBPoolManager::getConnection() called\n";
+            echo "Debug - Current pool status: " . json_encode($this->getPoolStatus()) . "\n";
+        }
+        
         $pdo = $this->getHealthyConnectionFromPool();
         if ($pdo !== null) {
+            if ($this->debugMode()) {
+                echo "Debug - Found healthy connection in pool\n";
+            }
             return $pdo;
         }
 
         if (time() - self::$lastCleanupTime > self::CLEANUP_INTERVAL_SECONDS) {
+            if ($this->debugMode()) {
+                echo "Debug - Cleaning expired connections\n";
+            }
             $this->cleanExpiredConnections();
             self::$lastCleanupTime = time();
 
             $pdo = $this->getHealthyConnectionFromPool();
             if ($pdo !== null) {
+                if ($this->debugMode()) {
+                    echo "Debug - Found healthy connection after cleanup\n";
+                }
                 return $pdo;
             }
         }
 
         // Attempt to create a new connection if under max pool size
+        if ($this->debugMode()) {
+            echo "Debug - Attempting to create new connection\n";
+            echo "Debug - Current total connections: " . $this->getTotalConnectionsCount() . "\n";
+            echo "Debug - Max pool size: " . $this->getMaxPoolSize() . "\n";
+        }
+        
         if ($this->getTotalConnectionsCount() < $this->getMaxPoolSize()) {
+            if ($this->debugMode()) {
+                echo "Debug - Creating new DBConnection instance\n";
+            }
             $conn = new DBConnection();
+            if ($this->debugMode()) {
+                echo "Debug - Attempting to connect using DBConnection\n";
+            }
             $pdo = $conn->connect();
             if (!$pdo) {
+                $error = $conn->getError();
+                if ($this->debugMode()) {
+                    echo "Debug - Failed to create new connection: " . $error . "\n";
+                }
                 $conn->disconnect();
-                throw new PDOException("Failed to create new DB connection");
+                throw new PDOException("Failed to create new DB connection: " . $error);
             }
 
             $id = $conn->getInstanceId();
@@ -73,6 +103,9 @@ class DBPoolManager
                 'started_at' => time()
             ];
 
+            if ($this->debugMode()) {
+                echo "Debug - Successfully created new connection\n";
+            }
             return $pdo;
         }
 
@@ -84,17 +117,34 @@ class DBPoolManager
      */
     private function getHealthyConnectionFromPool(): ?PDO
     {
+        if ($this->debugMode()) {
+            echo "Debug - Checking for healthy connections in pool\n";
+            echo "Debug - Available connections: " . count(self::$availableConnections) . "\n";
+        }
+        
         while (!empty(self::$availableConnections)) {
             $connectionData = array_pop(self::$availableConnections);
             $connection = $connectionData['connection'];
 
+            if ($this->debugMode()) {
+                echo "Debug - Checking connection " . $connection->getInstanceId() . "\n";
+            }
+            
             if (!$connection->isConnected()) {
+                if ($this->debugMode()) {
+                    echo "Debug - Connection not connected, skipping\n";
+                }
                 continue;
             }
 
             try {
                 $pdo = $connection->db();
+                if ($this->debugMode()) {
+                    echo "Debug - Testing connection with SELECT 1\n";
+                }
                 $pdo->query('SELECT 1'); // Health check
+
+                    echo "Debug - Connection health check passed\n";
 
                 $instanceId = $connection->getInstanceId();
                 self::$inuseConnections[$instanceId] = [
@@ -102,12 +152,21 @@ class DBPoolManager
                     'started_at' => time()
                 ];
 
+                if ($this->debugMode()) {
+                    echo "Debug - Connection moved to in-use pool\n";
+                }
                 return $pdo;
-            } catch (PDOException) {
+            } catch (PDOException $e) {
+                if ($this->debugMode()) {
+                    echo "Debug - Connection health check failed: " . $e->getMessage() . "\n";
+                }
                 $connection->disconnect();
             }
         }
 
+        if ($this->debugMode()) {
+            echo "Debug - No healthy connections found in pool\n";
+        }
         return null;
     }
 
@@ -251,5 +310,13 @@ class DBPoolManager
     private function getMaxPoolSize(): int
     {
         return (int) ($_ENV['MAX_DB_CONNECTION_POOL'] ?? 10); // 10 connections default
+    }
+
+    private function debugMode(): bool
+    {
+        if($_ENV['APP_ENV'] === 'dev'){
+            return true;
+        }
+        return false;
     }
 }

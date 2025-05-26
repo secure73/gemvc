@@ -37,10 +37,16 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if the table was created successfully, false otherwise
      */
     public function createTableFromObject(object $object, string $tableName = null): bool {
+        echo "Debug - Starting table creation from object\n";
+        
+        echo "Debug - Checking connection status...\n";
         if (!$this->isConnected()) {
+            echo "Debug - Connection check failed in TableGenerator\n";
+            echo "Debug - Error message: " . $this->getError() . "\n";
             $this->setError("Database is not connected");
             return false;
         }
+        echo "Debug - Connection check passed\n";
 
         // Get table name from object if not provided
         if (!$tableName) {
@@ -54,6 +60,7 @@ class TableGenerator extends QueryExecuter {
                 return false;
             }
         }
+        echo "Debug - Table name: " . $tableName . "\n";
 
         // Validate table name format
         if (!$this->isValidTableName($tableName)) {
@@ -895,6 +902,4 @@ class TableGenerator extends QueryExecuter {
             return false;
         }
     }
-
-
 } 
