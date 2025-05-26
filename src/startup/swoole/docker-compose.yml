@@ -32,7 +32,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: "rootpassword"
     command: 
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
