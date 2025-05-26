@@ -5,69 +5,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - ./app/.env
     ports:
-      - "${SWOOLE_SERVER_PORT:-9501}:9501"
+      - "9501:9501"
     volumes:
       - ./:/var/www/html:delegated
-    environment:
-      # PHP Configuration
-      - PHP_MEMORY_LIMIT=256M
-      
-      # OpenSwoole Configuration
-      - IS_OPENSWOOLE=true
-      - SWOOLE_SERVER_HOST=${SWOOLE_SERVER_HOST:-0.0.0.0}
-      - SWOOLE_SERVER_PORT=${SWOOLE_SERVER_PORT:-9501}
-      - SWOOLE_WORKERS=${SWOOLE_WORKERS:-3}
-      - SWOOLE_RUN_FOREGROUND=${SWOOLE_RUN_FOREGROUND:-0}
-      - SWOOLE_MAX_REQUEST=${SWOOLE_MAX_REQUEST:-5000}
-      - SWOOLE_MAX_CONN=${SWOOLE_MAX_CONN:-1024}
-      - SWOOLE_MAX_WAIT_TIME=${SWOOLE_MAX_WAIT_TIME:-60}
-      - SWOOLE_ENABLE_COROUTINE=${SWOOLE_ENABLE_COROUTINE:-1}
-      - SWOOLE_MAX_COROUTINE=${SWOOLE_MAX_COROUTINE:-3000}
-      - SWOOLE_DISPLAY_ERRORS=${SWOOLE_DISPLAY_ERRORS:-1}
-      - SWOOLE_HEARTBEAT_IDLE_TIME=${SWOOLE_HEARTBEAT_IDLE_TIME:-600}
-      - SWOOLE_HEARTBEAT_INTERVAL=${SWOOLE_HEARTBEAT_INTERVAL:-60}
-      - SWOOLE_SERVER_LOG_INFO=${SWOOLE_SERVER_LOG_INFO:-1}
-      
-      # Database Configuration
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=${MYSQL_DATABASE:-gemvc_db}
-      - DB_CHARSET=utf8mb4
-      - DB_USER=${MYSQL_USER:-gemvc_user}
-      - DB_PASSWORD=${MYSQL_PASSWORD:-gemvc_password}
-      - DB_MIN_CONNECTION_POOL=${DB_MIN_CONNECTION_POOL:-1}
-      - DB_MAX_CONNECTION_POOL=${DB_MAX_CONNECTION_POOL:-10}
-      - DB_CONNECTION_TIME_OUT=${DB_CONNECTION_TIME_OUT:-20}
-      - DB_CONNECTION_EXPIER_TIME=${DB_CONNECTION_EXPIER_TIME:-20}
-      - DB_CONNECTION_MAX_AGE=${DB_CONNECTION_MAX_AGE:-3600}
-      
-      # Token Configuration
-      - TOKEN_SECRET=${TOKEN_SECRET:-your_token_secret}
-      - TOKEN_ISSUER=${TOKEN_ISSUER:-gemvc_api}
-      - REFRESH_TOKEN_VALIDATION_IN_SECONDS=${REFRESH_TOKEN_VALIDATION_IN_SECONDS:-43200}
-      - ACCESS_TOKEN_VALIDATION_IN_SECONDS=${ACCESS_TOKEN_VALIDATION_IN_SECONDS:-15800}
-      - LOGIN_TOKEN_VALIDATION_IN_SECONDS=${LOGIN_TOKEN_VALIDATION_IN_SECONDS:-789000}
-      
-      # Application Configuration
-      - QUERY_LIMIT=${QUERY_LIMIT:-10}
-      - SERVICE_IN_URL_SECTION=${SERVICE_IN_URL_SECTION:-1}
-      - METHOD_IN_URL_SECTION=${METHOD_IN_URL_SECTION:-2}
-      - APP_ENV=${APP_ENV:-development}
     restart: unless-stopped
     networks:
       - backend-network
     depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9501/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - db
 
   db:
     image: mysql:8.0
@@ -76,24 +22,26 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-gemvc_db}
-      MYSQL_USER: ${MYSQL_USER:-gemvc_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gemvc_password}
+      MYSQL_ROOT_PASSWORD: rootpassword
     command: 
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --host_cache_size=0
       - --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
     networks:
       - backend-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpassword
+    networks:
+      - backend-network
+    depends_on:
+      - db
 
 volumes:
   mysql-data:
