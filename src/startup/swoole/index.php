@@ -28,11 +28,16 @@ $server->on("start", function ($server) {
 $server->on("workerStart", function ($server, $workerId) {
     if ($workerId === 0 && isDev()) {  // Only in first worker AND in dev environment
         $lastCheck = time();
-        $server->tick(5000, function () use ($server, &$lastCheck) {
-            // Only reload if files have changed
+        $lastFileHash = getFileHash(); // Get initial file hash
+        
+        $server->tick(10000, function () use ($server, &$lastCheck, &$lastFileHash) {
             $currentTime = time();
-            if ($currentTime - $lastCheck >= 2) {  // Check every 2 seconds
+            $currentFileHash = getFileHash();
+            
+            // Only reload if files have changed AND enough time has passed
+            if ($currentFileHash !== $lastFileHash && ($currentTime - $lastCheck) >= 5) {
                 $lastCheck = $currentTime;
+                $lastFileHash = $currentFileHash;
                 $server->reload();
             }
         });
@@ -99,6 +104,28 @@ function serverPort():int {
 }
 function serverHost():string {
     return $_ENV["SWOOLE_SERVER_HOST"] ?? "0.0.0.0";
+}
+
+// Helper function to get hash of all PHP files in the project
+function getFileHash() {
+    $files = [];
+    $dirs = ['app', 'vendor/gemvc/library/src'];
+    
+    foreach ($dirs as $dir) {
+        if (is_dir($dir)) {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+            
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $files[] = $file->getPathname() . ':' . $file->getMTime();
+                }
+            }
+        }
+    }
+    
+    return md5(implode('|', $files));
 }
 
 $server->start();
