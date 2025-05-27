@@ -27,6 +27,10 @@ class Migrate extends Command
             $specificTable = $this->args[0] ?? null;
             
             if ($specificTable) {
+                // Check if it's a migrate:tableName format
+                if (strpos($specificTable, ':') !== false) {
+                    $specificTable = explode(':', $specificTable)[1];
+                }
                 // Migrate specific table
                 $this->migrateTable($specificTable);
             } else {
@@ -74,8 +78,13 @@ class Migrate extends Command
             $table = new $class();
             $tableGenerator = new TableGenerator();
             
-            // Create or update table using TableGenerator
-            if ($tableGenerator->createTableFromObject($table)) {
+            // Use updateTable instead of createTableFromObject
+            // This will:
+            // 1. Create table if it doesn't exist
+            // 2. Add new columns for new properties
+            // 3. Update columns for changed types
+            // 4. Remove columns that don't exist in the object
+            if ($tableGenerator->updateTable($table, null, true)) {
                 $this->success("Table migrated successfully: {$tableName}");
             } else {
                 $this->error("Failed to migrate table: {$tableName} - " . $tableGenerator->getError());
