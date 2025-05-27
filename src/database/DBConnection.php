@@ -20,16 +20,13 @@ class DBConnection {
         }
         if($this->debugMode()){
         // Debug: Print all environment variables
-        echo "Debug - All Environment Variables:\n";
-        print_r($_ENV);
-        
         // Debug: Print specific DB variables
         echo "\nDebug - DB Connection Parameters:\n";
-        echo "Host: " . ($_ENV['DB_HOST'] ?? 'not set') . "\n";
-        echo "Port: " . ($_ENV['DB_PORT'] ?? 'not set') . "\n";
-        echo "Database: " . ($_ENV['DB_NAME'] ?? 'not set') . "\n";
-        echo "Charset: " . ($_ENV['DB_CHARSET'] ?? 'not set') . "\n";
-        echo "User: " . ($_ENV['DB_USER'] ?? 'not set') . "\n";
+        echo "Host: " . ($_ENV['DB_HOST'] ? 'set' : 'not set') . "\n";
+        echo "Port: " . ($_ENV['DB_PORT'] ? 'set' : 'not set') . "\n";
+        echo "Database: " . ($_ENV['DB_NAME'] ? 'set' : 'not set') . "\n";
+        echo "Charset: " . ($_ENV['DB_CHARSET'] ? 'set' : 'not set') . "\n";
+        echo "User: " . ($_ENV['DB_USER'] ? 'set' : 'not set') . "\n";
         echo "Password: " . (isset($_ENV['DB_PASSWORD']) ? 'set' : 'not set') . "\n";
         }
         
@@ -55,9 +52,6 @@ class DBConnection {
             $_ENV['DB_NAME'],
             $_ENV['DB_CHARSET']
         );
-        if($this->debugMode()){
-            echo "Debug - DSN: " . $dsn . "\n";
-        }
         
         try {
             echo "Debug - Attempting to create PDO connection...\n";
