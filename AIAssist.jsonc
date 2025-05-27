@@ -86,6 +86,29 @@
               "returns": "array"
             }
           }
+        },
+        "ProjectHelper": {
+          "description": "Helper class for managing project paths and environment loading",
+          "methods": {
+            "rootDir": {
+              "description": "Finds and returns the project root directory using composer.lock",
+              "returns": "string",
+              "throws": "Exception if composer.lock not found",
+              "example": "ProjectHelper::rootDir()"
+            },
+            "appDir": {
+              "description": "Returns the app directory path",
+              "returns": "string",
+              "throws": "Exception if app directory not found",
+              "example": "ProjectHelper::appDir()"
+            },
+            "loadEnv": {
+              "description": "Loads environment variables from .env file",
+              "returns": "void",
+              "throws": "Exception if .env file not found",
+              "example": "ProjectHelper::loadEnv()"
+            }
+          }
         }
       }
     },
@@ -234,13 +257,15 @@
       "api": "API service classes",
       "controller": "Controller classes",
       "model": "Model classes",
-      "table": "Table classes"
+      "table": "Table classes",
+      ".env": "Environment configuration"
     },
     "src": {
       "core": "Core framework components",
       "http": "HTTP handling components",
       "database": "Database components",
-      "CLI": "Command-line tools"
+      "CLI": "Command-line tools",
+      "helper": "Helper classes like ProjectHelper"
     }
   },
 
@@ -248,7 +273,8 @@
     "services": [
       "Always extend ApiService",
       "Validate inputs first",
-      "Use Request.auth() for authentication"
+      "Use Request.auth() for authentication",
+      "Use ProjectHelper for path management"
     ],
     "controllers": [
       "Only called by Services",

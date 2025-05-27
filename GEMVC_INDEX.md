@@ -273,6 +273,14 @@
 
 ## 5. Helper Components (src/helper/)
 
+### Project Management
+- **ProjectHelper.php** (1.2KB, 48 lines)
+  - Manages project paths
+  - Finds project root directory
+  - Handles environment loading
+  - Provides app directory access
+  - Uses composer.lock for root detection
+
 ### Type Handling
 - **TypeHelper.php** (2.6KB, 106 lines)
   - Handles type conversion
