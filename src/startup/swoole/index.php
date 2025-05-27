@@ -28,7 +28,7 @@ $server->on("start", function ($server) {
 $server->on("workerStart", function ($server, $workerId) {
     if ($workerId === 0 && isDev()) {  // Only in first worker AND in dev environment
         $lastCheck = time();
-        $server->tick(2000, function () use ($server, &$lastCheck) {
+        $server->tick(5000, function () use ($server, &$lastCheck) {
             // Only reload if files have changed
             $currentTime = time();
             if ($currentTime - $lastCheck >= 2) {  // Check every 2 seconds
