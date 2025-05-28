@@ -18,42 +18,19 @@ class TableGenerator {
     private array $indexedProperties = [];
     private array $uniqueIndexedProperties = [];
     private string $error = '';
+    private DBConnection $dbConnection;
 
     public function __construct() {
         ProjectHelper::loadEnv();
+        $this->dbConnection = new DBConnection();
         $this->connect();
     }
 
     private function connect() {
-        $host = getenv('DB_HOST') ?: $_ENV['DB_HOST'] ?? 'localhost';
-        $db   = getenv('DB_NAME') ?: $_ENV['DB_NAME'] ?? '';
-        $user = getenv('DB_USER') ?: $_ENV['DB_USER'] ?? '';
-        $pass = getenv('DB_PASSWORD') ?: $_ENV['DB_PASSWORD'] ?? '';
-        $port = getenv('DB_PORT') ?: $_ENV['DB_PORT'] ?? 3306;
-        $charset = getenv('DB_CHARSET') ?: $_ENV['DB_CHARSET'] ?? 'utf8mb4';
-        
-        $dsn = "mysql:host=$host;dbname=$db;port=$port;charset=$charset";
-        
-        try {
-            // Close existing connection if any
-            $this->pdo = null;
-            
-            $this->pdo = new PDO($dsn, $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_TIMEOUT => getenv('DB_CONNECTION_TIME_OUT') ?: $_ENV['DB_CONNECTION_TIME_OUT'] ?? 20,
-                PDO::ATTR_PERSISTENT => false, // Changed to false to ensure fresh connection
-                PDO::ATTR_AUTOCOMMIT => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-            ]);
-            
-            // Reset connection state
-            $this->pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
-            
-        } catch (PDOException $e) {
-            $this->error = 'PDO Connection failed: ' . $e->getMessage();
-            $this->pdo = null;
-            echo $this->error . "\n";
+        $this->pdo = $this->dbConnection->connect();
+        if (!$this->pdo) {
+            $this->error = $this->dbConnection->getError();
+            echo "Connection Error: " . $this->error . "\n";
         }
     }
 
@@ -109,7 +86,9 @@ class TableGenerator {
             $this->pdo->commit();
             return true;
         } catch (PDOException $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             $this->error = $e->getMessage();
             return false;
         }
@@ -145,7 +124,9 @@ class TableGenerator {
             $result = $result->fetchAll();
             if (empty($result)) {
                 $this->error = "Column '$columnName' does not exist in table '$tableName'";
-                $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 return false;
             }
             
@@ -171,7 +152,9 @@ class TableGenerator {
             
             return true;
         } catch (PDOException $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             $this->error = $e->getMessage();
             return false;
         }
@@ -349,7 +332,9 @@ class TableGenerator {
             $result = $result->fetchAll();
             if (empty($result)) {
                 $this->error = "Column '$columnName' does not exist in table '$tableName'";
-                $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 return false;
             }
             
@@ -383,7 +368,9 @@ class TableGenerator {
             
             return true;
         } catch (PDOException $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             $this->error = $e->getMessage();
             return false;
         }
@@ -524,7 +511,9 @@ class TableGenerator {
             $this->pdo->beginTransaction();
             $result = $callback();
             if ($result === false) {
-                $this->pdo->rollBack();
+                if ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
                 return false;
             }
             $this->pdo->commit();
@@ -698,7 +687,9 @@ class TableGenerator {
                 $result = $result->fetchAll();
                 if (empty($result)) {
                     $this->error = "Column '$columnName' does not exist in table '$tableName'";
-                    $this->pdo->rollBack();
+                    if ($this->pdo->inTransaction()) {
+                        $this->pdo->rollBack();
+                    }
                     return false;
                 }
             }
@@ -737,7 +728,9 @@ class TableGenerator {
             
             return true;
         } catch (PDOException $e) {
-            $this->pdo->rollBack();
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             $this->error = $e->getMessage();
             return false;
         }
