@@ -1,7 +1,9 @@
 <?php
-
 namespace Gemvc\Database;
-use Gemvc\Database\QueryExecuter;
+
+use Gemvc\Helper\ProjectHelper;
+use PDO;
+use PDOException;
 
 /**
  * TableGenerator automatically creates database tables from PHP objects using reflection.
@@ -10,24 +12,50 @@ use Gemvc\Database\QueryExecuter;
  * column types determined by the PHP property types. It provides a simple ORM-like
  * functionality for schema generation.
  */
-class TableGenerator extends QueryExecuter {
-    /**
-     * @var array Array of property names to create indexes for
-     */
-    private array $indexedProperties = [];
-    
-    /**
-     * @var array Array of property names to create unique indexes for
-     */
-    private array $uniqueIndexedProperties = [];
-    
-    /**
-     * @var array Additional column properties like NOT NULL, DEFAULT, etc.
-     */
+class TableGenerator {
+    private ?PDO $pdo = null;
     private array $columnProperties = [];
+    private array $indexedProperties = [];
+    private array $uniqueIndexedProperties = [];
+    private string $error = '';
 
     public function __construct() {
-        parent::__construct();
+        ProjectHelper::loadEnv();
+        $this->connect();
+    }
+
+    private function connect() {
+        $host = getenv('DB_HOST') ?: $_ENV['DB_HOST'] ?? 'localhost';
+        $db   = getenv('DB_NAME') ?: $_ENV['DB_NAME'] ?? '';
+        $user = getenv('DB_USER') ?: $_ENV['DB_USER'] ?? '';
+        $pass = getenv('DB_PASSWORD') ?: $_ENV['DB_PASSWORD'] ?? '';
+        $port = getenv('DB_PORT') ?: $_ENV['DB_PORT'] ?? 3306;
+        $charset = getenv('DB_CHARSET') ?: $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+        
+        $dsn = "mysql:host=$host;dbname=$db;port=$port;charset=$charset";
+        
+        try {
+            $this->pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_TIMEOUT => getenv('DB_CONNECTION_TIME_OUT') ?: $_ENV['DB_CONNECTION_TIME_OUT'] ?? 20,
+                PDO::ATTR_PERSISTENT => true,
+                PDO::ATTR_AUTOCOMMIT => false,  // Disable autocommit for transaction support
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+            ]);
+            
+            // Enable transaction support
+            $this->pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
+            
+        } catch (PDOException $e) {
+            $this->error = 'PDO Connection failed: ' . $e->getMessage();
+            $this->pdo = null;
+            echo $this->error . "\n";
+        }
+    }
+
+    public function getError(): string {
+        return $this->error;
     }
 
     /**
@@ -37,115 +65,49 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if the table was created successfully, false otherwise
      */
     public function createTableFromObject(object $object, string $tableName = null): bool {
-        echo "Debug - Starting table creation from object\n";
-        
-        echo "Debug - Checking connection status...\n";
-        if (!$this->isConnected()) {
-            echo "Debug - Connection check failed in TableGenerator\n";
-            echo "Debug - Error message: " . $this->getError() . "\n";
-            $this->setError("Database is not connected");
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
             return false;
         }
-        echo "Debug - Connection check passed\n";
-
-        // Get table name from object if not provided
         if (!$tableName) {
             if (!method_exists($object, 'getTable')) {
-                $this->setError("public function getTable() not found in object");
+                $this->error = 'public function getTable() not found in object';
                 return false;
             }
             $tableName = $object->getTable();
             if (!$tableName) {
-                $this->setError("function getTable() returned null string. Please define it and give table a name");
+                $this->error = 'function getTable() returned null string. Please define it and give table a name';
                 return false;
             }
         }
-        echo "Debug - Table name: " . $tableName . "\n";
-
-        // Validate table name format
-        if (!$this->isValidTableName($tableName)) {
-            $this->setError("Invalid table name format: $tableName");
-            return false;
-        }
-
         $reflection = new \ReflectionClass($object);
         $properties = $reflection->getProperties();
-        
         $columns = [];
-        $propertyNames = []; // Keep track of property names for index creation
-        
         foreach ($properties as $property) {
-            $property->setAccessible(true); // Allow access to protected/private properties
+            $property->setAccessible(true);
             $propertyName = $property->getName();
-            
-            // Skip properties that shouldn't be in the database
-            if ($this->shouldSkipProperty($property)) {
-                continue;
-            }
-
-            // Get property type and determine SQL type
+            if ($this->shouldSkipProperty($property)) continue;
             $propertyType = $this->getPropertyType($property, $object);
             $sqlType = $this->mapTypeToSqlType($propertyType, $propertyName);
-            
-            // Add additional column properties if defined
             if (isset($this->columnProperties[$propertyName])) {
                 $sqlType .= ' ' . $this->columnProperties[$propertyName];
             }
-            
             $columns[] = "`$propertyName` $sqlType";
-            $propertyNames[] = $propertyName;
         }
-
-        // If no columns were found, return error
         if (empty($columns)) {
-            $this->setError("No valid properties found in object to create table columns");
+            $this->error = 'No valid properties found in object to create table columns';
             return false;
         }
-
         $columnsSql = implode(", ", $columns);
-        
-        // Generate indexes SQL
-        $indexesSql = $this->generateIndexesSql($tableName, $propertyNames);
-        
-        // Use backticks to escape table name
         $query = "CREATE TABLE IF NOT EXISTS `$tableName` ($columnsSql);";
-
         try {
-            // Start transaction
-            $this->query("START TRANSACTION");
-            $this->execute();
-            
-            // Create table
-            $this->query($query);
-            if (!$this->execute()) {
-                $this->query("ROLLBACK");
-                $this->execute();
-                return false;
-            }
-            
-            // Create indexes if we have any
-            if (!empty($indexesSql)) {
-                foreach ($indexesSql as $indexSql) {
-                    $this->query($indexSql);
-                    if (!$this->execute()) {
-                        $this->setError("Failed to create index: " . $this->getError());
-                        $this->query("ROLLBACK");
-                        $this->execute();
-                        return false;
-                    }
-                }
-            }
-            
-            // Commit transaction
-            $this->query("COMMIT");
-            $this->execute();
-            
+            $this->pdo->beginTransaction();
+            $this->pdo->exec($query);
+            $this->pdo->commit();
             return true;
-        } catch (\Exception $exception) {
-            $this->setError($exception->getMessage());
-            // Ensure rollback on any exception
-            $this->query("ROLLBACK");
-            $this->execute();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->error = $e->getMessage();
             return false;
         }
     }
@@ -159,13 +121,13 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if successful, false otherwise
      */
     public function makeColumnUnique(string $tableName, string $columnName, bool $dropExistingIndex = true): bool {
-        if (!$this->isConnected()) {
-            $this->setError("Database is not connected");
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
             return false;
         }
         
         if (!$this->isValidTableName($tableName)) {
-            $this->setError("Invalid table name format: $tableName");
+            $this->error = "Invalid table name format: $tableName";
             return false;
         }
         
@@ -174,54 +136,40 @@ class TableGenerator extends QueryExecuter {
         
         try {
             // Start transaction
-            $this->query("START TRANSACTION");
-            $this->execute();
-            
-            // Check if column exists
-            $this->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
-            $result = $this->fetchAll();
+            $this->pdo->beginTransaction();
+            $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            $result = $result->fetchAll();
             if (empty($result)) {
-                $this->setError("Column '$columnName' does not exist in table '$tableName'");
-                $this->query("ROLLBACK");
-                $this->execute();
+                $this->error = "Column '$columnName' does not exist in table '$tableName'";
+                $this->pdo->rollBack();
                 return false;
             }
             
             // If requested, drop any existing indexes on this column
             if ($dropExistingIndex) {
                 // Find any existing indexes on this column
-                $this->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
-                $indexes = $this->fetchAll();
+                $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                $indexes = $indexes->fetchAll();
                 
                 foreach ($indexes as $index) {
                     $existingIndexName = $index['Key_name'];
                     // Don't drop primary key
                     if ($existingIndexName !== 'PRIMARY') {
-                        $this->query("DROP INDEX `$existingIndexName` ON `$tableName`");
-                        $this->execute();
+                        $this->pdo->exec("DROP INDEX `$existingIndexName` ON `$tableName`");
                     }
                 }
             }
             
             // Create the unique index
-            $this->query("CREATE UNIQUE INDEX `$indexName` ON `$tableName` (`$columnName`)");
-            if (!$this->execute()) {
-                $this->setError("Failed to create unique index: " . $this->getError());
-                $this->query("ROLLBACK");
-                $this->execute();
-                return false;
-            }
-            
-            // Commit transaction
-            $this->query("COMMIT");
-            $this->execute();
+            $this->pdo->exec("CREATE UNIQUE INDEX `$indexName` ON `$tableName` (`$columnName`)");
+            $this->pdo->commit();
             
             return true;
-        } catch (\Exception $exception) {
-            $this->setError($exception->getMessage());
-            // Ensure rollback on any exception
-            $this->query("ROLLBACK");
-            $this->execute();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->error = $e->getMessage();
             return false;
         }
     }
@@ -380,34 +328,32 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if successful, false otherwise
      */
     public function removeColumn(string $tableName, string $columnName): bool {
-        if (!$this->isConnected()) {
-            $this->setError("Database is not connected");
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
             return false;
         }
         
         if (!$this->isValidTableName($tableName)) {
-            $this->setError("Invalid table name format: $tableName");
+            $this->error = "Invalid table name format: $tableName";
             return false;
         }
         
         try {
             // Start transaction
-            $this->query("START TRANSACTION");
-            $this->execute();
-            
-            // Check if column exists
-            $this->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
-            $result = $this->fetchAll();
+            $this->pdo->beginTransaction();
+            $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            $result = $result->fetchAll();
             if (empty($result)) {
-                $this->setError("Column '$columnName' does not exist in table '$tableName'");
-                $this->query("ROLLBACK");
-                $this->execute();
+                $this->error = "Column '$columnName' does not exist in table '$tableName'";
+                $this->pdo->rollBack();
                 return false;
             }
             
             // Check if the column is part of any indexes and drop them first
-            $this->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
-            $indexes = $this->fetchAll();
+            $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+            $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+            $indexes = $indexes->fetchAll();
             $processedIndexes = [];
             
             foreach ($indexes as $index) {
@@ -420,40 +366,22 @@ class TableGenerator extends QueryExecuter {
                 
                 // If it's a PRIMARY KEY, we need to drop it differently
                 if ($indexName === 'PRIMARY') {
-                    $this->query("ALTER TABLE `$tableName` DROP PRIMARY KEY");
+                    $this->pdo->exec("ALTER TABLE `$tableName` DROP PRIMARY KEY");
                 } else {
-                    $this->query("DROP INDEX `$indexName` ON `$tableName`");
-                }
-                
-                if (!$this->execute()) {
-                    $this->setError("Failed to drop index '$indexName' on column '$columnName': " . $this->getError());
-                    $this->query("ROLLBACK");
-                    $this->execute();
-                    return false;
+                    $this->pdo->exec("DROP INDEX `$indexName` ON `$tableName`");
                 }
                 
                 $processedIndexes[] = $indexName;
             }
             
             // Remove the column
-            $this->query("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
-            if (!$this->execute()) {
-                $this->setError("Failed to remove column '$columnName': " . $this->getError());
-                $this->query("ROLLBACK");
-                $this->execute();
-                return false;
-            }
-            
-            // Commit transaction
-            $this->query("COMMIT");
-            $this->execute();
+            $this->pdo->exec("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
+            $this->pdo->commit();
             
             return true;
-        } catch (\Exception $exception) {
-            $this->setError($exception->getMessage());
-            // Ensure rollback on any exception
-            $this->query("ROLLBACK");
-            $this->execute();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->error = $e->getMessage();
             return false;
         }
     }
@@ -472,115 +400,66 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if the update was successful, false otherwise
      */
     public function updateTable(object $object, string $tableName = null, bool $removeExtraColumns = false): bool {
-        if (!$this->isConnected()) {
-            $this->setError("Database is not connected");
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
             return false;
         }
 
-        // Get table name from object if not provided
         if (!$tableName) {
             if (!method_exists($object, 'getTable')) {
-                $this->setError("public function getTable() not found in object");
+                $this->error = 'public function getTable() not found in object';
                 return false;
             }
             $tableName = $object->getTable();
             if (!$tableName) {
-                $this->setError("function getTable() returned null string. Please define it and give table a name");
+                $this->error = 'function getTable() returned null string. Please define it and give table a name';
                 return false;
             }
         }
 
-        // Validate table name format
-        if (!$this->isValidTableName($tableName)) {
-            $this->setError("Invalid table name format: $tableName");
-            return false;
-        }
-
-        try {
-            // Start transaction
-            $this->query("START TRANSACTION");
-            $this->execute();
-            
-            // Check if table exists
-            $this->query("SHOW TABLES LIKE '$tableName'");
-            $tableExists = !empty($this->fetchAll());
-            
-            if (!$tableExists) {
-                // Table doesn't exist, create it from scratch
-                $this->query("ROLLBACK");
-                $this->execute();
-                return $this->createTableFromObject($object, $tableName);
+        return $this->executeTransaction(function() use ($object, $tableName, $removeExtraColumns) {
+            $stmt = $this->pdo->query("DESCRIBE `$tableName`");
+            $existingColumns = $stmt->fetchAll();
+            if (empty($existingColumns)) {
+                $this->error = "DESCRIBE failed or table has no columns.";
+                return false;
             }
-            
-            // Get existing table structure
-            $this->query("DESCRIBE `$tableName`");
-            $existingColumns = $this->fetchAll();
-            
-            // Create a map of column names to their definitions
+
             $columnMap = [];
             foreach ($existingColumns as $column) {
-                $name = $column['Field'];
-                $type = $column['Type'];
-                $nullable = $column['Null'] === 'YES';
-                $default = $column['Default'];
-                $extra = $column['Extra'];
-                
-                $columnMap[$name] = [
-                    'type' => $type,
-                    'nullable' => $nullable,
-                    'default' => $default,
-                    'extra' => $extra
-                ];
+                $columnMap[$column['Field']] = $column;
             }
-            
-            // Get object properties
+
             $reflection = new \ReflectionClass($object);
             $properties = $reflection->getProperties();
-            
-            // Track property names and changes
             $objectPropertyNames = [];
             $columnsToAdd = [];
             $columnsToModify = [];
-            
-            // Analyze properties
+            $columnsToRemove = [];
+
+            // Get all property names from the object
             foreach ($properties as $property) {
                 $property->setAccessible(true);
                 $propertyName = $property->getName();
-                
-                // Skip properties that shouldn't be in the database
-                if ($this->shouldSkipProperty($property)) {
-                    continue;
-                }
+                if ($this->shouldSkipProperty($property)) continue;
                 
                 $objectPropertyNames[] = $propertyName;
-                
-                // Get property type and determine SQL type
                 $propertyType = $this->getPropertyType($property, $object);
                 $sqlType = $this->mapTypeToSqlType($propertyType, $propertyName);
                 
-                // Add additional column properties if defined
                 if (isset($this->columnProperties[$propertyName])) {
                     $sqlType .= ' ' . $this->columnProperties[$propertyName];
                 }
-                
-                // Check if column exists in the table
+
                 if (!isset($columnMap[$propertyName])) {
-                    // Column doesn't exist, add it
                     $columnsToAdd[] = [
                         'name' => $propertyName,
                         'definition' => $sqlType
                     ];
                 } else {
-                    // Column exists, check if type matches
-                    $existingType = strtolower($columnMap[$propertyName]['type']);
-                    $newType = strtolower(preg_replace('/\s+.*$/', '', $sqlType)); // Remove extra attributes
-                    
-                    // Skip comparison for id columns as they often have special attributes
-                    if ($propertyName === 'id') {
-                        continue;
-                    }
-                    
-                    // If types don't match, modify the column
+                    $existingType = strtolower($columnMap[$propertyName]['Type']);
+                    $newType = strtolower(preg_replace('/\s+.*$/', '', $sqlType));
+                    if ($propertyName === 'id') continue;
                     if ($existingType !== $newType) {
                         $columnsToModify[] = [
                             'name' => $propertyName,
@@ -589,97 +468,61 @@ class TableGenerator extends QueryExecuter {
                     }
                 }
             }
-            
-            // Track columns to remove (if requested)
-            $columnsToRemove = [];
+
+            // Find columns to remove if removeExtraColumns is true
             if ($removeExtraColumns) {
-                foreach (array_keys($columnMap) as $existingColumnName) {
-                    if (!in_array($existingColumnName, $objectPropertyNames)) {
-                        $columnsToRemove[] = $existingColumnName;
+                foreach ($columnMap as $columnName => $column) {
+                    // Skip 'id' column and columns that exist in the object
+                    if ($columnName === 'id' || in_array($columnName, $objectPropertyNames)) {
+                        continue;
                     }
+                    $columnsToRemove[] = $columnName;
                 }
             }
-            
-            // Execute changes
-            
-            // 1. Add new columns
+
+            // Execute all changes
             foreach ($columnsToAdd as $column) {
-                $this->query("ALTER TABLE `$tableName` ADD COLUMN `{$column['name']}` {$column['definition']}");
-                if (!$this->execute()) {
-                    $this->setError("Failed to add column '{$column['name']}': " . $this->getError());
-                    $this->query("ROLLBACK");
-                    $this->execute();
-                    return false;
-                }
+                $this->pdo->exec("ALTER TABLE `$tableName` ADD COLUMN `{$column['name']}` {$column['definition']}");
             }
-            
-            // 2. Modify existing columns
+
             foreach ($columnsToModify as $column) {
-                $this->query("ALTER TABLE `$tableName` MODIFY COLUMN `{$column['name']}` {$column['definition']}");
-                if (!$this->execute()) {
-                    $this->setError("Failed to modify column '{$column['name']}': " . $this->getError());
-                    $this->query("ROLLBACK");
-                    $this->execute();
-                    return false;
-                }
+                $this->pdo->exec("ALTER TABLE `$tableName` MODIFY COLUMN `{$column['name']}` {$column['definition']}");
             }
-            
-            // 3. Remove extra columns
+
             foreach ($columnsToRemove as $columnName) {
-                // Use our existing method to safely remove columns
-                $result = $this->removeColumn($tableName, $columnName);
-                if (!$result) {
-                    // Error message already set by removeColumn
-                    $this->query("ROLLBACK");
-                    $this->execute();
-                    return false;
-                }
+                $this->pdo->exec("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
             }
-            
-            // 4. Handle indexes
-            $indexesSql = $this->generateIndexesSql($tableName, $objectPropertyNames);
-            if (!empty($indexesSql)) {
-                // Get existing indexes to avoid duplicates
-                $this->query("SHOW INDEXES FROM `$tableName`");
-                $existingIndexes = $this->fetchAll();
-                $existingIndexNames = [];
-                
-                foreach ($existingIndexes as $index) {
-                    $existingIndexNames[] = $index['Key_name'];
-                }
-                
-                // Create new indexes, skipping any that already exist
-                foreach ($indexesSql as $indexSql) {
-                    // Extract index name from SQL statement
-                    if (preg_match('/CREATE\s+(UNIQUE\s+)?INDEX\s+`([^`]+)`/', $indexSql, $matches)) {
-                        $indexName = $matches[2];
-                        
-                        // Skip if index already exists
-                        if (in_array($indexName, $existingIndexNames)) {
-                            continue;
-                        }
-                        
-                        $this->query($indexSql);
-                        if (!$this->execute()) {
-                            $this->setError("Failed to create index: " . $this->getError());
-                            $this->query("ROLLBACK");
-                            $this->execute();
-                            return false;
-                        }
-                    }
-                }
-            }
-            
-            // Commit transaction
-            $this->query("COMMIT");
-            $this->execute();
-            
+
             return true;
-        } catch (\Exception $exception) {
-            $this->setError($exception->getMessage());
-            // Ensure rollback on any exception
-            $this->query("ROLLBACK");
-            $this->execute();
+        });
+    }
+
+    /**
+     * Safely execute a transaction
+     * 
+     * @param callable $callback The function to execute within the transaction
+     * @return bool True if the transaction was successful, false otherwise
+     */
+    private function executeTransaction(callable $callback): bool {
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
+            return false;
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+            $result = $callback();
+            if ($result === false) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            $this->error = $e->getMessage();
             return false;
         }
     }
@@ -805,18 +648,18 @@ class TableGenerator extends QueryExecuter {
      * @return bool True if successful, false otherwise
      */
     public function makeColumnsUniqueTogether(string $tableName, array $columnNames, ?string $indexName = null, bool $dropExistingIndexes = true): bool {
-        if (!$this->isConnected()) {
-            $this->setError("Database is not connected");
+        if (!$this->pdo) {
+            $this->error = 'No PDO connection.';
             return false;
         }
         
         if (empty($columnNames)) {
-            $this->setError("No column names provided for combined unique index");
+            $this->error = "No column names provided for combined unique index";
             return false;
         }
         
         if (!$this->isValidTableName($tableName)) {
-            $this->setError("Invalid table name format: $tableName");
+            $this->error = "Invalid table name format: $tableName";
             return false;
         }
         
@@ -837,17 +680,14 @@ class TableGenerator extends QueryExecuter {
         
         try {
             // Start transaction
-            $this->query("START TRANSACTION");
-            $this->execute();
-            
-            // Check if all columns exist
+            $this->pdo->beginTransaction();
             foreach ($columnNames as $columnName) {
-                $this->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
-                $result = $this->fetchAll();
+                $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+                $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+                $result = $result->fetchAll();
                 if (empty($result)) {
-                    $this->setError("Column '$columnName' does not exist in table '$tableName'");
-                    $this->query("ROLLBACK");
-                    $this->execute();
+                    $this->error = "Column '$columnName' does not exist in table '$tableName'";
+                    $this->pdo->rollBack();
                     return false;
                 }
             }
@@ -858,8 +698,9 @@ class TableGenerator extends QueryExecuter {
                 
                 // For each column, find indexes that include it
                 foreach ($columnNames as $columnName) {
-                    $this->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
-                    $indexes = $this->fetchAll();
+                    $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                    $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                    $indexes = $indexes->fetchAll();
                     
                     foreach ($indexes as $index) {
                         $existingIndexName = $index['Key_name'];
@@ -872,8 +713,7 @@ class TableGenerator extends QueryExecuter {
                 
                 // Drop the identified indexes
                 foreach (array_keys($indexesToDrop) as $indexToDrop) {
-                    $this->query("DROP INDEX `$indexToDrop` ON `$tableName`");
-                    $this->execute();
+                    $this->pdo->exec("DROP INDEX `$indexToDrop` ON `$tableName`");
                 }
             }
             
@@ -881,24 +721,13 @@ class TableGenerator extends QueryExecuter {
             $columnsListSql = implode('`, `', $columnNames);
             
             // Create the unique index on combined columns
-            $this->query("CREATE UNIQUE INDEX `$indexName` ON `$tableName` (`$columnsListSql`)");
-            if (!$this->execute()) {
-                $this->setError("Failed to create combined unique index: " . $this->getError());
-                $this->query("ROLLBACK");
-                $this->execute();
-                return false;
-            }
-            
-            // Commit transaction
-            $this->query("COMMIT");
-            $this->execute();
+            $this->pdo->exec("CREATE UNIQUE INDEX `$indexName` ON `$tableName` (`$columnsListSql`)");
+            $this->pdo->commit();
             
             return true;
-        } catch (\Exception $exception) {
-            $this->setError($exception->getMessage());
-            // Ensure rollback on any exception
-            $this->query("ROLLBACK");
-            $this->execute();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->error = $e->getMessage();
             return false;
         }
     }
