@@ -58,9 +58,9 @@ vendor/bin/gemvc create:table User
 
 #### CLI Migrate Command
 
-GEMVC provides a powerful CLI migration tool to manage your database schema directly from your PHP Table classes.
+GEMVC provides powerful CLI tools to manage your database schema directly from your PHP Table classes.
 
-##### Usage
+##### Migrate Command
 ```bash
 # Migrate a specific table
 vendor/bin/gemvc migrate UserTable
@@ -69,15 +69,34 @@ vendor/bin/gemvc migrate UserTable
 vendor/bin/gemvc migrate
 ```
 
+##### Update Table Command
+```bash
+# Update a specific table
+vendor/bin/gemvc update:table UserTable
+```
+
+The `update:table` command synchronizes your database table with its PHP class definition:
+- Adds new columns for new properties
+- Updates column types if changed
+- Removes columns not in the class
+- Updates nullable status
+- Manages indexes
+
 ##### How It Works
-- The `migrate` command scans your `app/table` directory for Table classes.
-- It automatically generates and executes the necessary SQL to create or update tables in your database, based on your PHP class definitions.
-- No manual SQL or migration files are required—schema changes are detected and applied automatically.
-- The migration process includes:
-  - Creating new tables if they do not exist
-  - Adding new columns
-  - Updating column types and attributes
-  - Managing primary keys and indexes
+Both commands scan your `app/table` directory for Table classes and automatically:
+- Generate and execute necessary SQL
+- Create or update tables based on PHP class definitions
+- No manual SQL or migration files required
+- Schema changes are detected and applied automatically
+
+The update process includes:
+- Creating new tables if they don't exist
+- Adding new columns for new properties
+- Updating column types and attributes
+- Removing columns not in the class
+- Managing primary keys and indexes
+- Handling nullable properties
+- Updating default values
 
 ##### Example Table Class
 ```php
@@ -88,20 +107,30 @@ use Gemvc\Database\Table;
 class UserTable extends Table {
     public int $id;
     public string $name;
-    public ?string $description;
+    public ?string $description;  // Nullable
+    public string $email;
+    public int $age;
 }
 ```
 
 ##### Example Output
 ```
+# Migrate Command
 Info: Migrating table: UserTable
 Success: Table migrated successfully: UserTable
+
+# Update Command
+Info: Updating table: UserTable
+Success: Table updated successfully: UserTable
 ```
 
 ##### Benefits
-- **Rapid development:** Instantly reflect your PHP model changes in the database.
-- **Consistency:** Your PHP code and database schema stay in sync.
-- **No manual migrations:** Focus on your application logic, not SQL scripts.
+- **Rapid development:** Instantly reflect your PHP model changes in the database
+- **Consistency:** Your PHP code and database schema stay in sync
+- **No manual migrations:** Focus on your application logic, not SQL scripts
+- **Safe updates:** Changes are made within transactions
+- **Type safety:** Automatic type mapping between PHP and SQL
+- **Index management:** Automatic index creation and updates
 
 ## Command Structure
 
