@@ -35,16 +35,19 @@ class TableGenerator {
         $dsn = "mysql:host=$host;dbname=$db;port=$port;charset=$charset";
         
         try {
+            // Close existing connection if any
+            $this->pdo = null;
+            
             $this->pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_TIMEOUT => getenv('DB_CONNECTION_TIME_OUT') ?: $_ENV['DB_CONNECTION_TIME_OUT'] ?? 20,
-                PDO::ATTR_PERSISTENT => true,
-                PDO::ATTR_AUTOCOMMIT => false,  // Disable autocommit for transaction support
+                PDO::ATTR_PERSISTENT => false, // Changed to false to ensure fresh connection
+                PDO::ATTR_AUTOCOMMIT => false,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
             ]);
             
-            // Enable transaction support
+            // Reset connection state
             $this->pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
             
         } catch (PDOException $e) {
@@ -505,11 +508,19 @@ class TableGenerator {
      */
     private function executeTransaction(callable $callback): bool {
         if (!$this->pdo) {
-            $this->error = 'No PDO connection.';
-            return false;
+            $this->connect(); // Try to reconnect if no connection
+            if (!$this->pdo) {
+                $this->error = 'No PDO connection.';
+                return false;
+            }
         }
 
         try {
+            // Ensure we're not in a transaction
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            
             $this->pdo->beginTransaction();
             $result = $callback();
             if ($result === false) {
