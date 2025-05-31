@@ -24,16 +24,26 @@ class TableGenerator {
         $this->connect();
     }
 
-    private function connect() {
-        $host = getenv('DB_HOST') ?: $_ENV['DB_HOST'] ?? 'localhost';
-        $db   = getenv('DB_NAME') ?: $_ENV['DB_NAME'] ?? '';
-        $user = getenv('DB_USER') ?: $_ENV['DB_USER'] ?? '';
-        $pass = getenv('DB_PASSWORD') ?: $_ENV['DB_PASSWORD'] ?? '';
-        $port = getenv('DB_PORT') ?: $_ENV['DB_PORT'] ?? 3306;
-        $charset = getenv('DB_CHARSET') ?: $_ENV['DB_CHARSET'] ?? 'utf8mb4';
-        
-        $dsn = "mysql:host=$host;dbname=$db;port=$port;charset=$charset";
-        
+    /**
+     * Reconnect to the database
+     * @return bool True if connection was successful
+     */
+    public function reconnect(): bool {
+        $this->connect();
+        return $this->pdo !== null;
+    }
+
+    protected function connect(): void {
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=%s',
+            $_ENV['DB_HOST'] ?? 'localhost',
+            $_ENV['DB_PORT'] ?? 3306,
+            $_ENV['DB_NAME'] ?? '',
+            $_ENV['DB_CHARSET'] ?? 'utf8mb4'
+        );
+        $user = $_ENV['DB_USER'] ?? 'root';
+        $pass = $_ENV['DB_PASSWORD'] ?? '';
+
         try {
             // Close existing connection if any
             $this->pdo = null;
@@ -42,13 +52,12 @@ class TableGenerator {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_TIMEOUT => getenv('DB_CONNECTION_TIME_OUT') ?: $_ENV['DB_CONNECTION_TIME_OUT'] ?? 20,
-                PDO::ATTR_PERSISTENT => false, // Changed to false to ensure fresh connection
-                PDO::ATTR_AUTOCOMMIT => false,
+                PDO::ATTR_PERSISTENT => false,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
             ]);
             
-            // Reset connection state
-            $this->pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, false);
+            // Test the connection with a simple query
+            $this->pdo->query('SELECT 1');
             
         } catch (PDOException $e) {
             $this->error = 'PDO Connection failed: ' . $e->getMessage();
@@ -417,11 +426,31 @@ class TableGenerator {
             }
         }
 
-        return $this->executeTransaction(function() use ($object, $tableName, $removeExtraColumns) {
+        // Ensure we have a fresh connection
+        $this->reconnect();
+        if (!$this->pdo) {
+            $this->error = 'Failed to establish database connection';
+            return false;
+        }
+
+        try {
+            // Ensure we're not in a transaction
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            // Test connection before starting transaction
+            $this->pdo->query('SELECT 1');
+            
+            // Start transaction
+            $this->pdo->beginTransaction();
+
+            // Get existing columns
             $stmt = $this->pdo->query("DESCRIBE `$tableName`");
             $existingColumns = $stmt->fetchAll();
             if (empty($existingColumns)) {
                 $this->error = "DESCRIBE failed or table has no columns.";
+                $this->pdo->rollBack();
                 return false;
             }
 
@@ -460,6 +489,11 @@ class TableGenerator {
                     $existingType = strtolower($columnMap[$propertyName]['Type']);
                     $newType = strtolower(preg_replace('/\s+.*$/', '', $sqlType));
                     if ($propertyName === 'id') continue;
+                    
+                    // Compare types more accurately
+                    $existingType = $this->normalizeType($existingType);
+                    $newType = $this->normalizeType($newType);
+                    
                     if ($existingType !== $newType) {
                         $columnsToModify[] = [
                             'name' => $propertyName,
@@ -480,6 +514,12 @@ class TableGenerator {
                 }
             }
 
+            // If no changes needed, commit and return
+            if (empty($columnsToAdd) && empty($columnsToModify) && empty($columnsToRemove)) {
+                $this->pdo->commit();
+                return true;
+            }
+
             // Execute all changes
             foreach ($columnsToAdd as $column) {
                 $this->pdo->exec("ALTER TABLE `$tableName` ADD COLUMN `{$column['name']}` {$column['definition']}");
@@ -493,46 +533,63 @@ class TableGenerator {
                 $this->pdo->exec("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
             }
 
-            return true;
-        });
-    }
-
-    /**
-     * Safely execute a transaction
-     * 
-     * @param callable $callback The function to execute within the transaction
-     * @return bool True if the transaction was successful, false otherwise
-     */
-    private function executeTransaction(callable $callback): bool {
-        if (!$this->pdo) {
-            $this->connect(); // Try to reconnect if no connection
-            if (!$this->pdo) {
-                $this->error = 'No PDO connection.';
-                return false;
-            }
-        }
-
-        try {
-            // Ensure we're not in a transaction
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
-            
-            $this->pdo->beginTransaction();
-            $result = $callback();
-            if ($result === false) {
-                $this->pdo->rollBack();
-                return false;
-            }
+            // Commit the transaction
             $this->pdo->commit();
             return true;
+
         } catch (PDOException $e) {
+            // Rollback on error
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
             $this->error = $e->getMessage();
             return false;
         }
+    }
+
+    /**
+     * Normalize SQL type for comparison
+     * 
+     * @param string $type The SQL type to normalize
+     * @return string The normalized type
+     */
+    private function normalizeType(string $type): string {
+        // Remove length specifications
+        $type = preg_replace('/\(\d+\)/', '', $type);
+        
+        // Normalize common type variations
+        $type = strtolower($type);
+        $type = str_replace(['unsigned', 'signed'], '', $type);
+        $type = trim($type);
+        
+        // Map common variations to standard types
+        $typeMap = [
+            'tinyint' => 'int',
+            'smallint' => 'int',
+            'mediumint' => 'int',
+            'bigint' => 'int',
+            'float' => 'double',
+            'real' => 'double',
+            'varchar' => 'string',
+            'char' => 'string',
+            'text' => 'string',
+            'mediumtext' => 'string',
+            'longtext' => 'string',
+            'tinytext' => 'string',
+            'datetime' => 'datetime',
+            'timestamp' => 'datetime',
+            'date' => 'datetime',
+            'time' => 'datetime',
+            'year' => 'int',
+            'bit' => 'int',
+            'bool' => 'int',
+            'boolean' => 'int',
+            'json' => 'string',
+            'enum' => 'string',
+            'set' => 'string'
+        ];
+        
+        return $typeMap[$type] ?? $type;
     }
 
     public function getConnection(): ?PDO {

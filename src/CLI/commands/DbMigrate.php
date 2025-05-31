@@ -8,17 +8,27 @@ use Gemvc\Helper\ProjectHelper;
 
 class DbMigrate extends Command
 {
+    protected string $description = "Create or update database tables based on their PHP class definitions. This command will:
+    - Create new tables if they don't exist
+    - Update existing tables to match their class definitions
+    - Add new columns for new properties
+    - Update column types if changed
+    - Remove columns not in the class (with --force flag)
+    - Update nullable status
+    - Manage indexes";
+
     public function execute()
     {
         try {
             ProjectHelper::loadEnv();
 
             if (empty($this->args[0])) {
-                $this->error("Table class name is required. Usage: gemvc db:migrate TableClassName");
+                $this->error("Table class name is required. Usage: gemvc db:migrate TableClassName [--force]");
                 return;
             }
 
             $tableClass = $this->args[0];
+            $force = in_array('--force', $this->args);
             $tableFile = ProjectHelper::rootDir() . '/app/table/' . $tableClass . '.php';
 
             if (!file_exists($tableFile)) {
@@ -36,6 +46,12 @@ class DbMigrate extends Command
             $table = new $className();
             $generator = new TableGenerator();
 
+            // Ensure we have a fresh connection
+            if (!$generator->reconnect()) {
+                $this->error("Failed to establish database connection");
+                return;
+            }
+
             // First check if table exists
             $tableName = $table->getTable();
             $connection = $generator->getConnection();
@@ -44,7 +60,10 @@ class DbMigrate extends Command
 
             if ($tableExists) {
                 $this->info("Table '{$tableName}' exists. Syncing with class definition...");
-                if ($generator->updateTable($table)) {
+                if ($force) {
+                    $this->info("Force flag detected. Will remove columns not in class definition.");
+                }
+                if ($generator->updateTable($table, null, $force)) {
                     $this->success("Table '{$tableName}' synchronized successfully!");
                 } else {
                     $this->error("Failed to sync table: " . $generator->getError());

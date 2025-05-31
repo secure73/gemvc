@@ -1,8 +1,8 @@
-# CLI Components
+# GEMVC CLI Documentation
 
 ## Overview
 
-GEMVC provides a powerful command-line interface for project management, code generation, and maintenance tasks.
+GEMVC provides a powerful command-line interface for project management, code generation, and maintenance tasks. This document covers both the CLI architecture and available commands.
 
 ## Core Components
 
@@ -52,82 +52,81 @@ vendor/bin/gemvc create:model User
 
 # Generate table
 vendor/bin/gemvc create:table User
+
+# Generate CRUD
+vendor/bin/gemvc create:crud User
 ```
 
-### Database Migration
+### Database Management
 
-#### CLI Migrate Command
-
-GEMVC provides powerful CLI tools to manage your database schema directly from your PHP Table classes.
-
-##### Database Migration Command
+#### Initialize Database
 ```bash
-# Migrate a specific table
-vendor/bin/gemvc db:migrate UserTable
-
-# Force update (removes columns not in class)
-vendor/bin/gemvc db:migrate UserTable --force
+vendor/bin/gemvc db:init
 ```
+- Creates the database as defined in your `.env` configuration
+- Safe to run multiple times
+- Creates database if it doesn't exist
+- No data loss if database already exists
 
-The `db:migrate` command synchronizes your database table with its PHP class definition:
-- Creates new tables if they don't exist
-- Adds new columns for new properties
-- Updates column types if changed
-- Removes columns not in the class (with --force flag)
-- Updates nullable status
-- Manages indexes
-
-##### How It Works
-The command scans your `app/table` directory for Table classes and automatically:
-- Generate and execute necessary SQL
-- Create or update tables based on PHP class definitions
-- No manual SQL or migration files required
-- Schema changes are detected and applied automatically
-
-The migration process includes:
-- Creating new tables if they don't exist
-- Adding new columns for new properties
-- Updating column types and attributes
-- Removing columns not in the class (with --force flag)
-- Managing primary keys and indexes
-- Handling nullable properties
-- Updating default values
-
-##### Example Table Class
-```php
-namespace App\Table;
-
-use Gemvc\Database\Table;
-
-class UserTable extends Table {
-    public int $id;
-    public string $name;
-    public ?string $description;  // Nullable
-    public string $email;
-    public int $age;
-}
+#### Migrate Table
+```bash
+vendor/bin/gemvc db:migrate TableClassName [--force]
 ```
+- Creates or updates a table based on its PHP class definition
+- Actions:
+  - Creates new table if it doesn't exist
+  - Adds new columns for new properties
+  - Updates column types if changed
+  - Updates nullable status
+  - Manages indexes
+  - Removes columns only if `--force` is used
+- Example:
+  ```bash
+  # Safe update (won't remove columns)
+  vendor/bin/gemvc db:migrate UserTable
 
-##### Example Output
+  # Force update (will remove columns not in class)
+  vendor/bin/gemvc db:migrate UserTable --force
+  ```
+
+#### List Tables
+```bash
+vendor/bin/gemvc db:list
 ```
-# Normal Migration
-Info: Table 'users' exists. Syncing with class definition...
-Success: Table 'users' synchronized successfully!
+- Shows all tables in the database
+- Displays:
+  - Table names
+  - Column names and types
+  - Primary keys
+  - Indexes
+- Example output:
+  ```
+  Tables in database 'gemvc_db':
+  - users
+    - id (int, primary key)
+    - name (varchar)
+    - email (varchar, unique)
+  ```
 
-# Force Migration
-Info: Table 'users' exists. Syncing with class definition...
-Info: Force flag detected. Will remove columns not in class definition.
-Success: Table 'users' synchronized successfully!
+#### Drop Table
+```bash
+vendor/bin/gemvc db:drop TableName --force
 ```
+- Deletes a table and all its data
+- Requires `--force` flag to prevent accidental deletion
+- Example:
+  ```bash
+  vendor/bin/gemvc db:drop users --force
+  ```
 
-##### Benefits
-- **Rapid development:** Instantly reflect your PHP model changes in the database
-- **Consistency:** Your PHP code and database schema stay in sync
-- **No manual migrations:** Focus on your application logic, not SQL scripts
-- **Safe updates:** Changes are made within transactions
-- **Type safety:** Automatic type mapping between PHP and SQL
-- **Index management:** Automatic index creation and updates
-- **Force option:** Safely remove columns not in class definition
+### Help & Information
+```bash
+# Show help
+vendor/bin/gemvc --help
+
+# Show version
+vendor/bin/gemvc --version
+```
 
 ## Command Structure
 
@@ -178,48 +177,6 @@ class CreateUserCommand extends Command
         $this->output->writeln("Creating user: $username");
     }
 }
-```
-
-## Code Generation
-
-### Service Generator
-```php
-// Generate service
-$generator = new CreateServiceCommand();
-$generator->setName('User');
-$generator->execute();
-
-// Generated file: app/api/User.php
-```
-
-### Controller Generator
-```php
-// Generate controller
-$generator = new CreateControllerCommand();
-$generator->setName('User');
-$generator->execute();
-
-// Generated file: app/controller/UserController.php
-```
-
-### Model Generator
-```php
-// Generate model
-$generator = new CreateModelCommand();
-$generator->setName('User');
-$generator->execute();
-
-// Generated file: app/model/UserModel.php
-```
-
-### Table Generator
-```php
-// Generate table
-$generator = new CreateTableCommand();
-$generator->setName('User');
-$generator->execute();
-
-// Generated file: app/table/UserTable.php
 ```
 
 ## Output Formatting
@@ -313,8 +270,15 @@ if (!$this->validateArguments()) {
 - Test error handling
 - Test output formatting
 
+## Safety Notes
+- Commands that modify data or structure require `--force` flag
+- Always back up your data before using destructive commands
+- Use `--help` to see command-specific options
+- `db:migrate` will never remove columns unless `--force` is used
+- `db:drop` requires `--force` to prevent accidental data loss
+
 ## Next Steps
 
-- [Request Lifecycle](request-lifecycle.md)
+- [Request Lifecycle](../core/request-lifecycle.md)
 - [Security Guide](../guides/security.md)
 - [Performance Guide](../guides/performance.md) 

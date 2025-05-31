@@ -65,25 +65,108 @@ This will create all necessary files for CRUD operations.
 
 ## 4. Database Management
 
-GEMVC provides several commands for database management:
+GEMVC provides a comprehensive set of database management commands:
 
-### Create Database
+### Database Commands
 ```bash
+# Initialize database
 vendor/bin/gemvc db:init
-```
-Creates the database based on your configuration.
 
-### Create or Update Tables
+# Migrate/update tables
+vendor/bin/gemvc db:migrate TableName
+
+# List all tables
+vendor/bin/gemvc db:list
+
+# Drop database
+vendor/bin/gemvc db:drop
+```
+
+### Using db:migrate with UserTable
+
+1. First, create your table class:
+```bash
+vendor/bin/gemvc create:table User
+```
+
+2. This will generate `app/table/UserTable.php`:
+```php
+namespace App\Table;
+
+use Gemvc\Database\Table;
+
+class UserTable extends Table {
+    public int $id;
+    public string $name;
+    public string $email;
+    public ?string $description;  // Nullable
+    public string $created_at;
+}
+```
+
+3. Run the migration:
 ```bash
 vendor/bin/gemvc db:migrate UserTable
 ```
-Creates or updates a specific table based on its table class.
 
-### List Database Tables
-```bash
-vendor/bin/gemvc db:tables
+4. The command will:
+   - Create the `users` table if it doesn't exist
+   - Add all columns defined in the class
+   - Set up proper data types and nullable status
+   - Create necessary indexes
+
+5. If you later add new properties to UserTable:
+```php
+class UserTable extends Table {
+    public int $id;
+    public string $name;
+    public string $email;
+    public ?string $description;
+    public string $created_at;
+    public string $updated_at;  // New property
+    public bool $is_active;     // New property
+}
 ```
-Shows a list of all tables in your database.
+
+6. Run the migration again:
+```bash
+vendor/bin/gemvc db:migrate UserTable
+```
+
+7. The command will:
+   - Detect the new properties
+   - Add the new columns to the table
+   - Update the table structure
+
+The `db:migrate` command is a powerful tool that:
+- Creates new tables if they don't exist
+- Updates existing tables to match their class definitions
+- Adds new columns for new properties
+- Updates column types if changed
+- Updates nullable status
+- Manages indexes
+
+> **Security Note**: The command intentionally does NOT remove columns that are no longer in the class definition. This is a security measure to prevent accidental data loss. If you need to remove columns, you should do it manually after careful consideration.
+
+### Example Output
+```
+# First migration
+Info: Table 'users' does not exist. Creating new table...
+Success: Table 'users' created successfully!
+
+# After adding new properties
+Info: Table 'users' exists. Syncing with class definition...
+Success: Table 'users' synchronized successfully!
+```
+
+### Benefits
+- **Rapid development:** Instantly reflect your PHP model changes in the database
+- **Consistency:** Your PHP code and database schema stay in sync
+- **No manual migrations:** Focus on your application logic, not SQL scripts
+- **Safe updates:** Changes are made within transactions
+- **Type safety:** Automatic type mapping between PHP and SQL
+- **Index management:** Automatic index creation and updates
+- **Data safety:** Never automatically removes columns to prevent data loss
 
 ## 5. Test Your API
 
