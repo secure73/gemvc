@@ -101,10 +101,21 @@ class TableGenerator {
             if ($this->shouldSkipProperty($property)) continue;
             $propertyType = $this->getPropertyType($property, $object);
             $sqlType = $this->mapTypeToSqlType($propertyType, $propertyName);
+
+            // Determine nullability
+            $isNullable = false;
+            if ($property->hasType()) {
+                $type = $property->getType();
+                if ($type instanceof \ReflectionNamedType) {
+                    $isNullable = $type->allowsNull();
+                }
+            }
+            $nullSql = $isNullable ? 'NULL' : 'NOT NULL';
+
             if (isset($this->columnProperties[$propertyName])) {
                 $sqlType .= ' ' . $this->columnProperties[$propertyName];
             }
-            $columns[] = "`$propertyName` $sqlType";
+            $columns[] = "`$propertyName` $sqlType $nullSql";
         }
         if (empty($columns)) {
             $this->error = 'No valid properties found in object to create table columns';
@@ -476,6 +487,16 @@ class TableGenerator {
                 $propertyType = $this->getPropertyType($property, $object);
                 $sqlType = $this->mapTypeToSqlType($propertyType, $propertyName);
                 
+                // Determine nullability
+                $isNullable = false;
+                if ($property->hasType()) {
+                    $type = $property->getType();
+                    if ($type instanceof \ReflectionNamedType) {
+                        $isNullable = $type->allowsNull();
+                    }
+                }
+                $nullSql = $isNullable ? 'NULL' : 'NOT NULL';
+
                 if (isset($this->columnProperties[$propertyName])) {
                     $sqlType .= ' ' . $this->columnProperties[$propertyName];
                 }
