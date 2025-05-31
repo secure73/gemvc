@@ -276,6 +276,8 @@ if (!$this->validateArguments()) {
 - Use `--help` to see command-specific options
 - `db:migrate` will never remove columns unless `--force` is used
 - `db:drop` requires `--force` to prevent accidental data loss
+- `db:migrate` will never change a column from NULL to NOT NULL unless `--enforce-not-null` is used
+- If you use `--enforce-not-null` and there are existing NULLs, you must provide `--default` or handle the data manually
 
 ## Next Steps
 

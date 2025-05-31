@@ -29,6 +29,15 @@ class DbMigrate extends Command
 
             $tableClass = $this->args[0];
             $force = in_array('--force', $this->args);
+            $enforceNotNull = in_array('--enforce-not-null', $this->args);
+
+            $defaultValue = null;
+            foreach ($this->args as $i => $arg) {
+                if ($arg === '--default' && isset($this->args[$i + 1])) {
+                    $defaultValue = $this->args[$i + 1];
+                }
+            }
+
             $tableFile = ProjectHelper::rootDir() . '/app/table/' . $tableClass . '.php';
 
             if (!file_exists($tableFile)) {
@@ -63,7 +72,7 @@ class DbMigrate extends Command
                 if ($force) {
                     $this->info("Force flag detected. Will remove columns not in class definition.");
                 }
-                if ($generator->updateTable($table, null, $force)) {
+                if ($generator->updateTable($table, null, $force, $enforceNotNull, $defaultValue)) {
                     $this->success("Table '{$tableName}' synchronized successfully!");
                 } else {
                     $this->error("Failed to sync table: " . $generator->getError());

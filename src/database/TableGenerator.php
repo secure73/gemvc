@@ -417,9 +417,17 @@ class TableGenerator {
      * @param object $object The object with updated properties
      * @param string|null $tableName The name of the table to update or null to use object's getTable() method
      * @param bool $removeExtraColumns Whether to remove columns that don't exist in the object
+     * @param bool $enforceNotNull Whether to enforce NOT NULL constraints
+     * @param mixed $defaultValue The default value to use if enforcing NOT NULL
      * @return bool True if the update was successful, false otherwise
      */
-    public function updateTable(object $object, string $tableName = null, bool $removeExtraColumns = false): bool {
+    public function updateTable(
+        object $object,
+        string $tableName = null,
+        bool $removeExtraColumns = false,
+        bool $enforceNotNull = false,
+        $defaultValue = null
+    ): bool {
         if (!$this->pdo) {
             $this->error = 'No PDO connection.';
             return false;
@@ -515,11 +523,35 @@ class TableGenerator {
                     $existingType = $this->normalizeType($existingType);
                     $newType = $this->normalizeType($newType);
                     
-                    if ($existingType !== $newType) {
-                        $columnsToModify[] = [
-                            'name' => $propertyName,
-                            'definition' => $sqlType
-                        ];
+                    $existingNull = strtolower($columnMap[$propertyName]['Null']) === 'yes';
+                    $newNull = $isNullable; // from Reflection
+
+                    if ($existingType !== $newType || $existingNull !== $newNull) {
+                        // If changing from NULL to NOT NULL
+                        if ($existingNull && !$newNull && $enforceNotNull) {
+                            // Check for NULLs in the column
+                            $nullCount = $this->pdo->query("SELECT COUNT(*) FROM `$tableName` WHERE `$propertyName` IS NULL")->fetchColumn();
+                            if ($nullCount > 0) {
+                                if ($defaultValue !== null) {
+                                    // Update NULLs to default value
+                                    $defaultSql = is_string($defaultValue) ? $this->pdo->quote($defaultValue) : $defaultValue;
+                                    $this->pdo->exec("UPDATE `$tableName` SET `$propertyName` = $defaultSql WHERE `$propertyName` IS NULL");
+                                } else {
+                                    $this->error = "Cannot set `$propertyName` to NOT NULL: $nullCount NULL values exist. Use --default to set a value.";
+                                    return false;
+                                }
+                            }
+                            // Now safe to alter column
+                            $columnsToModify[] = [
+                                'name' => $propertyName,
+                                'definition' => "$sqlType NOT NULL"
+                            ];
+                        } elseif ($existingType !== $newType || $existingNull !== $newNull) {
+                            $columnsToModify[] = [
+                                'name' => $propertyName,
+                                'definition' => "$sqlType " . ($newNull ? 'NULL' : 'NOT NULL')
+                            ];
+                        }
                     }
                 }
             }
