@@ -13,84 +13,59 @@ class Migrate extends Command
     public function execute()
     {
         try {
-            // Use ProjectHelper to get root directory and load env
-            $this->basePath = ProjectHelper::rootDir();
-            ProjectHelper::loadEnv();
-            $tablesPath = $this->basePath . '/app/table';
-
-            if (!is_dir($tablesPath)) {
-                $this->error("Table directory not found: {$tablesPath}");
-                return;
-            }
-
-            // Get specific table to migrate if provided
-            $specificTable = $this->args[0] ?? null;
+            $tableName = $this->args[0] ?? null;
             
-            if ($specificTable) {
-                // Check if it's a migrate:tableName format
-                if (strpos($specificTable, ':') !== false) {
-                    $specificTable = explode(':', $specificTable)[1];
-                }
-                // Migrate specific table
-                $this->migrateTable($specificTable);
+            if ($tableName) {
+                $this->migrateSingleTable($tableName);
             } else {
-                // Migrate all tables
-                $files = glob($tablesPath . '/*.php');
-                if (empty($files)) {
-                    $this->warning("No table files found in {$tablesPath}");
-                    return;
-                }
-
-                foreach ($files as $file) {
-                    $filename = basename($file, '.php');
-                    $this->migrateTable($filename);
-                }
+                $this->error("Please specify a table class name: gemvc db:migrate TableClassName");
             }
-
-            $this->success("Migration completed successfully!");
         } catch (\Exception $e) {
             $this->error("Migration failed: " . $e->getMessage());
         }
     }
-
-    private function migrateTable(string $tableName)
+    
+    private function migrateSingleTable(string $tableName)
     {
-        $tablesPath = $this->basePath . '/app/table';
-        $file = $tablesPath . '/' . $tableName . '.php';
-
-        if (!file_exists($file)) {
-            $this->error("Table file not found: {$file}");
-            return;
-        }
-
         $this->info("Migrating table: {$tableName}");
         
-        // Include the table file
-        require_once $file;
+        // Convert table name to class name if needed
+        $className = $this->formatTableClassName($tableName);
         
-        $class = "App\\Table\\{$tableName}";
-        if (!class_exists($class)) {
-            $this->error("Table class not found: {$class}");
-            return;
+        // Check if table class exists
+        $tableClass = "App\\Table\\{$className}";
+        if (!class_exists($tableClass)) {
+            throw new \Exception("Table class not found: {$tableClass}");
         }
-
-        try {
-            $table = new $class();
-            $tableGenerator = new TableGenerator();
-            
-            // Use updateTable instead of createTableFromObject
-            // This will:
-            // 1. Create table if it doesn't exist
-            // 2. Add new columns for new properties
-            // 3. Update columns for changed types
-            // 4. Remove columns that don't exist in the object
-            if ($tableGenerator->updateTable($table, null, true)) {
-                $this->success("Table migrated successfully: {$tableName}");
-            } else {
-                $this->error("Failed to migrate table: {$tableName} - " . $tableGenerator->getError());
-            }
-        } catch (\Exception $e) {
-            $this->error("Migration failed: {$tableName} - " . $e->getMessage());
+        
+        // Create table instance
+        $table = new $tableClass();
+        
+        // Get table generator
+        $generator = new TableGenerator();
+        
+        // Create or update table
+        if ($generator->tableExists($table->getTable())) {
+            $this->info("Updating existing table...");
+            $generator->updateTable($table);
+            $this->success("Table updated successfully!");
+        } else {
+            $this->info("Creating new table...");
+            $generator->createTableFromObject($table);
+            $this->success("Table created successfully!");
         }
+    }
+    
+    private function formatTableClassName(string $name): string
+    {
+        // Remove 'Table' suffix if present
+        $name = preg_replace('/Table$/', '', $name);
+        
+        // Add 'Table' suffix if not present
+        if (!str_ends_with($name, 'Table')) {
+            $name .= 'Table';
+        }
+        
+        return $name;
     }
 } 

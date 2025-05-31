@@ -34,14 +34,23 @@ class ProjectHelper
 
     public static function loadEnv(): void
     {
-        $envFile = self::appDir() . DIRECTORY_SEPARATOR . '.env';
-        if (!file_exists($envFile)) {
-            throw new \Exception('env file not found in app directory');
-        } 
         $dotenv = new Dotenv();
-        $dotenv->load($envFile);
+        
+        // Try root directory first
+        $rootEnvFile = self::rootDir() . DIRECTORY_SEPARATOR . '.env';
+        if (file_exists($rootEnvFile)) {
+            $dotenv->load($rootEnvFile);
+            return;
+        }
+        
+        // Try app directory
+        $appEnvFile = self::appDir() . DIRECTORY_SEPARATOR . '.env';
+        if (file_exists($appEnvFile)) {
+            $dotenv->load($appEnvFile);
+            return;
+        }
+        
+        throw new \Exception('No .env file found in root or app directory');
     }
-
-    
 }
 

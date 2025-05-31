@@ -4,180 +4,92 @@ This guide will help you create your first API endpoint with GEMVC.
 
 ## 1. Create Your First API Service
 
-You can create a new API service using the CLI command:
+You can create a new API service using the CLI command in two ways:
 
+### Option 1: Create Service Only
+```bash
+vendor/bin/gemvc create:service User
+```
+This command will generate:
+- Service file (`app/api/User.php`)
+
+### Option 2: Create Service with All Components
 ```bash
 vendor/bin/gemvc create:service User -cmt
 ```
-
 This command will generate:
 - Service file (`app/api/User.php`)
 - Controller file (`app/controller/UserController.php`)
 - Model file (`app/model/UserModel.php`)
 - Table file (`app/table/UserTable.php`)
 
-Alternatively, you can create files manually:
+The flags mean:
+- `-c`: Create Controller
+- `-m`: Create Model
+- `-t`: Create Table
 
-Create a new file in `app/api/User.php`:
+## 2. Create Individual Components
 
-```php
-<?php
-namespace App\Api;
+If you prefer to create components separately, you can use these commands:
 
-use Gemvc\Core\ApiService;
-use Gemvc\Http\Request;
-use Gemvc\Http\JsonResponse;
-
-class User extends ApiService {
-    public function __construct(Request $request)
-    {
-        parent::__construct($request);
-    }
-    
-    public function getUsers(): JsonResponse {
-        // Authentication check
-        if(!$this->request->auth(['admin'])) {
-            return $this->request->returnResponse();
-        }
-        
-        // Call controller
-        return (new UserController($this->request))->list();
-    }
-}
-```
-
-## 2. Create a Controller
-
-You can create a controller using the CLI command:
-
+### Create a Controller
 ```bash
-vendor/bin/gemvc create:controller User -mt
+vendor/bin/gemvc create:controller User
 ```
-
 This command will generate:
 - Controller file (`app/controller/UserController.php`)
-- Model file (`app/model/UserModel.php`)
-- Table file (`app/table/UserTable.php`)
 
-Alternatively, you can create the controller manually:
-
-Create a new file in `app/controller/UserController.php`:
-
-```php
-<?php
-namespace App\Controller;
-
-use App\Model\UserModel;
-use Gemvc\Core\Controller;
-use Gemvc\Http\Request;
-use Gemvc\Http\JsonResponse;
-
-class UserController extends Controller
-{
-    public function __construct(Request $request)
-    {
-        parent::__construct($request);
-    }
-
-    public function list(): JsonResponse
-    {
-        $model = new UserModel();
-        return $model->list();
-    }
-}
-```
-
-## 3. Create a Model
-
-You can create a model using the CLI command:
-
+### Create a Model
 ```bash
-vendor/bin/gemvc create:model User -t
+vendor/bin/gemvc create:model User
 ```
-
 This command will generate:
 - Model file (`app/model/UserModel.php`)
-- Table file (`app/table/UserTable.php`)
 
-Alternatively, you can create the model manually:
-
-Create a new file in `app/model/UserModel.php`:
-
-```php
-<?php
-namespace App\Model;
-
-use App\Table\UserTable;
-use Gemvc\Core\Model;
-use Gemvc\Http\JsonResponse;
-
-class UserModel extends Model
-{
-    public function list(): JsonResponse
-    {
-        $table = new UserTable();
-        $users = $table->select()
-            ->where('is_active', true)
-            ->run();
-            
-        return (new JsonResponse())->success($users);
-    }
-}
-```
-
-## 4. Create a Table
-
-You can create a table using the CLI command:
-
+### Create a Table
 ```bash
 vendor/bin/gemvc create:table User
 ```
-
 This command will generate:
 - Table file (`app/table/UserTable.php`)
 
-Alternatively, you can create the table manually:
+## 3. Create CRUD Operations
 
-Create a new file in `app/table/UserTable.php`:
-
-```php
-<?php
-namespace App\Table;
-
-use Gemvc\Database\Table;
-
-class UserTable extends Table
-{
-    public int $id;
-    public string $username;
-    public string $email;
-    public bool $is_active = true;
-    
-    protected array $_type_map = [
-        'id' => 'int',
-        'is_active' => 'bool'
-    ];
-    
-    public function __construct()
-    {
-        parent::__construct('users');
-    }
-}
-```
-
-## 5. Generate the Database Table
-
-Run the table generator:
+To create all CRUD operations for a resource:
 
 ```bash
-vendor/bin/gemvc create:table User
+vendor/bin/gemvc create:crud User
 ```
 
-## 6. Test Your API
+This will create all necessary files for CRUD operations.
+
+## 4. Database Management
+
+GEMVC provides several commands for database management:
+
+### Create Database
+```bash
+vendor/bin/gemvc db:init
+```
+Creates the database based on your configuration.
+
+### Create or Update Tables
+```bash
+vendor/bin/gemvc db:migrate UserTable
+```
+Creates or updates a specific table based on its table class.
+
+### List Database Tables
+```bash
+vendor/bin/gemvc db:tables
+```
+Shows a list of all tables in your database.
+
+## 5. Test Your API
 
 Your API endpoint is now ready at:
 ```
-GET /user/getUsers
+GET /user/list
 ```
 
 Expected response:
@@ -197,31 +109,57 @@ Expected response:
 
 ## CLI Commands Reference
 
-GEMVC provides several CLI commands to help you generate code:
+GEMVC provides several CLI commands to help you generate code and manage your database:
 
+### Code Generation
 1. **Create Service with All Components**
    ```bash
    vendor/bin/gemvc create:service ServiceName -cmt
    ```
    Generates service, controller, model, and table files.
 
-2. **Create Controller with Model and Table**
+2. **Create Controller**
    ```bash
-   vendor/bin/gemvc create:controller ControllerName -mt
+   vendor/bin/gemvc create:controller ControllerName
    ```
-   Generates controller, model, and table files.
+   Generates controller file.
 
-3. **Create Model with Table**
+3. **Create Model**
    ```bash
-   vendor/bin/gemvc create:model ModelName -t
+   vendor/bin/gemvc create:model ModelName
    ```
-   Generates model and table files.
+   Generates model file.
 
-4. **Create Table Only**
+4. **Create Table**
    ```bash
    vendor/bin/gemvc create:table TableName
    ```
-   Generates only the table file.
+   Generates table class file.
+
+5. **Create CRUD**
+   ```bash
+   vendor/bin/gemvc create:crud ResourceName
+   ```
+   Generates all files needed for CRUD operations.
+
+### Database Management
+1. **Create Database**
+   ```bash
+   vendor/bin/gemvc db:init
+   ```
+   Creates the database based on configuration.
+
+2. **Migrate Table**
+   ```bash
+   vendor/bin/gemvc db:migrate TableClassName
+   ```
+   Creates or updates a specific table.
+
+3. **List Tables**
+   ```bash
+   vendor/bin/gemvc db:tables
+   ```
+   Shows all tables in the database.
 
 ## Next Steps
 
