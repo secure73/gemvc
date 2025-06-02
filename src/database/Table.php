@@ -105,7 +105,7 @@ class Table extends PdoQuery
         $result = $this->insertQuery($query, $arrayBind);
         
         if ($this->getError() || $result === false) {
-            $this->setError("Error in insert query: ".$this->_internalTable()() .":". $this->getError());
+            $this->setError("Error in insert query: ".$this->_internalTable() .":". $this->getError());
             return null;
         }
         
@@ -127,7 +127,7 @@ class Table extends PdoQuery
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()()}");
+            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
             return null;
         }
         
@@ -137,7 +137,7 @@ class Table extends PdoQuery
         $result = $this->updateQuery($query, $arrayBind);
         
         if ($result === false || $this->getError()) {
-            $this->setError("Error in update query: {$this->_internalTable()()}: " . $this->getError());
+            $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
         
@@ -157,15 +157,15 @@ class Table extends PdoQuery
             return null;
         }
         if ($id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()()}");
+            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
             return null;
         }
               
-        $query = "DELETE FROM {$this->_internalTable()()} WHERE id = :id";
+        $query = "DELETE FROM {$this->_internalTable()} WHERE id = :id";
         $result = $this->deleteQuery($query, [':id' => $id]);
         
         if ($this->getError() || !is_int($result)) {
-            $this->setError("Error in delete query: {$this->_internalTable()()} - {$this->getError()}");
+            $this->setError("Error in delete query: {$this->_internalTable()} - {$this->getError()}");
             return null;
         }
         return $id;
@@ -182,7 +182,7 @@ class Table extends PdoQuery
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()()}");
+            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
@@ -191,10 +191,10 @@ class Table extends PdoQuery
             return null;
         }
         $id = $this->id;
-        $query = "UPDATE {$this->_internalTable()()} SET deleted_at = NOW() WHERE id = :id";
+        $query = "UPDATE {$this->_internalTable()} SET deleted_at = NOW() WHERE id = :id";
         
         if (property_exists($this, 'is_active')) {
-            $query = "UPDATE {$this->_internalTable()()} SET deleted_at = NOW(), is_active = 0 WHERE id = :id";
+            $query = "UPDATE {$this->_internalTable()} SET deleted_at = NOW(), is_active = 0 WHERE id = :id";
         }
         
         $result = $this->updateQuery($query, [':id' => $id]);
@@ -225,7 +225,7 @@ class Table extends PdoQuery
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()()}");
+            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
@@ -234,7 +234,7 @@ class Table extends PdoQuery
             return null;
         }
         $id = $this->id;
-        $query = "UPDATE {$this->_internalTable()()} SET deleted_at = NULL WHERE id = :id";
+        $query = "UPDATE {$this->_internalTable()} SET deleted_at = NULL WHERE id = :id";
                
         $result = $this->updateQuery($query, [':id' => $id]);
         
@@ -259,7 +259,7 @@ class Table extends PdoQuery
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()()}");
+            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
             return null;
         }
         return $this->removeConditionalQuery('id', $this->id);
@@ -282,7 +282,7 @@ class Table extends PdoQuery
     ): null|int {
         $this->validateProperties([]);
 
-        $query = "DELETE FROM {$this->_internalTable()()} WHERE {$whereColumn} = :{$whereColumn}";
+        $query = "DELETE FROM {$this->_internalTable()} WHERE {$whereColumn} = :{$whereColumn}";
         
         if ($secondWhereColumn) {
             $query .= " AND {$secondWhereColumn} = :{$secondWhereColumn}";
@@ -297,7 +297,7 @@ class Table extends PdoQuery
         $result = $this->deleteQuery($query, $arrayBind);
 
         if ($this->getError()) { 
-            $this->setError("Error in delete query: {$this->_internalTable()()} - {$this->getError()}");
+            $this->setError("Error in delete query: {$this->_internalTable()} - {$this->getError()}");
             return null;
         }
        
@@ -557,11 +557,11 @@ class Table extends PdoQuery
     {
         $this->validateProperties([]);
 
-        $query = "UPDATE {$this->_internalTable()()} SET {$columnNameSetToNull} = NULL WHERE {$whereColumn} = :whereValue";
+        $query = "UPDATE {$this->_internalTable()} SET {$columnNameSetToNull} = NULL WHERE {$whereColumn} = :whereValue";
         $result = $this->updateQuery($query, [':whereValue' => $whereValue]);
         
         if ($this->getError() || $result === false) {
-            $this->setError("Error in update query: {$this->_internalTable()()}: " . $this->getError());
+            $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
         
@@ -580,11 +580,11 @@ class Table extends PdoQuery
     {
         $this->validateProperties([]);
 
-        $query = "UPDATE {$this->_internalTable()()} SET {$columnNameSetToNowTomeStamp} = NOW() WHERE {$whereColumn} = :whereValue";
+        $query = "UPDATE {$this->_internalTable()} SET {$columnNameSetToNowTomeStamp} = NOW() WHERE {$whereColumn} = :whereValue";
         $result = $this->updateQuery($query, [':whereValue' => $whereValue]);
         
         if ($this->getError() || $result === false) {
-            $this->setError("Error in update query: {$this->_internalTable()()}: " . $this->getError());
+            $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
         
@@ -610,7 +610,7 @@ class Table extends PdoQuery
         }
         
         $result = $this->updateQuery(
-            "UPDATE {$this->_internalTable()()} SET is_active = 1 WHERE id = :id", 
+            "UPDATE {$this->_internalTable()} SET is_active = 1 WHERE id = :id", 
             [':id' => $id]
         );
         
@@ -641,7 +641,7 @@ class Table extends PdoQuery
         }
         
         $result = $this->updateQuery(
-            "UPDATE {$this->_internalTable()()} SET is_active = 0 WHERE id = :id", 
+            "UPDATE {$this->_internalTable()} SET is_active = 0 WHERE id = :id", 
             [':id' => $id]
         );
         
