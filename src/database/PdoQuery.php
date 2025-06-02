@@ -23,8 +23,8 @@ class PdoQuery extends QueryExecuter
      */
     public function insertQuery(string $insertQuery, array $arrayBindKeyValue = []): int|false
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return false;
         }
 
@@ -35,8 +35,10 @@ class PdoQuery extends QueryExecuter
             }
             return false;
         } catch (\PDOException $e) {
-            $this->setError('Insert operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Insert', $e);
             return false;
+        } finally {
+            $this->checkPoolStatus();
         }
     }
 
@@ -49,8 +51,8 @@ class PdoQuery extends QueryExecuter
      */
     public function updateQuery(string $updateQuery, array $arrayBindKeyValue = []): ?int
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return null;
         }
 
@@ -58,23 +60,16 @@ class PdoQuery extends QueryExecuter
             if ($this->executeQuery($updateQuery, $arrayBindKeyValue)) {
                 $affectedRows = $this->getAffectedRows();
                 if ($affectedRows === 0) {
-                    // This is not an error, just informational
                     $this->setError('No rows were updated. The data might be unchanged.');
                 }
                 return $affectedRows;
             }
-            // The executeQuery failed, error is already set
             return null;
         } catch (\PDOException $e) {
-            // Check for specific error codes that might indicate "no changes"
-            if ($e->getCode() == '00000' && strpos($e->getMessage(), 'no affected rows') !== false) {
-                $this->setError('No changes were made. The data might be identical.');
-                return 0;
-            }
-            
-            // For other errors, set the error message
-            $this->setError('Update operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Update', $e);
             return null;
+        } finally {
+            $this->checkPoolStatus();
         }
     }
 
@@ -88,14 +83,13 @@ class PdoQuery extends QueryExecuter
      */
     private function executeQuery(string $query, array $arrayBind): bool
     {
-        if (!$this->isConnected()) {
-            throw new \PDOException('Database connection not established');
+        if (!$this->validateConnection()) {
+            throw new \PDOException('Database connection not established or invalid');
         }
 
         try {
             $this->query($query);
             
-            // Check if query preparation was successful
             if ($this->getError() !== null) {
                 return false;
             }
@@ -106,7 +100,7 @@ class PdoQuery extends QueryExecuter
             
             return $this->execute();
         } catch (\PDOException $e) {
-            $this->setError('Query execution failed: ' . $e->getMessage());
+            $this->handleQueryError('Query execution', $e);
             return false;
         }
     }
@@ -120,8 +114,8 @@ class PdoQuery extends QueryExecuter
      */
     public function deleteQuery(string $deleteQuery, array $arrayBindKeyValue = []): int|null|false
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return false;
         }
 
@@ -133,11 +127,12 @@ class PdoQuery extends QueryExecuter
                 }
                 return $affectedRows;
             }
-            // executeQuery failed, error is already set
             return null;
         } catch (\PDOException $e) {
-            $this->setError('Delete operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Delete', $e);
             return null;
+        } finally {
+            $this->checkPoolStatus();
         }
     }
 
@@ -150,8 +145,8 @@ class PdoQuery extends QueryExecuter
      */
     public function selectQueryObjects(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return false;
         }
 
@@ -161,16 +156,16 @@ class PdoQuery extends QueryExecuter
                 if ($result === false) {
                     $this->setError('Failed to fetch results from the query');
                 } elseif (empty($result)) {
-                    // Empty result is not an error, just informational
                     $this->setError('Query executed successfully but returned no results');
                 }
                 return $result;
             }
-            // executeQuery failed, error is already set
             return false;
         } catch (\PDOException $e) {
-            $this->setError('Select operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Select objects', $e);
             return false;
+        } finally {
+            $this->checkPoolStatus();
         }
     }
 
@@ -183,8 +178,8 @@ class PdoQuery extends QueryExecuter
      */
     public function selectQuery(string $selectQuery, array $arrayBindKeyValue = []): array|false
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return false;
         }
 
@@ -194,16 +189,16 @@ class PdoQuery extends QueryExecuter
                 if ($result === false) {
                     $this->setError('Failed to fetch results from the query');
                 } elseif (empty($result)) {
-                    // Empty result is not an error, just informational
                     $this->setError('Query executed successfully but returned no results');
                 }
                 return $result;
             }
-            // executeQuery failed, error is already set
             return false;
         } catch (\PDOException $e) {
-            $this->setError('Select operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Select', $e);
             return false;
+        } finally {
+            $this->checkPoolStatus();
         }
     }
 
@@ -216,8 +211,8 @@ class PdoQuery extends QueryExecuter
      */
     public function selectCountQuery(string $selectCountQuery, array $arrayBindKeyValue = []): int|false
     {
-        if (!$this->isConnected()) {
-            $this->setError('Database connection not established');
+        if (!$this->validateConnection()) {
+            $this->setError('Database connection not established or invalid');
             return false;
         }
 
@@ -236,11 +231,30 @@ class PdoQuery extends QueryExecuter
                     return false;
                 }
             }
-            // executeQuery failed, error is already set
             return false;
         } catch (\PDOException $e) {
-            $this->setError('Count operation failed: ' . $e->getMessage());
+            $this->handleQueryError('Count', $e);
             return false;
+        } finally {
+            $this->checkPoolStatus();
         }
+    }
+
+    /**
+     * Handle query errors consistently
+     * 
+     * @param string $operation The operation that failed
+     * @param \PDOException $e The exception that was thrown
+     */
+    private function handleQueryError(string $operation, \PDOException $e): void
+    {
+        $errorMessage = sprintf(
+            '%s operation failed: %s (Code: %s)',
+            $operation,
+            $e->getMessage(),
+            $e->getCode()
+        );
+        $this->setError($errorMessage);
+        error_log($errorMessage . "\nStack trace: " . $e->getTraceAsString());
     }
 }

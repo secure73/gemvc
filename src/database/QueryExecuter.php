@@ -3,7 +3,7 @@ namespace Gemvc\Database;
 
 use PDO;
 use PDOStatement;
-use Gemvc\Database\DBPoolManager;
+use Gemvc\Database\PdoConnection;
 
 class QueryExecuter
 {
@@ -43,10 +43,14 @@ class QueryExecuter
     /** @var bool Transaction status */
     private bool $inTransaction = false;
 
+    /** @var PdoConnection|null PDO connection manager */
+    private ?PdoConnection $pdoManager = null;
+
     public function __construct()
     {
         $this->startExecutionTime = microtime(true);
         $this->queryTimeout = (int)($_ENV['DB_QUERY_TIMEOUT'] ?? 30);
+        $this->pdoManager = new PdoConnection();
     }
 
     public function __destruct()
@@ -79,15 +83,15 @@ class QueryExecuter
         return $this->isConnected;
     }
 
-    private function ensureConnection(): bool
+    protected function ensureConnection(): bool
     {
         $this->debug("Debug - Ensuring connection in QueryExecuter\n");
         
         if (!$this->db) {
             try {
-                $this->debug("Debug - Getting connection from pool manager\n");
-                $this->db = DBPoolManager::getInstance()->getConnection();
-                $this->debug("Debug - Got connection from pool manager\n");
+                $this->debug("Debug - Getting connection from PdoConnection\n");
+                $this->db = $this->pdoManager->connect();
+                $this->debug("Debug - Got connection from PdoConnection\n");
                 
                 $this->isConnected = $this->db instanceof PDO;
                 $this->debug("Debug - Connection is PDO instance: " . ($this->isConnected ? 'yes' : 'no') . "\n");
@@ -104,7 +108,7 @@ class QueryExecuter
                         $this->debug("Debug - Connection attributes set successfully\n");
                     } catch (\PDOException $e) {
                         $this->debug("Debug - Error setting timeout: " . $e->getMessage() . "\n");
-                        $this->setError('Error setting timeout: ' . $e->getMessage());
+                        $this->handleConnectionError($e);
                         return false;
                     }
                 } else {
@@ -113,13 +117,49 @@ class QueryExecuter
                 }
             } catch (\Throwable $e) {
                 $this->debug("Debug - Failed to get DB connection: " . $e->getMessage() . "\n");
-                $this->setError('Failed to get DB connection: ' . $e->getMessage());
-                $this->isConnected = false;
+                $this->handleConnectionError($e);
             }
         } else {
             $this->debug("Debug - Connection already exists\n");
         }
         return $this->isConnected;
+    }
+
+    protected function handleConnectionError(\Throwable $e): void
+    {
+        $this->setError('Connection error: ' . $e->getMessage());
+        $this->isConnected = false;
+        $this->db = null;
+        
+        // Log the error
+        error_log(sprintf(
+            "Database connection error: %s\nStack trace: %s",
+            $e->getMessage(),
+            $e->getTraceAsString()
+        ));
+    }
+
+    protected function validateConnection(): bool
+    {
+        if (!$this->db || !$this->isConnected) {
+            return false;
+        }
+        try {
+            $this->db->query('SELECT 1');
+            return true;
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
+    protected function checkPoolStatus(): void
+    {
+        $poolSize = PdoConnection::getPoolSize();
+        $totalConnections = PdoConnection::getTotalConnections();
+        
+        if ($poolSize >= PdoConnection::getMaxPoolSize()) {
+            PdoConnection::cleanExpiredConnections();
+        }
     }
 
     public function getQuery(): ?string
@@ -330,7 +370,6 @@ class QueryExecuter
             try {
                 $this->db->rollBack();
             } catch (\PDOException $e) {
-                // Log rollback error but continue with cleanup
                 error_log('Error during rollback in secure(): ' . $e->getMessage());
             }
         }
@@ -348,8 +387,7 @@ class QueryExecuter
         // Then close the database connection if it exists
         if ($this->db) {
             try {
-                // Release back to pool if using pool manager
-                DBPoolManager::getInstance()->release($this->db);
+                $this->pdoManager->releaseConnection();
             } catch (\Throwable $e) {
                 error_log('Error releasing connection in secure(): ' . $e->getMessage());
             }
