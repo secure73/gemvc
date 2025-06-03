@@ -16,9 +16,9 @@ class DatabasePoolFactory {
     public static function getInstance(): AbstractDatabasePool {
         if (self::$instance === null) {
             if (extension_loaded('openswoole')) {
-                self::$instance = new OpenSwooleDatabasePool();
+                self::$instance = OpenSwooleDatabasePool::getInstance();
             } else {
-                self::$instance = new StandardDatabasePool();
+                self::$instance = StandardDatabasePool::getInstance();
             }
         }
         return self::$instance;
@@ -30,7 +30,12 @@ class DatabasePoolFactory {
      */
     public static function resetInstance(): void {
         if (self::$instance !== null) {
-            self::$instance->resetInstance();
+            // Reset the underlying pool instance
+            if (extension_loaded('openswoole')) {
+                OpenSwooleDatabasePool::resetInstance();
+            } else {
+                StandardDatabasePool::resetInstance();
+            }
             self::$instance = null;
         }
     }
