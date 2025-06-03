@@ -3,7 +3,6 @@ namespace Gemvc\Database;
 
 use PDO;
 use PDOStatement;
-use Gemvc\Database\PdoConnection;
 
 class QueryExecuter
 {
@@ -31,26 +30,19 @@ class QueryExecuter
     /** @var PDO|null Database connection */
     private ?PDO $db = null;
 
-    /** @var bool Connection status */
-    private bool $isConnected = false;
+    /** @var bool Transaction status */
+    private bool $inTransaction = false;
 
     /** @var array Bound parameters */
     private array $bindings = [];
 
-    /** @var int Query timeout in seconds */
-    private int $queryTimeout = 30;
-
-    /** @var bool Transaction status */
-    private bool $inTransaction = false;
-
-    /** @var PdoConnection|null PDO connection manager */
-    private ?PdoConnection $pdoManager = null;
+    /** @var AbstractDatabasePool Database pool instance */
+    private AbstractDatabasePool $pool;
 
     public function __construct()
     {
         $this->startExecutionTime = microtime(true);
-        $this->queryTimeout = (int)($_ENV['DB_QUERY_TIMEOUT'] ?? 30);
-        $this->pdoManager = new PdoConnection();
+        $this->pool = DatabasePoolFactory::getInstance();
     }
 
     public function __destruct()
@@ -62,103 +54,6 @@ class QueryExecuter
     {
         if (($_ENV['APP_ENV'] ?? '') === 'dev') {
             echo $message;
-        }
-    }
-
-    public function isConnected(): bool
-    {
-        $this->debug("Debug - QueryExecuter::isConnected() called\n");
-        $this->debug("Debug - Current connection status: " . ($this->isConnected ? 'true' : 'false') . "\n");
-        $this->debug("Debug - DB instance exists: " . ($this->db !== null ? 'yes' : 'no') . "\n");
-        
-        if (!$this->isConnected && $this->db === null) {
-            $this->debug("Debug - Attempting to ensure connection...\n");
-            $result = $this->ensureConnection();
-            if (!$result) {
-                $this->debug("Debug - Connection failed: " . $this->getError() . "\n");
-            }
-            return $result;
-        }
-        
-        return $this->isConnected;
-    }
-
-    protected function ensureConnection(): bool
-    {
-        $this->debug("Debug - Ensuring connection in QueryExecuter\n");
-        
-        if (!$this->db) {
-            try {
-                $this->debug("Debug - Getting connection from PdoConnection\n");
-                $this->db = $this->pdoManager->connect();
-                $this->debug("Debug - Got connection from PdoConnection\n");
-                
-                $this->isConnected = $this->db instanceof PDO;
-                $this->debug("Debug - Connection is PDO instance: " . ($this->isConnected ? 'yes' : 'no') . "\n");
-                
-                if ($this->isConnected) {
-                    $this->debug("Debug - Connection successful, setting attributes\n");
-                    // Set connection attributes
-                    $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                    $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-                    $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-                    
-                    try {
-                        $this->db->setAttribute(PDO::ATTR_TIMEOUT, $this->queryTimeout);
-                        $this->debug("Debug - Connection attributes set successfully\n");
-                    } catch (\PDOException $e) {
-                        $this->debug("Debug - Error setting timeout: " . $e->getMessage() . "\n");
-                        $this->handleConnectionError($e);
-                        return false;
-                    }
-                } else {
-                    $this->debug("Debug - Connection failed: Not a PDO instance\n");
-                    $this->setError('Connection failed: Not a PDO instance');
-                }
-            } catch (\Throwable $e) {
-                $this->debug("Debug - Failed to get DB connection: " . $e->getMessage() . "\n");
-                $this->handleConnectionError($e);
-            }
-        } else {
-            $this->debug("Debug - Connection already exists\n");
-        }
-        return $this->isConnected;
-    }
-
-    protected function handleConnectionError(\Throwable $e): void
-    {
-        $this->setError('Connection error: ' . $e->getMessage());
-        $this->isConnected = false;
-        $this->db = null;
-        
-        // Log the error
-        error_log(sprintf(
-            "Database connection error: %s\nStack trace: %s",
-            $e->getMessage(),
-            $e->getTraceAsString()
-        ));
-    }
-
-    protected function validateConnection(): bool
-    {
-        if (!$this->db || !$this->isConnected) {
-            return false;
-        }
-        try {
-            $this->db->query('SELECT 1');
-            return true;
-        } catch (\PDOException $e) {
-            return false;
-        }
-    }
-
-    protected function checkPoolStatus(): void
-    {
-        $poolSize = PdoConnection::getPoolSize();
-        $totalConnections = PdoConnection::getTotalConnections();
-        
-        if ($poolSize >= PdoConnection::getMaxPoolSize()) {
-            PdoConnection::cleanExpiredConnections();
         }
     }
 
@@ -174,7 +69,6 @@ class QueryExecuter
 
     public function query(string $query): void
     {
-        // Reset error state for new query
         $this->setError(null);
 
         if ($this->inTransaction) {
@@ -200,14 +94,12 @@ class QueryExecuter
         $this->bindings = [];
         $this->query = $query;
 
-        if (!$this->ensureConnection()) {
-            return;
-        }
-
         try {
+            $this->db = $this->pool->getConnection();
             $this->statement = $this->db->prepare($query);
-        } catch (\PDOException $e) {
+        } catch (\Throwable $e) {
             $this->setError('Error preparing statement: ' . $e->getMessage());
+            $this->releaseConnection();
         }
     }
 
@@ -218,7 +110,6 @@ class QueryExecuter
 
     public function bind(string $param, mixed $value): void
     {
-        // Reset error state for new binding
         $this->setError(null);
 
         if (!$this->statement) {
@@ -241,21 +132,11 @@ class QueryExecuter
         }
     }
 
-    private function getBindings(): array
-    {
-        return $this->bindings;
-    }
-
     public function execute(): bool
     {
-        // Reset error state for execution
         $this->setError(null);
         $this->affectedRows = 0;
         $this->lastInsertedId = false;
-
-        if (!$this->ensureConnection()) {
-            return false;
-        }
 
         if (empty($this->query)) {
             $this->setError('No query to execute');
@@ -304,11 +185,6 @@ class QueryExecuter
             return false;
         }
 
-        if (!$this->isConnected) {
-            $this->setError('No active connection for fetching objects.');
-            return false;
-        }
-
         try {
             $results = $this->statement->fetchAll(PDO::FETCH_OBJ);
             $this->statement->closeCursor();
@@ -323,11 +199,6 @@ class QueryExecuter
     {
         if (!$this->statement) {
             $this->setError('No statement prepared for fetching results.');
-            return false;
-        }
-
-        if (!$this->isConnected) {
-            $this->setError('No active connection for fetching results.');
             return false;
         }
 
@@ -348,11 +219,6 @@ class QueryExecuter
             return false;
         }
 
-        if (!$this->isConnected) {
-            $this->setError('No active connection for fetching column.');
-            return false;
-        }
-
         try {
             $result = $this->statement->fetchColumn();
             $this->statement->closeCursor();
@@ -365,7 +231,6 @@ class QueryExecuter
 
     public function secure(): void
     {
-        // If in transaction, rollback first
         if ($this->inTransaction && $this->db) {
             try {
                 $this->db->rollBack();
@@ -374,7 +239,6 @@ class QueryExecuter
             }
         }
 
-        // First close the statement if it exists
         if ($this->statement) {
             try {
                 $this->statement->closeCursor();
@@ -384,18 +248,20 @@ class QueryExecuter
             $this->statement = null;
         }
 
-        // Then close the database connection if it exists
+        $this->releaseConnection();
+    }
+
+    private function releaseConnection(): void
+    {
         if ($this->db) {
             try {
-                $this->pdoManager->releaseConnection();
+                $this->pool->releaseConnection($this->db);
             } catch (\Throwable $e) {
-                error_log('Error releasing connection in secure(): ' . $e->getMessage());
+                error_log('Error releasing connection: ' . $e->getMessage());
             }
             $this->db = null;
         }
 
-        // Finally update the connection state
-        $this->isConnected = false;
         $this->inTransaction = false;
         $this->query = '';
         $this->bindings = [];
@@ -404,14 +270,8 @@ class QueryExecuter
         $this->lastInsertedId = false;
     }
 
-    public function releaseConnection(): void
-    {
-        $this->secure();
-    }
-
     public function beginTransaction(): bool
     {
-        // Reset error state for transaction
         $this->setError(null);
 
         if ($this->inTransaction) {
@@ -419,15 +279,13 @@ class QueryExecuter
             return false;
         }
 
-        if (!$this->ensureConnection()) {
-            return false;
-        }
-
         try {
+            $this->db = $this->pool->getConnection();
             $this->inTransaction = $this->db->beginTransaction();
             return $this->inTransaction;
-        } catch (\PDOException $e) {
+        } catch (\Throwable $e) {
             $this->setError('Error starting transaction: ' . $e->getMessage());
+            $this->releaseConnection();
             return false;
         }
     }
@@ -441,11 +299,6 @@ class QueryExecuter
 
         if (!$this->db) {
             $this->setError('No active connection for commit');
-            return false;
-        }
-
-        if ($this->affectedRows === 0 && empty($this->lastInsertedId)) {
-            $this->setError('No changes to commit');
             return false;
         }
 
