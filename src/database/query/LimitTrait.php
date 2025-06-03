@@ -12,48 +12,225 @@ declare(strict_types=1);
 
 namespace Gemvc\Database\Query;
 
+/**
+ * Enhanced LIMIT and OFFSET functionality for SQL queries
+ * 
+ * Provides modern SQL LIMIT/OFFSET syntax with proper validation
+ * and safety features for database compatibility.
+ */
 trait LimitTrait
 {
+    /**
+     * Set the maximum number of rows to return
+     * 
+     * @param int $limit Maximum number of rows (must be positive)
+     * @return self For method chaining
+     */
     public function limit(int $limit): self
     {
-        $this->limit = $limit;
+        if ($limit < 0) {
+            // Skip invalid limits silently to maintain method chaining
+            return $this;
+        }
+        
+        if ($limit === 0) {
+            // Allow 0 to effectively disable results
+            $this->limit = 0;
+        } else {
+            $this->limit = $limit;
+        }
 
         return $this;
     }
 
+    /**
+     * Set the number of rows to skip
+     * 
+     * @param int $offset Number of rows to skip (must be non-negative)
+     * @return self For method chaining
+     */
     public function offset(int $offset): self
     {
+        if ($offset < 0) {
+            // Skip invalid offsets silently to maintain method chaining
+            return $this;
+        }
+        
         $this->offset = $offset;
 
         return $this;
     }
 
+    /**
+     * Get the first N records ordered by specified column
+     * 
+     * @param int $count Number of records to retrieve (default: 1)
+     * @param string $orderByColumn Column to order by (default: 'id')
+     * @return self For method chaining
+     */
     public function first(int $count = 1, string $orderByColumn = 'id'): self
     {
-        $this->orderBy($orderByColumn);
+        if ($count < 0) {
+            return $this; // Skip invalid counts
+        }
+        
+        if (empty(trim($orderByColumn))) {
+            $orderByColumn = 'id'; // Safe default
+        }
+        
+        // Only call orderBy if the method exists (check for method existence)
+        if (method_exists($this, 'orderBy')) {
+            $this->orderBy($orderByColumn, false); // ASC for first
+        }
+        
         $this->limit = $count;
+        $this->offset = null; // Reset offset for first()
 
         return $this;
     }
 
+    /**
+     * Get the last N records ordered by specified column
+     * 
+     * @param int $count Number of records to retrieve (default: 1)
+     * @param string $byColumn Column to order by (default: 'id')
+     * @return self For method chaining
+     */
     public function last(int $count = 1, string $byColumn = 'id'): self
     {
-        $this->orderBy($byColumn, true);
+        if ($count < 0) {
+            return $this; // Skip invalid counts
+        }
+        
+        if (empty(trim($byColumn))) {
+            $byColumn = 'id'; // Safe default
+        }
+        
+        // Only call orderBy if the method exists
+        if (method_exists($this, 'orderBy')) {
+            $this->orderBy($byColumn, true); // DESC for last
+        }
+        
         $this->limit = $count;
+        $this->offset = null; // Reset offset for last()
 
         return $this;
     }
 
+    /**
+     * Set pagination parameters
+     * 
+     * @param int $page Page number (1-based)
+     * @param int $perPage Items per page
+     * @return self For method chaining
+     */
+    public function paginate(int $page, int $perPage): self
+    {
+        if ($page < 1 || $perPage < 1) {
+            return $this; // Skip invalid pagination
+        }
+        
+        $this->limit = $perPage;
+        $this->offset = ($page - 1) * $perPage;
+
+        return $this;
+    }
+
+    /**
+     * Skip the first N records
+     * Alias for offset() with more descriptive name
+     * 
+     * @param int $count Number of records to skip
+     * @return self For method chaining
+     */
+    public function skip(int $count): self
+    {
+        return $this->offset($count);
+    }
+
+    /**
+     * Take only N records
+     * Alias for limit() with more descriptive name
+     * 
+     * @param int $count Number of records to take
+     * @return self For method chaining
+     */
+    public function take(int $count): self
+    {
+        return $this->limit($count);
+    }
+
+    /**
+     * Generate the LIMIT clause with modern SQL syntax
+     * 
+     * Uses standard LIMIT ... OFFSET ... syntax for better database compatibility
+     * instead of the old MySQL-specific LIMIT offset,limit syntax.
+     * 
+     * @return string The LIMIT clause string
+     */
     private function limitMaker(): string
     {
         $limitQuery = '';
-        if (!$this->offset && $this->limit) {
+        
+        // Handle LIMIT clause
+        if (isset($this->limit) && $this->limit >= 0) {
             $limitQuery = ' LIMIT ' . $this->limit;
+            
+            // Add OFFSET if specified and valid
+            if (isset($this->offset) && $this->offset > 0) {
+                $limitQuery .= ' OFFSET ' . $this->offset;
+            }
         }
-        if ($this->offset && $this->limit) {
-            $limitQuery = ' LIMIT ' . $this->offset . ',' . $this->limit;
+        // Handle OFFSET without LIMIT (supported by some databases)
+        elseif (isset($this->offset) && $this->offset > 0) {
+            // For databases that support OFFSET without LIMIT, use a large number
+            // This is more compatible across different database systems
+            $limitQuery = ' LIMIT 18446744073709551615 OFFSET ' . $this->offset;
         }
-
+        
         return $limitQuery;
+    }
+
+    /**
+     * Get current limit value
+     * 
+     * @return int|null Current limit or null if not set
+     */
+    public function getLimit(): ?int
+    {
+        return $this->limit ?? null;
+    }
+
+    /**
+     * Get current offset value
+     * 
+     * @return int|null Current offset or null if not set
+     */
+    public function getOffset(): ?int
+    {
+        return $this->offset ?? null;
+    }
+
+    /**
+     * Check if pagination is active
+     * 
+     * @return bool True if either limit or offset is set
+     */
+    public function isPaginated(): bool
+    {
+        return isset($this->limit) || isset($this->offset);
+    }
+
+    /**
+     * Reset all pagination settings
+     * 
+     * @return self For method chaining
+     */
+    public function resetPagination(): self
+    {
+        $this->limit = null;
+        $this->offset = null;
+        
+        return $this;
     }
 }

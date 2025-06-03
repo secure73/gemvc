@@ -158,15 +158,25 @@ class Select implements QueryBuilderInterface
 
     /**
      * Run the select query and return the results
-     * @return array<mixed>|false
+     * Following our unified return pattern: result|null
+     * 
+     * @return array<mixed>|null Array of results on success, null on error
      */
-    public function run(): array|false
+    public function run(): array|null
     {
-        $pdoQuery = new PdoQuery();
+        // Use the shared PdoQuery instance from QueryBuilder if available
+        $pdoQuery = $this->queryBuilder ? $this->queryBuilder->getPdoQuery() : new PdoQuery();
+        
         $query = $this->__toString();
         $result = $pdoQuery->selectQuery($query, $this->arrayBindValues);
-        if ($result === false) {
+        
+        if ($result === null) {
             $this->_lastError = $pdoQuery->getError();
+            // Register this query with the builder for error tracking
+            if ($this->queryBuilder !== null) {
+                $this->queryBuilder->setLastQuery($this);
+            }
+            return null;
         }
         
         // Register this query with the builder for error tracking
@@ -184,27 +194,27 @@ class Select implements QueryBuilderInterface
     {
         return $this->_lastError;
     }
-    
 
-    public function json(): string|false
+    /**
+     * Execute query and return results as JSON string
+     * 
+     * @return string|null JSON string on success, null on error
+     */
+    public function json(): string|null
     {
-        $pdoQuery = new PdoQuery();
-        $array = [];
-        $query = $this->__toString();
-        $result = $pdoQuery->selectQuery($query, $this->arrayBindValues);
-        if ($result === false) {
-            $this->_lastError = $pdoQuery->getError();
-            return false;
+        $result = $this->run();
+        
+        if ($result === null) {
+            return null;
         }
-        if (\is_array($result)) {
-            foreach ($result as $item) {
-                $encoded = json_encode($item, JSON_PRETTY_PRINT);
-                if ($encoded) {
-                    $array[] = json_decode($encoded);
-                }
-            }
+        
+        $jsonResult = json_encode($result);
+        if ($jsonResult === false) {
+            $this->_lastError = "Failed to encode results as JSON";
+            return null;
         }
-        return json_encode($array, JSON_PRETTY_PRINT);
+        
+        return $jsonResult;
     }
 
     /**

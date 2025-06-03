@@ -69,9 +69,20 @@ class Update  implements QueryBuilderInterface
         return $this->_query;
     }
 
+    /**
+     * Set a column to be updated with a value
+     * 
+     * @param string $column Column name to update
+     * @param mixed $value New value for the column
+     * @return self For method chaining
+     */
     public function set(string $column, mixed $value): self
     {
-        $colToUpdate = ':' . $column . 'ToUpdate';
+        if (empty(trim($column))) {
+            return $this; // Skip invalid columns silently to maintain chain
+        }
+        
+        $colToUpdate = ':' . str_replace('.', '_', $column) . '_ToUpdate';
         $this->columns[] = "{$column} = {$colToUpdate}";
         $this->arrayBindValues[$colToUpdate] = $value;
 
@@ -87,20 +98,34 @@ class Update  implements QueryBuilderInterface
         return $this;
     }
 
-    public function run(): int|false
+    /**
+     * Execute the UPDATE query and return the number of affected rows
+     * Following our unified return pattern: result|null
+     * 
+     * @return int|null Number of affected rows on success, null on error
+     */
+    public function run(): int|null
     {
-        $pdoQuery = new PdoQuery();
+        // Validate that we have columns to update
+        if (empty($this->columns)) {
+            $this->_lastError = "No columns specified for UPDATE query";
+            $this->registerWithBuilder();
+            return null;
+        }
+
+        // Use the shared PdoQuery instance from QueryBuilder if available
+        $pdoQuery = $this->queryBuilder ? $this->queryBuilder->getPdoQuery() : new PdoQuery();
+        
         $query = $this->__toString();
         $result = $pdoQuery->updateQuery($query, $this->arrayBindValues);
-        if(!$result) {
+        
+        if ($result === null) {
             $this->_lastError = $pdoQuery->getError();
+            $this->registerWithBuilder();
+            return null;
         }
         
-        // Register this query with the builder for error tracking
-        if ($this->queryBuilder !== null) {
-            $this->queryBuilder->setLastQuery($this);
-        }
-        
+        $this->registerWithBuilder();
         return $result;
     }
     
@@ -112,4 +137,13 @@ class Update  implements QueryBuilderInterface
         return $this->_lastError;
     }
 
+    /**
+     * Register this query with the builder for error tracking
+     */
+    private function registerWithBuilder(): void
+    {
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+    }
 }
