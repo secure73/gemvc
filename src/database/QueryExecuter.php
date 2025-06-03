@@ -72,11 +72,6 @@ class QueryExecuter
     {
         $this->setError(null);
 
-        if ($this->inTransaction) {
-            $this->setError('Cannot prepare new query while in transaction');
-            return;
-        }
-
         if (empty($query)) {
             $this->setError('Query cannot be empty');
             return;
@@ -96,7 +91,10 @@ class QueryExecuter
         $this->query = $query;
 
         try {
-            $this->db = $this->pool->getConnection();
+            // Get connection if not already in transaction
+            if (!$this->db) {
+                $this->db = $this->pool->getConnection();
+            }
             $this->statement = $this->db->prepare($query);
         } catch (\Throwable $e) {
             $this->setError('Error preparing statement: ' . $e->getMessage());
@@ -106,7 +104,7 @@ class QueryExecuter
 
     public function setError(?string $error): void
     {
-        $this->error = $error ?? '';
+        $this->error = $error ?? null;
     }
 
     public function bind(string $param, mixed $value): void

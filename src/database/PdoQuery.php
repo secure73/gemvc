@@ -13,9 +13,6 @@ class PdoQuery
     
     /** @var bool Whether we have an active database connection */
     private bool $isConnected = false;
-    
-    /** @var string|null Error message if any */
-    private ?string $error = null;
 
     /**
      * Constructor - no connection is created here
@@ -368,7 +365,10 @@ class PdoQuery
      */
     public function setError(?string $error): void
     {
-        $this->getExecuter()->setError($error);
+        if ($this->executer !== null) {
+            $this->executer->setError($error);
+        }
+        // If no executer yet, the error will be set when it's created
     }
 
     /**
@@ -381,7 +381,7 @@ class PdoQuery
         if ($this->executer !== null) {
             return $this->executer->getError();
         }
-        return $this->error;
+        return null;
     }
 
     /**
