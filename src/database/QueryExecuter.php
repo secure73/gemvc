@@ -3,6 +3,7 @@ namespace Gemvc\Database;
 
 use PDO;
 use PDOStatement;
+use Gemvc\Database\DatabasePoolFactory;
 
 class QueryExecuter
 {
@@ -229,33 +230,51 @@ class QueryExecuter
         }
     }
 
-    public function secure(): void
+    /**
+     * Securely clean up database resources
+     * 
+     * @param bool $forceRollback Whether to force rollback of active transactions
+     */
+    public function secure(bool $forceRollback = false): void
     {
+        // Handle transaction if needed
         if ($this->inTransaction && $this->db) {
             try {
-                $this->db->rollBack();
+                if ($forceRollback) {
+                    $this->db->rollBack();
+                    $this->debug("Transaction rolled back in secure()");
+                } else {
+                    $this->debug("Active transaction found in secure() - not rolling back");
+                }
             } catch (\PDOException $e) {
-                error_log('Error during rollback in secure(): ' . $e->getMessage());
+                error_log('Error during transaction handling in secure(): ' . $e->getMessage());
             }
         }
 
+        // Close statement if exists
         if ($this->statement) {
             try {
                 $this->statement->closeCursor();
+                $this->debug("Statement cursor closed in secure()");
             } catch (\PDOException $e) {
                 error_log('Error closing cursor in secure(): ' . $e->getMessage());
             }
             $this->statement = null;
         }
 
+        // Release connection back to pool
         $this->releaseConnection();
     }
 
+    /**
+     * Release the current database connection back to the pool
+     */
     private function releaseConnection(): void
     {
         if ($this->db) {
             try {
                 $this->pool->releaseConnection($this->db);
+                $this->debug("Connection released back to pool");
             } catch (\Throwable $e) {
                 error_log('Error releasing connection: ' . $e->getMessage());
             }
