@@ -36,7 +36,7 @@ class TableGenerator {
     protected function connect(): void {
         $dsn = sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-            $_ENV['DB_HOST'] ?? 'localhost',
+            $_ENV['DB_HOST_CLI_DEV'] ?? 'localhost',
             $_ENV['DB_PORT'] ?? 3306,
             $_ENV['DB_NAME'] ?? '',
             $_ENV['DB_CHARSET'] ?? 'utf8mb4'
