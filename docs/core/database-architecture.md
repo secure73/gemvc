@@ -21,8 +21,9 @@ src/database/
 ### 1. Connection Management
 #### DBConnection
 - Base connection class
-- Handles individual PDO connections
-- Manages connection state
+- Creates individual PDO connections
+- Handles connection parameters
+- No pooling logic
 ```php
 class DBConnection {
     private bool $isConnected;
@@ -34,8 +35,9 @@ class DBConnection {
 
 #### DBPoolManager
 - Manages connection pool
+- Uses DBConnection to create new connections
+- Tracks available and in-use connections
 - Handles connection reuse
-- Controls connection lifecycle
 ```php
 class DBPoolManager {
     private static array $availableConnections;
@@ -45,8 +47,9 @@ class DBPoolManager {
 
 #### PdoConnection
 - Manages connection lifecycle
-- Implements connection pooling
-- Provides connection validation
+- Gets connections from DBPoolManager
+- Validates connection health
+- Returns connections to pool
 ```php
 class PdoConnection {
     private static array $connectionPool;
@@ -58,9 +61,10 @@ class PdoConnection {
 
 ### 2. Query Execution
 #### QueryExecuter
-- Handles query preparation and execution
-- Manages connection state
-- Provides error handling
+- Receives connection from PdoConnection
+- Handles actual query execution
+- Manages prepared statements
+- Handles query results
 ```php
 class QueryExecuter {
     private ?PdoConnection $pdoManager;
@@ -70,9 +74,10 @@ class QueryExecuter {
 ```
 
 #### PdoQuery
-- High-level query interface
-- Extends QueryExecuter
-- Provides common database operations
+- Entry point for all database operations
+- Gets connection from PdoConnection
+- Passes connection to QueryExecuter
+- Provides high-level query methods
 ```php
 class PdoQuery extends QueryExecuter {
     public function insertQuery()
@@ -133,13 +138,14 @@ class TableGenerator {
 ### 1. Connection Flow
 ```mermaid
 graph TD
-    A[Application Request] --> B[PdoQuery]
-    B --> C[QueryExecuter]
-    C --> D[PdoConnection]
-    D --> E[DBPoolManager]
-    E --> F[DBConnection]
-    F --> G[PDO Connection]
-    G --> H[Database]
+    A[PdoQuery] -->|1. Request Query| B[QueryExecuter]
+    B -->|2. Need Connection| C[PdoConnection]
+    C -->|3. Get from Pool| D[DBPoolManager]
+    D -->|4. Create New| E[DBConnection]
+    E -->|5. Return PDO| D
+    D -->|6. Return Connection| C
+    C -->|7. Return Connection| B
+    B -->|8. Execute Query| F[Database]
 ```
 
 ### 2. Query Building Flow
@@ -159,6 +165,32 @@ graph TD
     C --> D[Execution]
     D --> E[Result Processing]
 ```
+
+## Component Relationships
+
+### 1. PdoQuery → QueryExecuter
+- Inheritance relationship
+- PdoQuery adds high-level query methods
+- QueryExecuter handles actual execution
+- Manages connection lifecycle
+
+### 2. QueryExecuter → PdoConnection
+- Composition relationship
+- QueryExecuter uses PdoConnection to get connections
+- Manages connection state
+- Handles connection errors
+
+### 3. PdoConnection → DBPoolManager
+- Uses DBPoolManager to manage connection pool
+- Handles connection validation
+- Returns connections to pool
+- Manages connection health
+
+### 4. DBPoolManager → DBConnection
+- Uses DBConnection to create new connections
+- Manages connection lifecycle
+- Tracks connection state
+- Handles connection reuse
 
 ## Configuration
 
