@@ -1,49 +1,33 @@
-# Database Connection Architecture
+# Database Architecture
 
-## Overview
-The database connection system implements a robust, layered architecture for managing database connections and queries. It provides connection pooling, efficient resource management, and a high-level query interface.
+## Directory Structure
+```
+src/database/
+├── DBConnection.php      # Base connection class
+├── DBPoolManager.php    # Connection pool management
+├── PdoConnection.php    # PDO connection wrapper
+├── QueryExecuter.php    # Query execution base
+├── PdoQuery.php         # High-level query interface
+├── query/               # Query building components
+├── QueryBuilder.php     # Query builder implementation
+├── QueryBuilderInterface.php # Query builder contract
+├── Table.php           # Table abstraction
+├── TableGenerator.php  # Table generation utilities
+└── SqlEnumCondition.php # SQL condition enums
+```
 
 ## Core Components
 
-### 1. Application Layer
-#### PdoQuery
-- High-level query interface
-- Extends QueryExecuter
-- Provides common database operations
-```php
-class PdoQuery extends QueryExecuter {
-    public function insertQuery()
-    public function updateQuery()
-    public function deleteQuery()
-    public function selectQuery()
-    public function selectQueryObjects()
-    public function selectCountQuery()
-}
-```
-
-### 2. Query Execution Layer
-#### QueryExecuter
-- Handles query preparation and execution
+### 1. Connection Management
+#### DBConnection
+- Base connection class
+- Handles individual PDO connections
 - Manages connection state
-- Provides error handling
 ```php
-class QueryExecuter {
-    private ?PdoConnection $pdoManager;
-    private ?PDO $db;
+class DBConnection {
     private bool $isConnected;
-}
-```
-
-### 3. Connection Management Layer
-#### PdoConnection
-- Manages connection lifecycle
-- Implements connection pooling
-- Provides connection validation
-```php
-class PdoConnection {
-    private static array $connectionPool;
-    private static int $totalConnections;
-    private string $poolKey;
+    private ?string $error;
+    private ?PDO $db;
     private string $instanceId;
 }
 ```
@@ -59,50 +43,90 @@ class DBPoolManager {
 }
 ```
 
-#### DBConnection
-- Base connection class
-- Handles individual PDO connections
-- Manages connection state
+#### PdoConnection
+- Manages connection lifecycle
+- Implements connection pooling
+- Provides connection validation
 ```php
-class DBConnection {
-    private bool $isConnected;
-    private ?string $error;
-    private ?PDO $db;
+class PdoConnection {
+    private static array $connectionPool;
+    private static int $totalConnections;
+    private string $poolKey;
     private string $instanceId;
 }
 ```
 
-## Type System
-
-### Property Types
+### 2. Query Execution
+#### QueryExecuter
+- Handles query preparation and execution
+- Manages connection state
+- Provides error handling
 ```php
-class UserTable extends Table
-{
-    public int $id;
-    public string $username;
-    public string $email;
-    public bool $is_active = true;
-    public ?string $bio = null;
-    public array $permissions = [];
-    
-    protected array $_type_map = [
-        'id' => 'int',
-        'is_active' => 'bool',
-        'permissions' => 'json'
-    ];
+class QueryExecuter {
+    private ?PdoConnection $pdoManager;
+    private ?PDO $db;
+    private bool $isConnected;
 }
 ```
 
-### Type Mapping
-- `int`: Integer values
-- `string`: String values
-- `bool`: Boolean values
-- `float`: Floating-point values
-- `array`: Array values (stored as JSON)
-- `json`: JSON values
-- `datetime`: DateTime values
-- `date`: Date values
-- `time`: Time values
+#### PdoQuery
+- High-level query interface
+- Extends QueryExecuter
+- Provides common database operations
+```php
+class PdoQuery extends QueryExecuter {
+    public function insertQuery()
+    public function updateQuery()
+    public function deleteQuery()
+    public function selectQuery()
+    public function selectQueryObjects()
+    public function selectCountQuery()
+}
+```
+
+### 3. Query Building
+#### QueryBuilder
+- Fluent interface for query construction
+- Implements QueryBuilderInterface
+- Supports complex query building
+```php
+class QueryBuilder implements QueryBuilderInterface {
+    public function select()
+    public function insert()
+    public function update()
+    public function delete()
+    public function where()
+    public function orderBy()
+    public function limit()
+}
+```
+
+### 4. Table Management
+#### Table
+- Table abstraction layer
+- Property type mapping
+- CRUD operations
+```php
+class Table {
+    protected array $_type_map = [];
+    public function select()
+    public function insert()
+    public function update()
+    public function delete()
+}
+```
+
+#### TableGenerator
+- Table structure generation
+- Migration support
+- Schema management
+```php
+class TableGenerator {
+    public function generate()
+    public function migrate()
+    public function validate()
+}
+```
 
 ## System Flow
 
@@ -118,62 +142,22 @@ graph TD
     G --> H[Database]
 ```
 
-### 2. Query Execution Flow
+### 2. Query Building Flow
 ```mermaid
 graph TD
-    A[Query Request] --> B[Prepare Statement]
-    B --> C[Bind Parameters]
+    A[QueryBuilder] --> B[Build Query]
+    B --> C[Validate Query]
     C --> D[Execute Query]
     D --> E[Process Results]
-    E --> F[Release Connection]
 ```
 
-### 3. Connection Pool Management
+### 3. Table Management Flow
 ```mermaid
 graph TD
-    A[Pool Monitor] --> B[Check Health]
-    B --> C[Clean Expired]
-    C --> D[Maintain Pool Size]
-    D --> E[Update Statistics]
-```
-
-## Query Building
-
-### Select Queries
-```php
-$users = $table->select()
-    ->where('is_active', true)
-    ->where('age', '>', 18)
-    ->whereIn('role', ['admin', 'user'])
-    ->orderBy('created_at', 'DESC')
-    ->limit(10)
-    ->offset(0)
-    ->run();
-```
-
-### Insert Queries
-```php
-$userId = $table->insert([
-    'username' => 'john_doe',
-    'email' => 'john@example.com',
-    'is_active' => true
-])->run();
-```
-
-### Update Queries
-```php
-$table->update([
-    'is_active' => false
-])
-->where('id', 1)
-->run();
-```
-
-### Delete Queries
-```php
-$table->delete()
-    ->where('id', 1)
-    ->run();
+    A[Table] --> B[Type Mapping]
+    B --> C[Query Building]
+    C --> D[Execution]
+    D --> E[Result Processing]
 ```
 
 ## Configuration
@@ -181,9 +165,7 @@ $table->delete()
 ### Environment Variables
 ```env
 # Database Configuration
-# because cli run on local machine on Dockerise application it is differ by host name inside docker network
 DB_HOST_CLI_DEV="localhost"
-# db host name is defined in docker-compose.yml which actually run in app for crud operation
 DB_HOST="db"
 DB_PORT=your_port
 DB_NAME=your_database
@@ -209,62 +191,50 @@ APP_ENV=dev  # or 'prod'
 
 ## Usage Examples
 
-### 1. Basic Query Execution
+### 1. Table Operations
+```php
+class UserTable extends Table {
+    public int $id;
+    public string $username;
+    public string $email;
+    
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool'
+    ];
+}
+
+$userTable = new UserTable();
+
+// Select
+$users = $userTable->select()
+    ->where('is_active', true)
+    ->orderBy('created_at', 'DESC')
+    ->run();
+
+// Insert
+$userId = $userTable->insert([
+    'username' => 'john_doe',
+    'email' => 'john@example.com'
+])->run();
+```
+
+### 2. Raw Query Operations
 ```php
 $pdoQuery = new PdoQuery();
 
-// Insert
-$userId = $pdoQuery->insertQuery(
-    "INSERT INTO users (name, email) VALUES (:name, :email)",
-    [':name' => 'John', ':email' => 'john@example.com']
-);
-
-// Select
-$user = $pdoQuery->selectQuery(
-    "SELECT * FROM users WHERE id = :id",
-    [':id' => $userId]
-);
-```
-
-### 2. Transaction Handling
-```php
+// Transaction
 try {
     $pdoQuery->beginTransaction();
     
-    // Perform operations
-    $pdoQuery->insertQuery(...);
-    $pdoQuery->updateQuery(...);
+    $pdoQuery->insertQuery(
+        "INSERT INTO users (name, email) VALUES (:name, :email)",
+        [':name' => 'John', ':email' => 'john@example.com']
+    );
     
     $pdoQuery->commit();
 } catch (Exception $e) {
     $pdoQuery->rollback();
-    throw $e;
-}
-```
-
-### 3. Nested Transactions
-```php
-try {
-    $table->beginTransaction();
-    
-    // Outer transaction
-    $table->insert([...])->run();
-    
-    try {
-        $table->beginTransaction();
-        
-        // Inner transaction
-        $table->update([...])->run();
-        
-        $table->commit();
-    } catch (\Exception $e) {
-        $table->rollback();
-        throw $e;
-    }
-    
-    $table->commit();
-} catch (\Exception $e) {
-    $table->rollback();
     throw $e;
 }
 ```
@@ -276,45 +246,24 @@ try {
 - Release connections properly
 - Handle connection errors
 - Monitor connection health
-- Always release connections after use
-- Use try-finally blocks
-- Monitor pool size
 
-### 2. Query Execution
-- Use prepared statements
-- Bind parameters properly
-- Handle transactions correctly
-- Check query results
+### 2. Query Building
 - Use fluent interface
 - Chain methods for readability
+- Validate query parameters
 - Monitor query performance
 
-### 3. Error Handling
+### 3. Table Management
+- Define property types
+- Use type mapping
+- Implement validation
+- Handle relationships
+
+### 4. Error Handling
 - Catch and log errors
 - Clean up resources
-- Provide meaningful error messages
-- Handle connection failures
-- Check connection status
-- Handle query errors
-- Log database errors
-- Implement retry logic
-
-### 4. Performance
-- Monitor connection pool size
-- Clean expired connections
-- Use appropriate timeouts
-- Optimize query patterns
-- Cache frequently used queries
-- Set appropriate TTL
-- Clear cache when data changes
-- Monitor query execution time
-- Optimize query parameters
-- Handle large result sets
-
-### 5. Type Safety
-- Always define property types
-- Use type mapping for complex types
-- Validate data before insertion
+- Provide meaningful messages
+- Handle failures gracefully
 
 ## System Limitations
 
