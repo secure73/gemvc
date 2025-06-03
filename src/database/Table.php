@@ -7,10 +7,13 @@ use Gemvc\Database\PdoQuery;
 /**
  * Base table class for database operations
  * 
- * Provides a fluent interface for database queries and operations
+ * Provides a fluent interface for database queries and operations using composition with lazy loading
  */
-class Table extends PdoQuery
+class Table
 {
+    /** @var PdoQuery|null Lazy-loaded database query instance */
+    private ?PdoQuery $pdoQuery = null;
+
     /** @var string|null SQL query being built */
     private ?string $_query = null;
     
@@ -52,19 +55,53 @@ class Table extends PdoQuery
 
     /**
      * Initialize a new Table instance
-     * 
-     * @param string $tableName Database table name (required)
+     * No database connection is created here - lazy loading
      */
     public function __construct()
     {
         $this->_limit = (isset($_ENV['QUERY_LIMIT']) && is_numeric($_ENV['QUERY_LIMIT'])) 
             ? (int)$_ENV['QUERY_LIMIT'] 
             : 10;
-            
-        parent::__construct();
     }
 
+    /**
+     * Lazy initialization of PdoQuery
+     * Database connection is created only when this method is called
+     */
+    private function getPdoQuery(): PdoQuery
+    {
+        if ($this->pdoQuery === null) {
+            $this->pdoQuery = new PdoQuery();
+        }
+        return $this->pdoQuery;
+    }
 
+    /**
+     * Set error message
+     */
+    public function setError(?string $error): void
+    {
+        $this->getPdoQuery()->setError($error);
+    }
+
+    /**
+     * Get error message
+     */
+    public function getError(): ?string
+    {
+        if ($this->pdoQuery !== null) {
+            return $this->pdoQuery->getError();
+        }
+        return null;
+    }
+
+    /**
+     * Check if we have an active connection
+     */
+    public function isConnected(): bool
+    {
+        return $this->pdoQuery !== null && $this->pdoQuery->isConnected();
+    }
 
     /**
      * Validate essential properties and show error if not valid
@@ -93,19 +130,19 @@ class Table extends PdoQuery
     /**
      * Inserts a single row into the database table
      * 
-     * @return null|static The current instance with inserted id
+     * @return static|null The current instance with inserted id on success, null on error
      */
-    public function insertSingleQuery(): null|static
+    public function insertSingleQuery(): ?static
     {
         $this->validateProperties([]);
 
         $query = $this->buildInsertQuery();
         $arrayBind = $this->getInsertBindings();
         
-        $result = $this->insertQuery($query, $arrayBind);
+        $result = $this->getPdoQuery()->insertQuery($query, $arrayBind);
         
-        if ($this->getError() || $result === false) {
-            $this->setError("Error in insert query: ".$this->_internalTable() .":". $this->getError());
+        if ($result === null) {
+            $this->setError("Error in insert query: " . $this->_internalTable() . ": " . $this->getError());
             return null;
         }
         
@@ -118,11 +155,11 @@ class Table extends PdoQuery
     /**
      * Updates a record based on its ID property
      * 
-     * @return null|static Current instance
+     * @return static|null Current instance on success, null on error
      */
-    public function updateSingleQuery(): null|static
+    public function updateSingleQuery(): ?static
     {
-        if(!property_exists($this, 'id')){
+        if (!property_exists($this, 'id')) {
             $this->setError("Property 'id' does not exist in object");
             return null;
         }
@@ -131,12 +168,11 @@ class Table extends PdoQuery
             return null;
         }
         
-        // Use the existing buildUpdateQuery method instead of manually building the query
         [$query, $arrayBind] = $this->buildUpdateQuery('id', $this->id);
         
-        $result = $this->updateQuery($query, $arrayBind);
+        $result = $this->getPdoQuery()->updateQuery($query, $arrayBind);
         
-        if ($result === false || $this->getError()) {
+        if ($result === null) {
             $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
@@ -148,23 +184,23 @@ class Table extends PdoQuery
      * Deletes a record by ID and return id for deleted object
      * 
      * @param int $id Record ID to delete
-     * @return null|int
+     * @return int|null Deleted ID on success, null on error
      */
-    public function deleteByIdQuery(int $id): null|int
+    public function deleteByIdQuery(int $id): ?int
     {
-        if(!property_exists($this, 'id')){
+        if (!property_exists($this, 'id')) {
             $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
+            $this->setError("ID must be a positive integer for delete in {$this->_internalTable()}");
             return null;
         }
               
         $query = "DELETE FROM {$this->_internalTable()} WHERE id = :id";
-        $result = $this->deleteQuery($query, [':id' => $id]);
+        $result = $this->getPdoQuery()->deleteQuery($query, [':id' => $id]);
         
-        if ($this->getError() || !is_int($result)) {
+        if ($result === null) {
             $this->setError("Error in delete query: {$this->_internalTable()} - {$this->getError()}");
             return null;
         }
@@ -173,11 +209,11 @@ class Table extends PdoQuery
 
     /**
      * Marks a record as deleted (soft delete)
-     * @return null|static Current instance
+     * @return static|null Current instance on success, null on error
      */
-    public function safeDeleteQuery(): null|static
+    public function safeDeleteQuery(): ?static
     {
-        if(!property_exists($this, 'id')){
+        if (!property_exists($this, 'id')) {
             $this->setError("Property 'id' does not exist in object");
             return null;
         }
@@ -186,7 +222,7 @@ class Table extends PdoQuery
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
-        if(!$valid){
+        if (!$valid) {
             $this->setError("For safe delete, deleted_at must exist in the Database table and object");
             return null;
         }
@@ -197,9 +233,9 @@ class Table extends PdoQuery
             $query = "UPDATE {$this->_internalTable()} SET deleted_at = NOW(), is_active = 0 WHERE id = :id";
         }
         
-        $result = $this->updateQuery($query, [':id' => $id]);
+        $result = $this->getPdoQuery()->updateQuery($query, [':id' => $id]);
         
-        if (!$result  || $this->getError()) {
+        if ($result === null) {
             $this->setError("Error in safeDelete operation: " . $this->getError());
             return null;
         }
@@ -216,11 +252,11 @@ class Table extends PdoQuery
     /**
      * Restores a soft-deleted record
      * 
-     * @return null|static Current instance
+     * @return static|null Current instance on success, null on error
      */
-    public function restoreQuery(): null|static
+    public function restoreQuery(): ?static
     {
-        if(!property_exists($this, 'id')){
+        if (!property_exists($this, 'id')) {
             $this->setError("Property 'id' does not exist in object");
             return null;
         }
@@ -229,16 +265,16 @@ class Table extends PdoQuery
             return null;
         }
         $valid = $this->validateProperties(['deleted_at']);
-        if(!$valid){
+        if (!$valid) {
             $this->setError("For restore operation, deleted_at must exist in the Database table and object");
             return null;
         }
         $id = $this->id;
         $query = "UPDATE {$this->_internalTable()} SET deleted_at = NULL WHERE id = :id";
                
-        $result = $this->updateQuery($query, [':id' => $id]);
+        $result = $this->getPdoQuery()->updateQuery($query, [':id' => $id]);
         
-        if (!$result  || $this->getError()) {
+        if ($result === null) {
             $this->setError("Error in restore operation: " . $this->getError());
             return null;
         }
@@ -249,17 +285,16 @@ class Table extends PdoQuery
     /**
      * Removes an object from the database by ID
      * 
-     * @param int $id Record ID to remove
-     * @return int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
-    public function deleteSingleQuery(): null|int
+    public function deleteSingleQuery(): ?int
     {
-        if(!property_exists($this, 'id')){
+        if (!property_exists($this, 'id')) {
             $this->setError("Property 'id' does not exist in object");
             return null;
         }
         if ($this->id < 1) {
-            $this->setError("ID must be a positive integer for update in {$this->_internalTable()}");
+            $this->setError("ID must be a positive integer for delete in {$this->_internalTable()}");
             return null;
         }
         return $this->removeConditionalQuery('id', $this->id);
@@ -272,14 +307,14 @@ class Table extends PdoQuery
      * @param mixed $whereValue Value to match in primary column
      * @param string|null $secondWhereColumn Optional second column for WHERE condition
      * @param mixed $secondWhereValue Value to match in second column
-     * @return int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
     public function removeConditionalQuery(
         string $whereColumn, 
         mixed $whereValue, 
         ?string $secondWhereColumn = null, 
         mixed $secondWhereValue = null
-    ): null|int {
+    ): ?int {
         $this->validateProperties([]);
 
         $query = "DELETE FROM {$this->_internalTable()} WHERE {$whereColumn} = :{$whereColumn}";
@@ -294,9 +329,9 @@ class Table extends PdoQuery
             $arrayBind[':' . $secondWhereColumn] = $secondWhereValue;
         }
         
-        $result = $this->deleteQuery($query, $arrayBind);
+        $result = $this->getPdoQuery()->deleteQuery($query, $arrayBind);
 
-        if ($this->getError()) { 
+        if ($result === null) { 
             $this->setError("Error in delete query: {$this->_internalTable()} - {$this->getError()}");
             return null;
         }
@@ -551,16 +586,16 @@ class Table extends PdoQuery
      * @param string $columnNameSetToNull Column to set to NULL
      * @param string $whereColumn WHERE condition column
      * @param mixed $whereValue WHERE condition value
-     * @return null|int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
-    public function setNullQuery(string $columnNameSetToNull, string $whereColumn, mixed $whereValue): null|int
+    public function setNullQuery(string $columnNameSetToNull, string $whereColumn, mixed $whereValue): ?int
     {
         $this->validateProperties([]);
 
         $query = "UPDATE {$this->_internalTable()} SET {$columnNameSetToNull} = NULL WHERE {$whereColumn} = :whereValue";
-        $result = $this->updateQuery($query, [':whereValue' => $whereValue]);
+        $result = $this->getPdoQuery()->updateQuery($query, [':whereValue' => $whereValue]);
         
-        if ($this->getError() || $result === false) {
+        if ($result === null) {
             $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
@@ -574,16 +609,16 @@ class Table extends PdoQuery
      * @param string $columnNameSetToNowTomeStamp Column to set to NOW()
      * @param string $whereColumn WHERE condition column
      * @param mixed $whereValue WHERE condition value
-     * @return null|int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
-    public function setTimeNowQuery(string $columnNameSetToNowTomeStamp, string $whereColumn, mixed $whereValue): null|int
+    public function setTimeNowQuery(string $columnNameSetToNowTomeStamp, string $whereColumn, mixed $whereValue): ?int
     {
         $this->validateProperties([]);
 
         $query = "UPDATE {$this->_internalTable()} SET {$columnNameSetToNowTomeStamp} = NOW() WHERE {$whereColumn} = :whereValue";
-        $result = $this->updateQuery($query, [':whereValue' => $whereValue]);
+        $result = $this->getPdoQuery()->updateQuery($query, [':whereValue' => $whereValue]);
         
-        if ($this->getError() || $result === false) {
+        if ($result === null) {
             $this->setError("Error in update query: {$this->_internalTable()}: " . $this->getError());
             return null;
         }
@@ -595,9 +630,9 @@ class Table extends PdoQuery
      * Sets is_active to 1 (activate record)
      * 
      * @param int $id Record ID to activate
-     * @return null|int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
-    public function activateQuery(int $id): null|int
+    public function activateQuery(int $id): ?int
     {
         if (!$this->validateProperties(['is_active'])) {
             $this->setError('is_active column is not present in the table');
@@ -609,12 +644,12 @@ class Table extends PdoQuery
             return null;
         }
         
-        $result = $this->updateQuery(
+        $result = $this->getPdoQuery()->updateQuery(
             "UPDATE {$this->_internalTable()} SET is_active = 1 WHERE id = :id", 
             [':id' => $id]
         );
         
-        if ($result === false || $this->getError()) {
+        if ($result === null) {
             $this->setError("Error in activateQuery: " . $this->getError());
             return null;
         }
@@ -626,9 +661,9 @@ class Table extends PdoQuery
      * Sets is_active to 0 (deactivate record)
      * 
      * @param int $id Record ID to deactivate
-     * @return null|int Number of affected rows
+     * @return int|null Number of affected rows on success, null on error
      */
-    public function deactivateQuery(int $id): null|int
+    public function deactivateQuery(int $id): ?int
     {
         if (!$this->validateProperties(['is_active'])) {
             $this->setError('is_active column is not present in the table');
@@ -640,12 +675,12 @@ class Table extends PdoQuery
             return null;
         }
         
-        $result = $this->updateQuery(
+        $result = $this->getPdoQuery()->updateQuery(
             "UPDATE {$this->_internalTable()} SET is_active = 0 WHERE id = :id", 
             [':id' => $id]
         );
         
-        if ($result === false || $this->getError()) {
+        if ($result === null) {
             $this->setError("Error in deactivateQuery: " . $this->getError());
             return null;
         }
@@ -663,13 +698,13 @@ class Table extends PdoQuery
      * Selects a single row by ID
      * 
      * @param int $id Record ID to select
-     * @return null|static Found instance or null if not found
+     * @return static|null Found instance or null if not found
      */
-    public function selectById(int $id): null|static
+    public function selectById(int $id): ?static
     {
         $result = $this->select()->where('id', $id)->limit(1)->run();
         
-        if ($this->getError()) {
+        if ($result === null) {
             $this->setError(get_class($this) . ": Failed to select: " . $this->getError());
             return null;
         }
@@ -685,9 +720,9 @@ class Table extends PdoQuery
     /**
      * Executes a SELECT query and returns results
      * 
-     * @return array<static> Array of model instances
+     * @return array<static>|null Array of model instances on success, null on error
      */
-    public function run(): null|array
+    public function run(): ?array
     {
         $objectName = get_class($this);
         
@@ -703,6 +738,10 @@ class Table extends PdoQuery
 
         $this->buildCompleteSelectQuery();
         $queryResult = $this->executeSelectQuery();
+        
+        if ($queryResult === null) {
+            return null;
+        }
         
         if (!count($queryResult)) {
             return [];
@@ -847,6 +886,67 @@ class Table extends PdoQuery
                 return $value;
         }
     }
+
+    /**
+     * Force connection cleanup
+     */
+    public function disconnect(): void
+    {
+        if ($this->pdoQuery !== null) {
+            $this->pdoQuery->disconnect();
+            $this->pdoQuery = null;
+        }
+    }
+
+    /**
+     * Begin a database transaction
+     * Connection is created only when this method is called
+     * 
+     * @return bool True on success, false on failure
+     */
+    public function beginTransaction(): bool
+    {
+        return $this->getPdoQuery()->beginTransaction();
+    }
+
+    /**
+     * Commit the current transaction
+     * 
+     * @return bool True on success, false on failure
+     */
+    public function commit(): bool
+    {
+        if ($this->pdoQuery === null) {
+            $this->setError('No active transaction to commit');
+            return false;
+        }
+        return $this->pdoQuery->commit();
+    }
+
+    /**
+     * Rollback the current transaction
+     * 
+     * @return bool True on success, false on failure
+     */
+    public function rollback(): bool
+    {
+        if ($this->pdoQuery === null) {
+            $this->setError('No active transaction to rollback');
+            return false;
+        }
+        return $this->pdoQuery->rollback();
+    }
+
+    /**
+     * Clean up resources
+     */
+    public function __destruct()
+    {
+        if ($this->pdoQuery !== null) {
+            $this->pdoQuery->disconnect();
+            $this->pdoQuery = null;
+        }
+    }
     
     /*
      * =============================================
@@ -982,13 +1082,13 @@ class Table extends PdoQuery
     /**
      * Executes the SELECT query
      * 
-     * @return array<mixed> Query results
+     * @return array<mixed>|null Query results on success, null on error
      */
-    private function executeSelectQuery(): null|array
+    private function executeSelectQuery(): ?array
     {
-        $queryResult = $this->selectQuery($this->_query, $this->_binds);
+        $queryResult = $this->getPdoQuery()->selectQuery($this->_query, $this->_binds);
         
-        if (!is_array($queryResult)) {
+        if ($queryResult === null) {
             $this->setError("Error executing SELECT query for " . get_class($this) . ": " . $this->getError());
             return null;
         }
@@ -1029,14 +1129,14 @@ class Table extends PdoQuery
 
     private function _internalTable(): string
     {
-            if(!method_exists($this, 'getTable')){
-                throw new \Exception('Method getTable():string must be implemented in child Table class');
-            }
-            /**@phpstan-ignore-next-line */
-            $table_name = $this->getTable();
-            if(!is_string($table_name)){
-                throw new \Exception('Method getTable():string must return a string');
-            }
-            return $table_name;
+        if (!method_exists($this, 'getTable')) {
+            throw new \Exception('Method getTable():string must be implemented in child Table class');
+        }
+        /**@phpstan-ignore-next-line */
+        $table_name = $this->getTable();
+        if (!is_string($table_name)) {
+            throw new \Exception('Method getTable():string must return a string');
+        }
+        return $table_name;
     }
 }
