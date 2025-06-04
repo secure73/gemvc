@@ -101,27 +101,68 @@ class Insert implements QueryBuilderInterface
         return $this;
     }
 
-    public function run():int|false
+    /**
+     * Execute the INSERT query and return the inserted ID
+     * Following our unified return pattern: result|null
+     * 
+     * @return int|null Inserted ID on success, null on error
+     */
+    public function run(): int|null
     {
-        $pdoQuery = new PdoQuery();
+        // Validate that we have columns and values
+        if (empty($this->columns)) {
+            $this->_lastError = "No columns specified for INSERT query";
+            $this->registerWithBuilder();
+            return null;
+        }
+        
+        if (empty($this->keyValue)) {
+            $this->_lastError = "No values specified for INSERT query";
+            $this->registerWithBuilder();
+            return null;
+        }
+
+        // Use the shared PdoQuery instance from QueryBuilder if available
+        $pdoQuery = $this->queryBuilder ? $this->queryBuilder->getPdoQuery() : new PdoQuery();
 
         $query = $this->__toString();
         $result = $pdoQuery->insertQuery($query, $this->keyValue);
-        if(!$result) {
+        
+        if ($result === null) {
             $this->_lastError = $pdoQuery->getError();
+            $this->registerWithBuilder();
+            return null;
         }
         
-        // Register this query with the builder for error tracking
-        if ($this->queryBuilder !== null) {
-            $this->queryBuilder->setLastQuery($this);
-        }
-        
+        $this->registerWithBuilder();
         return $result;
     }
 
+    /**
+     * Get the last error message if any
+     */
     public function getError(): ?string
     {
         return $this->_lastError;
     }
-    
+
+    /**
+     * Get the key-value pairs for testing/debugging
+     * 
+     * @return array<mixed> The bound key-value pairs
+     */
+    public function getBindValues(): array
+    {
+        return $this->keyValue;
+    }
+
+    /**
+     * Register this query with the builder for error tracking
+     */
+    private function registerWithBuilder(): void
+    {
+        if ($this->queryBuilder !== null) {
+            $this->queryBuilder->setLastQuery($this);
+        }
+    }
 }
