@@ -21,6 +21,10 @@ class DbMigrate extends Command
     {
         try {
             ProjectHelper::loadEnv();
+            $pdo = DbConnect::connect();
+            if (!$pdo) {
+                return;
+            }
 
             if (empty($this->args[0])) {
                 $this->error("Table class name is required. Usage: gemvc db:migrate TableClassName [--force]");
@@ -53,18 +57,11 @@ class DbMigrate extends Command
             }
 
             $table = new $className();
-            $generator = new TableGenerator();
-
-            // Ensure we have a fresh connection
-            if (!$generator->reconnect()) {
-                $this->error("Failed to establish database connection");
-                return;
-            }
+            $generator = new TableGenerator($pdo);
 
             // First check if table exists
             $tableName = $table->getTable();
-            $connection = $generator->getConnection();
-            $stmt = $connection->query("SHOW TABLES LIKE '{$tableName}'");
+            $stmt = $pdo->query("SHOW TABLES LIKE '{$tableName}'");
             $tableExists = $stmt->rowCount() > 0;
 
             if ($tableExists) {

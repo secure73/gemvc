@@ -3,14 +3,17 @@
 namespace Gemvc\CLI\Commands;
 
 use Gemvc\CLI\Command;
-use Gemvc\Database\DBConnection;
 use Gemvc\Helper\ProjectHelper;
+use Gemvc\CLI\Commands\DbCLI;
 use PDO;
-
+/**
+ * Drop Table from the database
+ */
 class DbDrop extends Command
 {
     public function execute()
     {
+        ProjectHelper::loadEnv();
         try {
             // Check if table name is provided
             if (empty($this->args)) {
@@ -35,15 +38,10 @@ class DbDrop extends Command
                     return;
                 }
             }
-
-            // Load environment variables
-            ProjectHelper::loadEnv();
-
             // Get database connection
-            $db = new DBConnection();
-            $pdo = $db->connect();
+            $pdo = DbConnect::connect();
             if (!$pdo) {
-                throw new \Exception("Failed to connect to database: " . $db->getError());
+                return;
             }
 
             // Check if table exists

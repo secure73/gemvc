@@ -21,7 +21,7 @@ abstract class Command
             // On Windows, check if running in a terminal that supports ANSI
             return (
                 false !== getenv('ANSICON') ||
-                'ON' === getenv('ConEmuANSI') ||
+                'ON' === getenv(name: 'ConEmuANSI') ||
                 'xterm' === getenv('TERM') ||
                 'Hyper' === getenv('TERM_PROGRAM')
             );

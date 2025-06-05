@@ -1,7 +1,6 @@
 <?php
 namespace Gemvc\Database;
 
-use Gemvc\Helper\ProjectHelper;
 use PDO;
 use PDOException;
 
@@ -19,51 +18,8 @@ class TableGenerator {
     private array $uniqueIndexedProperties = [];
     private string $error = '';
 
-    public function __construct() {
-        ProjectHelper::loadEnv();
-        $this->connect();
-    }
-
-    /**
-     * Reconnect to the database
-     * @return bool True if connection was successful
-     */
-    public function reconnect(): bool {
-        $this->connect();
-        return $this->pdo !== null;
-    }
-
-    protected function connect(): void {
-        $dsn = sprintf(
-            'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-            $_ENV['DB_HOST_CLI_DEV'] ?? 'localhost',
-            $_ENV['DB_PORT'] ?? 3306,
-            $_ENV['DB_NAME'] ?? '',
-            $_ENV['DB_CHARSET'] ?? 'utf8mb4'
-        );
-        $user = $_ENV['DB_USER'] ?? 'root';
-        $pass = $_ENV['DB_PASSWORD'] ?? '';
-
-        try {
-            // Close existing connection if any
-            $this->pdo = null;
-            
-            $this->pdo = new PDO($dsn, $user, $pass, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_TIMEOUT => getenv('DB_CONNECTION_TIME_OUT') ?: $_ENV['DB_CONNECTION_TIME_OUT'] ?? 20,
-                PDO::ATTR_PERSISTENT => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-            ]);
-            
-            // Test the connection with a simple query
-            $this->pdo->query('SELECT 1');
-            
-        } catch (PDOException $e) {
-            $this->error = 'PDO Connection failed: ' . $e->getMessage();
-            $this->pdo = null;
-            echo $this->error . "\n";
-        }
+    public function __construct(PDO $pdo) {
+        $this->pdo = $pdo;
     }
 
     public function getError(): string {
@@ -77,10 +33,6 @@ class TableGenerator {
      * @return bool True if the table was created successfully, false otherwise
      */
     public function createTableFromObject(object $object, string $tableName = null): bool {
-        if (!$this->pdo) {
-            $this->error = 'No PDO connection.';
-            return false;
-        }
         if (!$tableName) {
             if (!method_exists($object, 'getTable')) {
                 $this->error = 'public function getTable() not found in object';
@@ -141,10 +93,6 @@ class TableGenerator {
      * @return bool True if successful, false otherwise
      */
     public function makeColumnUnique(string $tableName, string $columnName, bool $dropExistingIndex = true): bool {
-        if (!$this->pdo) {
-            $this->error = 'No PDO connection.';
-            return false;
-        }
         
         if (!$this->isValidTableName($tableName)) {
             $this->error = "Invalid table name format: $tableName";
@@ -347,12 +295,7 @@ class TableGenerator {
      * @param string $columnName The name of the column to remove
      * @return bool True if successful, false otherwise
      */
-    public function removeColumn(string $tableName, string $columnName): bool {
-        if (!$this->pdo) {
-            $this->error = 'No PDO connection.';
-            return false;
-        }
-        
+    public function removeColumn(string $tableName, string $columnName): bool { 
         if (!$this->isValidTableName($tableName)) {
             $this->error = "Invalid table name format: $tableName";
             return false;
@@ -443,13 +386,6 @@ class TableGenerator {
                 $this->error = 'function getTable() returned null string. Please define it and give table a name';
                 return false;
             }
-        }
-
-        // Ensure we have a fresh connection
-        $this->reconnect();
-        if (!$this->pdo) {
-            $this->error = 'Failed to establish database connection';
-            return false;
         }
 
         try {
@@ -645,10 +581,6 @@ class TableGenerator {
         return $typeMap[$type] ?? $type;
     }
 
-    public function getConnection(): ?PDO {
-        return $this->pdo;
-    }
-
     /*-------------------------------------------private methods-------------------------------------------*/
 
     /**
@@ -770,10 +702,6 @@ class TableGenerator {
      * @return bool True if successful, false otherwise
      */
     public function makeColumnsUniqueTogether(string $tableName, array $columnNames, ?string $indexName = null, bool $dropExistingIndexes = true): bool {
-        if (!$this->pdo) {
-            $this->error = 'No PDO connection.';
-            return false;
-        }
         
         if (empty($columnNames)) {
             $this->error = "No column names provided for combined unique index";

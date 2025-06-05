@@ -3,7 +3,7 @@
 namespace Gemvc\CLI\Commands;
 
 use Gemvc\CLI\Command;
-use Gemvc\Database\DBConnection;
+use Gemvc\CLI\Commands\DbConnect;
 use Gemvc\Helper\ProjectHelper;
 
 class DbList extends Command
@@ -23,10 +23,10 @@ class DbList extends Command
             }
             
             // Get database connection
-            $connection = new DBConnection();
-            $pdo = $connection->connect();
+            
+            $pdo = DbConnect::connect();
             if (!$pdo) {
-                throw new \Exception("Failed to connect to database server: " . $connection->getError());
+                return;
             }
             
             // Get all tables
