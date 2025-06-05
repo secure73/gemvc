@@ -29,6 +29,9 @@ class InitProject extends Command
             // Create directory structure
             $this->createDirectories();
             
+            // Copy templates folder to project root
+            $this->copyTemplatesFolder();
+            
             // Copy startup files to project root (this will set the template name)
             $this->copyStartupFiles();
             
@@ -464,5 +467,84 @@ EOT;
             $this->write("  1. Run: sudo ln -s " . realpath($wrapperPath) . " /usr/local/bin/gemvc\n", 'white');
             $this->write("  2. Make it executable: sudo chmod +x /usr/local/bin/gemvc\n\n", 'white');
         }
+    }
+
+    private function copyTemplatesFolder()
+    {
+        $sourceTemplatesPath = $this->packagePath . '/src/CLI/templates';
+        $targetTemplatesPath = $this->basePath . '/templates';
+        
+        // Check if source templates directory exists
+        if (!is_dir($sourceTemplatesPath)) {
+            $this->warning("Templates directory not found: {$sourceTemplatesPath}");
+            return;
+        }
+        
+        // Create target templates directory if it doesn't exist
+        if (!is_dir($targetTemplatesPath)) {
+            if (!@mkdir($targetTemplatesPath, 0755, true)) {
+                throw new \RuntimeException("Failed to create templates directory: {$targetTemplatesPath}");
+            }
+            $this->info("Created templates directory: {$targetTemplatesPath}");
+        } else {
+            $this->info("Templates directory already exists: {$targetTemplatesPath}");
+        }
+        
+        // Copy all files from source templates to target templates
+        $this->copyDirectoryContents($sourceTemplatesPath, $targetTemplatesPath);
+    }
+    
+    private function copyDirectoryContents($sourceDir, $targetDir)
+    {
+        $files = scandir($sourceDir);
+        
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+            
+            $sourcePath = $sourceDir . '/' . $file;
+            $targetPath = $targetDir . '/' . $file;
+            
+            if (is_dir($sourcePath)) {
+                // If it's a directory, create it and recursively copy its contents
+                if (!is_dir($targetPath)) {
+                    if (!@mkdir($targetPath, 0755, true)) {
+                        throw new \RuntimeException("Failed to create directory: {$targetPath}");
+                    }
+                    $this->info("Created directory: {$targetPath}");
+                }
+                $this->copyDirectoryContents($sourcePath, $targetPath);
+            } else {
+                // If it's a file, copy it
+                $this->copyTemplateFile($sourcePath, $targetPath, $file);
+            }
+        }
+    }
+    
+    private function copyTemplateFile($sourcePath, $targetPath, $fileName)
+    {
+        // Check if file already exists
+        if (file_exists($targetPath) && !$this->nonInteractive) {
+            echo "Template file already exists: {$targetPath}" . PHP_EOL;
+            echo "Do you want to overwrite it? (y/N): ";
+            $handle = fopen("php://stdin", "r");
+            $line = fgets($handle);
+            fclose($handle);
+            
+            if (strtolower(trim($line)) !== 'y') {
+                $this->info("Skipped template: {$fileName}");
+                return;
+            }
+        } elseif (file_exists($targetPath) && $this->nonInteractive) {
+            $this->info("Template file already exists (non-interactive mode): {$targetPath} - will be overwritten");
+        }
+        
+        // Copy the file
+        if (!copy($sourcePath, $targetPath)) {
+            throw new \RuntimeException("Failed to copy template file: {$sourcePath} to {$targetPath}");
+        }
+        
+        $this->info("Copied template: {$fileName}");
     }
 } 
