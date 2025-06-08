@@ -116,7 +116,7 @@ class {$serviceName} extends ApiService
             'description'
         ]);
         
-        return (new {$serviceName}Controller(\$this->request))->list();
+        return (new {$serviceName}Controller($this->request))->list();
     }
 
     /**
