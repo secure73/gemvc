@@ -170,10 +170,16 @@ class Request
                 $this->response = Response::forbidden($this->error);
                 return false;
             }
+            // Token extracted and verified successfully
+            $this->token = $JWT;
+            $this->isAuthenticated = true;
+            return true;
+        } else {
+            // Token extraction failed - no token found or invalid format
+            $this->error = $JWT->error ?? 'Authentication token not found or invalid';
+            $this->response = Response::unauthorized($this->error);
+            return false;
         }
-        $this->token = $JWT;
-        $this->isAuthenticated = true;
-        return true;
     }
 
 
