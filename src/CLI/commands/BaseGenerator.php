@@ -110,14 +110,14 @@ abstract class BaseGenerator extends Command
     {
         // Try project root templates first (user customizable)
         $projectRoot = $this->basePath ?? $this->determineProjectRoot();
-        $templatePath = $projectRoot . "/templates/{$templateName}.template";
+        $templatePath = $projectRoot .DIRECTORY_SEPARATOR. "templates".DIRECTORY_SEPARATOR."cli".DIRECTORY_SEPARATOR. "{$templateName}.template";
         
         if (file_exists($templatePath)) {
             return file_get_contents($templatePath);
         }
         
         // Fallback to vendor templates if project templates don't exist
-        $vendorTemplatePath = dirname(__DIR__) . "/templates/{$templateName}.template";
+        $vendorTemplatePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . "templates" . DIRECTORY_SEPARATOR . "cli" . DIRECTORY_SEPARATOR . "{$templateName}.template";
         if (file_exists($vendorTemplatePath)) {
             $this->warning("Using vendor template for {$templateName} - consider copying templates to project root");
             return file_get_contents($vendorTemplatePath);
