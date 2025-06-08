@@ -9,9 +9,9 @@ use Gemvc\Http\JsonResponse;
 
 class {$serviceName}Controller extends Controller
 {
-    public function __construct(Request \$request)
+    public function __construct(Request $request)
     {
-        parent::__construct(\$request);
+        parent::__construct($request);
     }
 
     /**

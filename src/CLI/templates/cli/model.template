@@ -75,9 +75,9 @@ class {$serviceName}Model extends {$serviceName}Table
             return Response::notFound("{$serviceName} not found");
         }
         $success = $this->deleteByIdQuery($this->id);
-        if (\$this->getError()) {
-            return Response::internalError("Failed to delete {$serviceName}:" . \$this->getError());
+        if ($this->getError()) {
+            return Response::internalError("Failed to delete {$serviceName}:" . $this->getError());
         }
-        return Response::deleted(\$success, 1, "{$serviceName} deleted successfully");
+        return Response::deleted($success, 1, "{$serviceName} deleted successfully");
     }
 } 

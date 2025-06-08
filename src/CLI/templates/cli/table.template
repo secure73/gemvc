@@ -11,9 +11,9 @@ use Gemvc\Database\Table;
 /**
  * {$serviceName} table class for handling {$serviceName} database operations
  * 
- * @property int \$id {$serviceName}'s unique identifier column id in database table
- * @property string \$name {$serviceName}'s name column name in database table
- * @property string \$description {$serviceName}'s description column description in database table
+ * @property int $id {$serviceName}'s unique identifier column id in database table
+ * @property string $name {$serviceName}'s name column name in database table
+ * @property string $description {$serviceName}'s description column description in database table
  */
 class {$serviceName}Table extends Table
 {
