@@ -26,7 +26,7 @@ class {$serviceName}Model extends {$serviceName}Table
     {
         $success = $this->insertSingleQuery();
         if ($this->getError()) {
-            return Response::internalError("Failed to create {$serviceName}:" . $this->getError());
+            return Response::internalError("Failed to create {$serviceName}: " . $this->getError());
         }
         return Response::created($success, 1, "{$serviceName} created successfully");
     }
@@ -58,7 +58,7 @@ class {$serviceName}Model extends {$serviceName}Table
         }
         $success = $this->updateSingleQuery();
         if ($this->getError()) {
-            return Response::internalError("Failed to update {$serviceName}:" . $this->getError());
+            return Response::internalError("Failed to update {$serviceName}: " . $this->getError());
         }
         return Response::updated($success, 1, "{$serviceName} updated successfully");
     }
@@ -76,7 +76,7 @@ class {$serviceName}Model extends {$serviceName}Table
         }
         $success = $this->deleteByIdQuery($this->id);
         if ($this->getError()) {
-            return Response::internalError("Failed to delete {$serviceName}:" . $this->getError());
+            return Response::internalError("Failed to delete {$serviceName}: " . $this->getError());
         }
         return Response::deleted($success, 1, "{$serviceName} deleted successfully");
     }

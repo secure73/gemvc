@@ -1,12 +1,4 @@
 <?php
-/**
- * this is service layer. what so called url end point
- * this layer shall be extended from ApiService class
- * this layer is responsible for handling the request and response
- * this layer is responsible for handling the authentication
- * this layer is responsible for handling the authorization
- * this layer is responsible for handling the validation
- */
 namespace App\Api;
 
 use App\Controller\{$serviceName}Controller;
@@ -36,10 +28,12 @@ class {$serviceName} extends ApiService
      */
     public function create(): JsonResponse
     {
-        $this->validatePosts([
+        if(!$this->request->definePostSchema([
             'name' => 'string',
             'description' => 'string'
-        ]);
+        ])) {
+            return $this->request->returnResponse();
+        }
         return (new {$serviceName}Controller($this->request))->create();
     }
 
@@ -71,11 +65,13 @@ class {$serviceName} extends ApiService
      */
     public function update(): JsonResponse
     {
-        $this->validatePosts([
+        if(!$this->request->definePostSchema([
             'id' => 'int',
-            'name' => 'string',
-            'description' => 'string'
-        ]);
+            '?name' => 'string',
+            '?description' => 'string'
+        ])) {
+            return $this->request->returnResponse();
+        }
         return (new {$serviceName}Controller($this->request))->update();
     }
 
@@ -89,7 +85,11 @@ class {$serviceName} extends ApiService
      */
     public function delete(): JsonResponse
     {
-        $this->validatePosts(['id' => 'int']);
+        if(!$this->request->definePostSchema([
+            'id' => 'int',
+        ])) {
+            return $this->request->returnResponse();
+        }
         return (new {$serviceName}Controller($this->request))->delete();
     }
 

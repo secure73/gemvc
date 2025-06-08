@@ -22,7 +22,7 @@ class {$serviceName}Controller extends Controller
     public function create(): JsonResponse
     {
         $model = $this->request->mapPostToObject(new {$serviceName}Model());
-        if(!$model) {
+        if(!$model instanceof {$serviceName}Model) {
             return $this->request->returnResponse();
         }
         return $model->createModel();
@@ -36,7 +36,7 @@ class {$serviceName}Controller extends Controller
     public function read(): JsonResponse
     {
         $model = $this->request->mapPostToObject(new {$serviceName}Model());
-        if(!$model) {
+        if(!$model instanceof {$serviceName}Model) {
             return $this->request->returnResponse();
         }
         return $model->readModel();
@@ -50,7 +50,7 @@ class {$serviceName}Controller extends Controller
     public function update(): JsonResponse
     {
         $model = $this->request->mapPostToObject(new {$serviceName}Model());
-        if(!$model) {
+        if(!$model instanceof {$serviceName}Model) {
             return $this->request->returnResponse();
         }
         return $model->updateModel();
