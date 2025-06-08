@@ -17,9 +17,9 @@ use Gemvc\Database\Table;
  */
 class {$serviceName}Table extends Table
 {
-    public int \$id;
-    public string \$name;
-    public string \$description;
+    public int $id;
+    public string $name;
+    public string $description;
 
     public function __construct()
     {
@@ -40,18 +40,18 @@ class {$serviceName}Table extends Table
      * @return null|static
      * null or {$serviceName}Table Object
      */
-    public function selectById(int \$id): null|static
+    public function selectById(int $id): null|static
     {
-        \$result = \$this->select()->where('id', \$id)->limit(1)->run();
-        return \$result[0] ?? null;
+        $result = $this->select()->where('id', $id)->limit(1)->run();
+        return $result[0] ?? null;
     }
 
     /**
      * @return null|static[]
      * null or array of {$serviceName}Table Objects
      */
-    public function selectByName(string \$name): null|array
+    public function selectByName(string $name): null|array
     {
-        return \$this->select()->whereLike('name', \$name)->run();
+        return $this->select()->whereLike('name', $name)->run();
     }
 } 

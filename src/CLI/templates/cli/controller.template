@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Model\\{$serviceName}Model;
+use App\Model\{$serviceName}Model;
 use Gemvc\Core\Controller;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
@@ -21,11 +21,11 @@ class {$serviceName}Controller extends Controller
      */
     public function create(): JsonResponse
     {
-        \$model = \$this->request->mapPostToObject(new {$serviceName}Model());
-        if(!\$model) {
-            return \$this->request->returnResponse();
+        $model = $this->request->mapPostToObject(new {$serviceName}Model());
+        if(!$model) {
+            return $this->request->returnResponse();
         }
-        return \$model->createModel();
+        return $model->createModel();
     }
 
     /**
@@ -35,11 +35,11 @@ class {$serviceName}Controller extends Controller
      */
     public function read(): JsonResponse
     {
-        \$model = \$this->request->mapPostToObject(new {$serviceName}Model());
-        if(!\$model) {
-            return \$this->request->returnResponse();
+        $model = $this->request->mapPostToObject(new {$serviceName}Model());
+        if(!$model) {
+            return $this->request->returnResponse();
         }
-        return \$model->readModel();
+        return $model->readModel();
     }
 
     /**
@@ -49,11 +49,11 @@ class {$serviceName}Controller extends Controller
      */
     public function update(): JsonResponse
     {
-        \$model = \$this->request->mapPostToObject(new {$serviceName}Model());
-        if(!\$model) {
-            return \$this->request->returnResponse();
+        $model = $this->request->mapPostToObject(new {$serviceName}Model());
+        if(!$model) {
+            return $this->request->returnResponse();
         }
-        return \$model->updateModel();
+        return $model->updateModel();
     }
 
     /**
@@ -63,11 +63,11 @@ class {$serviceName}Controller extends Controller
      */
     public function delete(): JsonResponse
     {
-        \$model = \$this->request->mapPostToObject(new {$serviceName}Model());
-        if(!\$model) {
-            return \$this->request->returnResponse();
+        $model = $this->request->mapPostToObject(new {$serviceName}Model());
+        if(!$model) {
+            return $this->request->returnResponse();
         }
-        return \$model->deleteModel();
+        return $model->deleteModel();
     }
 
     /**
@@ -77,7 +77,7 @@ class {$serviceName}Controller extends Controller
      */
     public function list(): JsonResponse
     {
-        \$model = new {$serviceName}Model();
-        return \$this->createList(\$model);
+        $model = new {$serviceName}Model();
+        return $this->createList($model);
     }
 } 

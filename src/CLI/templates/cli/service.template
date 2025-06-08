@@ -9,7 +9,7 @@
  */
 namespace App\Api;
 
-use App\Controller\\{$serviceName}Controller;
+use App\Controller\{$serviceName}Controller;
 use Gemvc\Core\ApiService;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
@@ -21,9 +21,9 @@ class {$serviceName} extends ApiService
      * 
      * @param Request \$request The HTTP request object
      */
-    public function __construct(Request \$request)
+    public function __construct(Request $request)
     {
-        parent::__construct(\$request);
+        parent::__construct($request);
     }
 
     /**
@@ -36,11 +36,11 @@ class {$serviceName} extends ApiService
      */
     public function create(): JsonResponse
     {
-        \$this->validatePosts([
+        $this->validatePosts([
             'name' => 'string',
             'description' => 'string'
         ]);
-        return (new {$serviceName}Controller(\$this->request))->create();
+        return (new {$serviceName}Controller($this->request))->create();
     }
 
     /**
@@ -54,11 +54,11 @@ class {$serviceName} extends ApiService
     public function read(): JsonResponse
     {
         // empty array define this service accept only get request, no post is allowed
-        \$this->validatePosts([]);
+        $this->validatePosts([]);
         //get the id from the url and if not exist or not type of int return 400 die()
-        \$id = \$this->request->intValueGet("id");
-        \$this->request->post['id'] = \$id;
-        return (new {$serviceName}Controller(\$this->request))->read();
+        $id = $this->request->intValueGet("id");
+        $this->request->post['id'] = $id;
+        return (new {$serviceName}Controller($this->request))->read();
     }
 
     /**
@@ -71,12 +71,12 @@ class {$serviceName} extends ApiService
      */
     public function update(): JsonResponse
     {
-        \$this->validatePosts([
+        $this->validatePosts([
             'id' => 'int',
             'name' => 'string',
             'description' => 'string'
         ]);
-        return (new {$serviceName}Controller(\$this->request))->update();
+        return (new {$serviceName}Controller($this->request))->update();
     }
 
     /**
@@ -89,8 +89,8 @@ class {$serviceName} extends ApiService
      */
     public function delete(): JsonResponse
     {
-        \$this->validatePosts(['id' => 'int']);
-        return (new {$serviceName}Controller(\$this->request))->delete();
+        $this->validatePosts(['id' => 'int']);
+        return (new {$serviceName}Controller($this->request))->delete();
     }
 
     /**
@@ -104,13 +104,13 @@ class {$serviceName} extends ApiService
     public function list(): JsonResponse
     {
         // Define searchable fields and their types
-        \$this->request->findable([
+        $this->request->findable([
             'name' => 'string',
             'description' => 'string'
         ]);
 
         // Define sortable fields
-        \$this->request->sortable([
+        $this->request->sortable([
             'id',
             'name',
             'description'

@@ -6,7 +6,7 @@
  */
 namespace App\Model;
 
-use App\Table\\{$serviceName}Table;
+use App\Table\{$serviceName}Table;
 use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
 
@@ -24,11 +24,11 @@ class {$serviceName}Model extends {$serviceName}Table
      */
     public function createModel(): JsonResponse
     {
-        \$success = \$this->insertSingleQuery();
-        if (\$this->getError()) {
-            return Response::internalError("Failed to create {$serviceName}:" . \$this->getError());
+        $success = $this->insertSingleQuery();
+        if ($this->getError()) {
+            return Response::internalError("Failed to create {$serviceName}:" . $this->getError());
         }
-        return Response::created(\$success, 1, "{$serviceName} created successfully");
+        return Response::created($success, 1, "{$serviceName} created successfully");
     }
 
     /**
@@ -38,11 +38,11 @@ class {$serviceName}Model extends {$serviceName}Table
      */
     public function readModel(): JsonResponse
     {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
+        $item = $this->selectById($this->id);
+        if (!$item) {
             return Response::notFound("{$serviceName} not found");
         }
-        return Response::success(\$item, 1, "{$serviceName} retrieved successfully");
+        return Response::success($item, 1, "{$serviceName} retrieved successfully");
     }
 
     /**
@@ -52,15 +52,15 @@ class {$serviceName}Model extends {$serviceName}Table
      */
     public function updateModel(): JsonResponse
     {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
+        $item = $this->selectById($this->id);
+        if (!$item) {
             return Response::notFound("{$serviceName} not found");
         }
-        \$success = \$this->updateSingleQuery();
-        if (\$this->getError()) {
-            return Response::internalError("Failed to update {$serviceName}:" . \$this->getError());
+        $success = $this->updateSingleQuery();
+        if ($this->getError()) {
+            return Response::internalError("Failed to update {$serviceName}:" . $this->getError());
         }
-        return Response::updated(\$success, 1, "{$serviceName} updated successfully");
+        return Response::updated($success, 1, "{$serviceName} updated successfully");
     }
 
     /**
@@ -70,11 +70,11 @@ class {$serviceName}Model extends {$serviceName}Table
      */
     public function deleteModel(): JsonResponse
     {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
+        $item = $this->selectById($this->id);
+        if (!$item) {
             return Response::notFound("{$serviceName} not found");
         }
-        \$success = \$this->deleteByIdQuery(\$this->id);
+        $success = $this->deleteByIdQuery($this->id);
         if (\$this->getError()) {
             return Response::internalError("Failed to delete {$serviceName}:" . \$this->getError());
         }
