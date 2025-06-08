@@ -381,7 +381,7 @@ EOT;
         $batPath = $this->basePath . '/bin/gemvc.bat';
         $batContent = <<<EOT
 @echo off
-php "%~dp0gemvc" %*
+php "%~dp0..\vendor\bin\gemvc" %*
 EOT;
         
         if (file_put_contents($batPath, $batContent)) {
