@@ -48,6 +48,12 @@ $server->on("workerStart", function ($server, $workerId) {
 // Handle request
 $server->on("request", function ($request, $response) {
     try {
+        // Security check - block direct access to sensitive directories and files
+        if (!isRequestAllowed($request->server['request_uri'] ?? '')) {
+            sendSecurityResponse($response);
+            return;
+        }
+        
         $sr = new SwooleRequest($request);
         $bs = new SwooleBootstrap($sr->request);
         $result = $bs->processRequest();
@@ -75,6 +81,38 @@ $server->on("request", function ($request, $response) {
 $server->on("workerError", function ($server, $workerId, $workerPid, $exitCode, $signal) {
     error_log("Worker #$workerId crashed. Exit code: $exitCode, Signal: $signal");
 });
+
+/**
+ * Security function to check if request is allowed
+ * Only allow access to root path - Bootstrap handles all routing internally
+ */
+function isRequestAllowed(string $requestUri): bool {
+    // Remove query parameters and normalize path
+    $path = strtok($requestUri, '?');
+    $path = rtrim($path, '/');
+    
+    // Only allow root path - everything else is blocked
+    // Bootstrap will handle all routing internally
+    if ($path === '' || $path === '/') {
+        return true;
+    }
+    
+    // Block everything else - any attempt to access files or directories
+    error_log("Security: Blocked direct access to: $path");
+    return false;
+}
+
+/**
+ * Send security response for blocked requests
+ */
+function sendSecurityResponse($response): void {
+    $response->status(403);
+    $response->header('Content-Type', 'application/json');
+    $response->end(json_encode([
+        'error' => 'Access Denied',
+        'message' => 'Direct file access is not permitted'
+    ]));
+}
 
 function getServerConfig():array {
     return [

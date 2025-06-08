@@ -14,7 +14,7 @@ Options -Indexes
 
 AddDefaultCharset UTF-8
 
-<FilesMatch "\.(env|htaccess|ini|log|sh|bak)$">
+<FilesMatch "\.(env|htaccess|ini|log|sh|bak|json|lock)$">
     Require all denied
 </FilesMatch>
 
@@ -25,3 +25,15 @@ AddDefaultCharset UTF-8
 <Directory "vendor">
     Require all denied
 </Directory>
+
+<Directory "bin">
+    Require all denied
+</Directory>
+
+<Directory "config">
+    Require all denied
+</Directory> 
+
+<Directory "templates">
+Require all denied
+</Directory> 
