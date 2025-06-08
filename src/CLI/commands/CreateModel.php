@@ -108,162 +108,25 @@ class CreateModel extends BaseCrudGenerator
 
     protected function createModel(): void
     {
-        $template = <<<EOT
-<?php
-/**
- * this is model layer. what so called Data logic layer
- * classes in this layer shall be extended from relevant classes in Table layer
- * classes in this layer  will be called from controller layer
- */
-namespace App\Model;
-
-use App\Table\\{$this->serviceName}Table;
-use Gemvc\Http\JsonResponse;
-use Gemvc\Http\Response;
-
-class {$this->serviceName}Model extends {$this->serviceName}Table
-{
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
-     * Create new {$this->serviceName}
-     * 
-     * @return JsonResponse
-     */
-    public function createModel(): JsonResponse
-    {
-        \$success = \$this->insertSingleQuery();
-        if (\$this->getError()) {
-            return Response::internalError("Failed to create {$this->serviceName}:" . \$this->getError());
-        }
-        return Response::created(\$success, 1, "{$this->serviceName} created successfully");
-    }
-
-    /**
-     * Get {$this->serviceName} by ID
-     * 
-     * @return JsonResponse
-     */
-    public function readModel(): JsonResponse
-    {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
-            return Response::notFound("{$this->serviceName} not found");
-        }
-        return Response::success(\$item, 1, "{$this->serviceName} retrieved successfully");
-    }
-
-    /**
-     * Update existing {$this->serviceName}
-     * 
-     * @return JsonResponse
-     */
-    public function updateModel(): JsonResponse
-    {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
-            return Response::notFound("{$this->serviceName} not found");
-        }
-        \$success = \$this->updateSingleQuery();
-        if (\$this->getError()) {
-            return Response::internalError("Failed to update {$this->serviceName}:" . \$this->getError());
-        }
-        return Response::updated(\$success, 1, "{$this->serviceName} updated successfully");
-    }
-
-    /**
-     * Delete {$this->serviceName}
-     * 
-     * @return JsonResponse
-     */
-    public function deleteModel(): JsonResponse
-    {
-        \$item = \$this->selectById(\$this->id);
-        if (!\$item) {
-            return Response::notFound("{$this->serviceName} not found");
-        }
-        \$success = \$this->deleteByIdQuery(\$this->id);
-        if (\$this->getError()) {
-            return Response::internalError("Failed to delete {$this->serviceName}:" . \$this->getError());
-        }
-        return Response::deleted(\$success, 1, "{$this->serviceName} deleted successfully");
-    }
-}
-EOT;
+        $template = $this->getTemplate('model');
+        $content = $this->replaceTemplateVariables($template, [
+            'serviceName' => $this->serviceName
+        ]);
 
         $path = $this->basePath . "/app/model/{$this->serviceName}Model.php";
-        $this->writeFile($path, $template, "Model");
+        $this->writeFile($path, $content, "Model");
     }
 
     protected function createTable(): void
     {
-        $tableName = strtolower($this->serviceName) . 's';
-        
-        $template = <<<EOT
-<?php
-/**
- * this is table layer. what so called Data access layer
- * classes in this layer shall be extended from CRUDTable or Gemvc\Core\Table ;
- * for each column in database table, you must define property in this class with same name and property type;
- */
-namespace App\Table;
-
-use Gemvc\Database\Table;
-
-/**
- * {$this->serviceName} table class for handling {$this->serviceName} database operations
- * 
- * @property int \$id {$this->serviceName}'s unique identifier column id in database table
- * @property string \$name {$this->serviceName}'s name column name in database table
- * @property string \$description {$this->serviceName}'s description column description in database table
- */
-class {$this->serviceName}Table extends Table
-{
-    public int \$id;
-    public string \$name;
-    public string \$description;
-
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
-     * @return string
-     * the name of the database table
-     */
-    public function getTable(): string
-    {
-        //return the name of the table in database
-        return '{$tableName}';
-    }
-
-    /**
-     * @return null|static
-     * null or {$this->serviceName}Table Object
-     */
-    public function selectById(int \$id): null|static
-    {
-        \$result = \$this->select()->where('id', \$id)->limit(1)->run();
-        return \$result[0] ?? null;
-    }
-
-    /**
-     * @return null|static[]
-     * null or array of {$this->serviceName}Table Objects
-     */
-    public function selectByName(string \$name): null|array
-    {
-        return \$this->select()->whereLike('name', \$name)->run();
-    }
-}
-EOT;
+        $template = $this->getTemplate('table');
+        $content = $this->replaceTemplateVariables($template, [
+            'serviceName' => $this->serviceName,
+            'tableName' => strtolower($this->serviceName) . 's'
+        ]);
 
         $path = $this->basePath . "/app/table/{$this->serviceName}Table.php";
-        $this->writeFile($path, $template, "Table");
+        $this->writeFile($path, $content, "Table");
     }
 
     protected function determineProjectRoot(): string

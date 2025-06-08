@@ -101,18 +101,29 @@ abstract class BaseGenerator extends Command
     }
 
     /**
-     * Get template content
+     * Get template content from project root
      * 
      * @param string $templateName
      * @return string
      */
     protected function getTemplate(string $templateName): string
     {
-        $templatePath = dirname(__DIR__) . "/templates/{$templateName}.template";
-        if (!file_exists($templatePath)) {
-            throw new \RuntimeException("Template not found: {$templateName}");
+        // Try project root templates first (user customizable)
+        $projectRoot = $this->basePath ?? $this->determineProjectRoot();
+        $templatePath = $projectRoot . "/templates/{$templateName}.template";
+        
+        if (file_exists($templatePath)) {
+            return file_get_contents($templatePath);
         }
-        return file_get_contents($templatePath);
+        
+        // Fallback to vendor templates if project templates don't exist
+        $vendorTemplatePath = dirname(__DIR__) . "/templates/{$templateName}.template";
+        if (file_exists($vendorTemplatePath)) {
+            $this->warning("Using vendor template for {$templateName} - consider copying templates to project root");
+            return file_get_contents($vendorTemplatePath);
+        }
+        
+        throw new \RuntimeException("Template not found: {$templateName} (checked: {$templatePath}, {$vendorTemplatePath})");
     }
 
     /**

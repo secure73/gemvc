@@ -83,70 +83,14 @@ class CreateTable extends BaseCrudGenerator
 
     protected function createTable(): void
     {
-        $tableName = strtolower($this->serviceName) . 's';
-        
-        $template = <<<EOT
-<?php
-/**
- * this is table layer. what so called Data access layer
- * classes in this layer shall be extended from CRUDTable or Gemvc\Core\Table ;
- * for each column in database table, you must define property in this class with same name and property type;
- */
-namespace App\Table;
-
-use Gemvc\Database\Table;
-
-/**
- * {$this->serviceName} table class for handling {$this->serviceName} database operations
- * 
- * @property int \$id {$this->serviceName}'s unique identifier column id in database table
- * @property string \$name {$this->serviceName}'s name column name in database table
- * @property string \$description {$this->serviceName}'s description column description in database table
- */
-class {$this->serviceName}Table extends Table
-{
-    public int \$id;
-    public string \$name;
-    public string \$description;
-
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
-     * @return string
-     * the name of the database table
-     */
-    public function getTable(): string
-    {
-        //return the name of the table in database
-        return '{$tableName}';
-    }
-
-    /**
-     * @return null|static
-     * null or {$this->serviceName}Table Object
-     */
-    public function selectById(int \$id): null|static
-    {
-        \$result = \$this->select()->where('id', \$id)->limit(1)->run();
-        return \$result[0] ?? null;
-    }
-
-    /**
-     * @return null|static[]
-     * null or array of {$this->serviceName}Table Objects
-     */
-    public function selectByName(string \$name): null|array
-    {
-        return \$this->select()->whereLike('name', \$name)->run();
-    }
-}
-EOT;
+        $template = $this->getTemplate('table');
+        $content = $this->replaceTemplateVariables($template, [
+            'serviceName' => $this->serviceName,
+            'tableName' => strtolower($this->serviceName) . 's'
+        ]);
 
         $path = $this->basePath . "/app/table/{$this->serviceName}Table.php";
-        $this->writeFile($path, $template, "Table");
+        $this->writeFile($path, $content, "Table");
     }
 
     protected function determineProjectRoot(): string
