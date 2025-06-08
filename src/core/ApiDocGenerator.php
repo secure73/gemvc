@@ -178,7 +178,8 @@ class ApiDocGenerator
         $details = [
             'method' => $this->getHttpMethodFromDoc($method),
             'url' => $this->getEndpointUrl($class->getShortName(), $method->getName()),
-            'description' => $this->getMethodDocComment($method) ?: 'No description available'
+            'description' => $this->getMethodDocComment($method) ?: 'No description available',
+            'example' => $this->getMethodExample($method) ?: 'No example documented by developer'
         ];
 
         // Get URL parameters from @urlparams
@@ -200,9 +201,14 @@ class ApiDocGenerator
                 $method->getEndLine() - $method->getStartLine() + 1
             ));
             
-            // Get validation rules from validatePost or validatePostWithCompany within the method scope
-            if (preg_match('/(?:validatePosts|validatePostWithCompany)\(\s*\[\s*(.*?)\s*\]\s*\)/s', $methodContent, $matches)) {
+            // Get validation rules from definePostSchema within the method scope
+            if (preg_match('/definePostSchema\(\s*\[\s*(.*?)\s*\]\s*\)/s', $methodContent, $matches)) {
                 $details['parameters'] = $this->parseValidationRules($matches[1]);
+            }
+            
+            // Get validation rules from defineGetSchema within the method scope
+            if (preg_match('/defineGetSchema\(\s*\[\s*(.*?)\s*\]\s*\)/s', $methodContent, $matches)) {
+                $details['get_parameters'] = $this->parseValidationRules($matches[1]);
             }
 
             // Get query parameters from filterable, sortable, and findable
@@ -216,6 +222,16 @@ class ApiDocGenerator
             $mockData = $class->getName()::mockResponse($method->getName());
             $encoded = json_encode($mockData, JSON_PRETTY_PRINT);
             $details['response'] = $encoded === false ? '{}' : $encoded;
+        }
+
+        // Parse @parameter annotations
+        if (preg_match_all('/@parameter\s+(\w+)\s+(\w+)\s+(required|optional)/', $docComment, $matches)) {
+            for ($i = 0; $i < count($matches[1]); $i++) {
+                $details['url_parameters'][$matches[1][$i]] = [
+                    'type' => $matches[2][$i],
+                    'required' => $matches[3][$i] === 'required'
+                ];
+            }
         }
 
         return $details;
@@ -332,6 +348,19 @@ class ApiDocGenerator
         }
         
         return '';  // Return empty if no description found
+    }
+
+    private function getMethodExample(ReflectionMethod $method): string
+    {
+        $docComment = $method->getDocComment();
+        if ($docComment === false) return '';
+        
+        // Look for @example tag and capture the example text
+        if (preg_match('/@example\s+([^\n@]+)/', $docComment, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        return '';  // Return empty if no example found
     }
 
     private function formatDocComment(?string $docComment): string

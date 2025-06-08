@@ -47,10 +47,18 @@ class {$serviceName} extends ApiService
      */
     public function read(): JsonResponse
     {
-        // empty array define this service accept only get request, no post is allowed
-        $this->validatePosts([]);
+        // Validate GET parameters
+        if(!$this->request->defineGetSchema(["id" => "int"])) {
+            return $this->request->returnResponse();
+        }
+        
         //get the id from the url and if not exist or not type of int return 400 die()
         $id = $this->request->intValueGet("id");
+        if(!$id) {
+            return $this->request->returnResponse();
+        }
+        
+        //manually set the id to the post request
         $this->request->post['id'] = $id;
         return (new {$serviceName}Controller($this->request))->read();
     }

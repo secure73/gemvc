@@ -30,14 +30,15 @@ $server->on("workerStart", function ($server, $workerId) {
         $lastCheck = time();
         $lastFileHash = getFileHash(); // Get initial file hash
         
-        $server->tick(10000, function () use ($server, &$lastCheck, &$lastFileHash) {
+        $server->tick(15000, function () use ($server, &$lastCheck, &$lastFileHash) {
             $currentTime = time();
             $currentFileHash = getFileHash();
             
             // Only reload if files have changed AND enough time has passed
-            if ($currentFileHash !== $lastFileHash && ($currentTime - $lastCheck) >= 5) {
+            if ($currentFileHash !== $lastFileHash && ($currentTime - $lastCheck) >= 10) {
                 $lastCheck = $currentTime;
                 $lastFileHash = $currentFileHash;
+                echo "File changes detected, reloading server...\n";
                 $server->reload();
             }
         });
@@ -84,22 +85,54 @@ $server->on("workerError", function ($server, $workerId, $workerPid, $exitCode, 
 
 /**
  * Security function to check if request is allowed
- * Only allow access to root path - Bootstrap handles all routing internally
+ * Allow API routes but block direct access to sensitive directories
  */
 function isRequestAllowed(string $requestUri): bool {
     // Remove query parameters and normalize path
     $path = strtok($requestUri, '?');
     $path = rtrim($path, '/');
     
-    // Only allow root path - everything else is blocked
-    // Bootstrap will handle all routing internally
+    // Allow root path
     if ($path === '' || $path === '/') {
         return true;
     }
     
-    // Block everything else - any attempt to access files or directories
-    error_log("Security: Blocked direct access to: $path");
-    return false;
+    // Block direct access to sensitive directories
+    $blockedPaths = [
+        '/app',
+        '/vendor', 
+        '/bin',
+        '/templates',
+        '/config',
+        '/logs',
+        '/storage',
+        '/.env',
+        '/.git'
+    ];
+    
+    foreach ($blockedPaths as $blockedPath) {
+        if (strpos($path, $blockedPath) === 0) {
+            error_log("Security: Blocked direct access to: $path");
+            return false;
+        }
+    }
+    
+    // Block direct file access (files with extensions)
+    $blockedExtensions = [
+        '.php', '.env', '.ini', '.conf', '.config', 
+        '.log', '.sql', '.db', '.sqlite', '.md', 
+        '.txt', '.json', '.xml', '.yml', '.yaml'
+    ];
+    
+    foreach ($blockedExtensions as $ext) {
+        if (str_ends_with(strtolower($path), $ext)) {
+            error_log("Security: Blocked file access: $path");
+            return false;
+        }
+    }
+    
+    // Allow all other requests (API endpoints, routes)
+    return true;
 }
 
 /**
@@ -120,7 +153,7 @@ function getServerConfig():array {
         'daemonize' => (bool)($_ENV["SWOOLE_RUN_FOREGROUND"] ?? 0),  // Run in foreground
         'max_request' => (int)($_ENV["SWOOLE_MAX_REQUEST"] ?? 5000),  // Maximum requests per worker
         'max_conn' => (int)($_ENV["SWOOLE_MAX_CONN"] ?? 1024),  // Maximum connections
-        'max_wait_time' => (int)($_ENV["SWOOLE_MAX_WAIT_TIME"] ?? 60),  // Maximum wait time for requests
+        'max_wait_time' => (int)($_ENV["SWOOLE_MAX_WAIT_TIME"] ?? 120),  // Maximum wait time for requests
         'enable_coroutine' => (bool)($_ENV["SWOOLE_ENABLE_COROUTINE"] ?? 1),  // Enable coroutine support
         'max_coroutine' => (int)($_ENV["SWOOLE_MAX_COROUTINE"] ?? 3000),  // Maximum number of coroutines
         'display_errors' => (int)($_ENV["SWOOLE_DISPLAY_ERRORS"] ?? 1),  // Display errors

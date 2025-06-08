@@ -339,7 +339,7 @@ class Documentation
                 overflow: hidden;
             }
             .endpoint-description {
-                margin: 10px 0 20px;
+                margin: 10px 0 15px;
                 padding: 15px;
                 background: #f8f9fa;
                 border-left: 4px solid #1976d2;
@@ -350,6 +350,22 @@ class Documentation
             }
             .endpoint-description:empty {
                 display: none;
+            }
+            .endpoint-example {
+                margin: 0 0 20px;
+                padding: 12px 15px;
+                background: #e8f5e9;
+                border-left: 4px solid #2e7d32;
+                color: #1b5e20;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            .endpoint-example code {
+                background: #c8e6c9;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: 'Courier New', monospace;
+                color: #1b5e20;
             }
             .header-section {
                 display: flex;
@@ -473,6 +489,9 @@ class Documentation
                         <div class="endpoint-description">
                             \${endpoint.description || 'No description available'}
                         </div>
+                        <div class="endpoint-example">
+                            <strong>Example:</strong> <code>\${endpoint.example || 'No example documented by developer'}</code>
+                        </div>
                         <div class="content-wrapper">
                             <div class="main-content">
                                 <div class="response-section">
@@ -494,10 +513,11 @@ class Documentation
 
             function generateParameterTable(endpoint) {
                 const hasParams = endpoint.parameters && Object.keys(endpoint.parameters).length > 0;
+                const hasGetParams = endpoint.get_parameters && Object.keys(endpoint.get_parameters).length > 0;
                 const hasUrlParams = endpoint.urlparams && Object.keys(endpoint.urlparams).length > 0;
                 const hasQueryParams = endpoint.query_parameters && Object.keys(endpoint.query_parameters).length > 0;
 
-                if (!hasParams && !hasQueryParams && !hasUrlParams) {
+                if (!hasParams && !hasGetParams && !hasQueryParams && !hasUrlParams) {
                     return '<p>No parameters required</p>';
                 }
 
@@ -506,6 +526,11 @@ class Documentation
                 if (hasUrlParams) {
                     html += '<h4>URL Parameters</h4>';
                     html += generateParamTable(endpoint.urlparams);
+                }
+
+                if (hasGetParams) {
+                    html += '<h4>GET Parameters</h4>';
+                    html += generateParamTable(endpoint.get_parameters);
                 }
 
                 if (hasParams) {
@@ -699,10 +724,11 @@ class Documentation
     private function generateParameterTable(array $method): string
     {
         $hasParams = isset($method['parameters']) && !empty($method['parameters']);
+        $hasGetParams = isset($method['get_parameters']) && !empty($method['get_parameters']);
         $hasUrlParams = isset($method['urlparams']) && !empty($method['urlparams']);
         $hasQueryParams = isset($method['query_parameters']) && !empty($method['query_parameters']);
 
-        if (!$hasParams && !$hasQueryParams && !$hasUrlParams) {
+        if (!$hasParams && !$hasGetParams && !$hasQueryParams && !$hasUrlParams) {
             return '<p>No parameters required</p>';
         }
 
@@ -715,6 +741,26 @@ class Documentation
             $html .= '<tr><th>Parameter</th><th>Type</th><th>Required</th></tr>';
             
             foreach ($method['urlparams'] as $name => $param) {
+                $required = $param['required'] ? '<span class="required">*</span>' : '';
+                $html .= sprintf(
+                    '<tr><td>%s%s</td><td>%s</td><td>%s</td></tr>',
+                    htmlspecialchars($name),
+                    $required,
+                    htmlspecialchars($param['type']),
+                    $param['required'] ? 'Yes' : 'No'
+                );
+            }
+            
+            $html .= '</table>';
+        }
+
+        // GET Parameters
+        if ($hasGetParams && isset($method['get_parameters'])) {
+            $html .= '<h4>GET Parameters</h4>';
+            $html .= '<table class="parameter-table">';
+            $html .= '<tr><th>Parameter</th><th>Type</th><th>Required</th></tr>';
+            
+            foreach ($method['get_parameters'] as $name => $param) {
                 $required = $param['required'] ? '<span class="required">*</span>' : '';
                 $html .= sprintf(
                     '<tr><td>%s%s</td><td>%s</td><td>%s</td></tr>',
