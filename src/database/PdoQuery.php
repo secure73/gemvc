@@ -92,6 +92,14 @@ class PdoQuery
         $sqlState = $e->getCode();
         $errorInfo = $e->errorInfo ?? [];
         
+        // Log the full PDO exception details
+        error_log("PdoQuery::handleInsertError() - PDO Exception: " . json_encode([
+            'message' => $e->getMessage(),
+            'code' => $e->getCode(),
+            'errorInfo' => $errorInfo,
+            'trace' => $e->getTraceAsString()
+        ]));
+        
         // Check for duplicate key/unique constraint violations
         // MySQL: SQLSTATE 23000, Error code 1062
         // PostgreSQL: SQLSTATE 23505 (unique_violation)

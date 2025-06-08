@@ -12,10 +12,10 @@ use Gemvc\Database\PdoQuery;
 class Table
 {
     /** @var PdoQuery|null Lazy-loaded database query instance */
-    private ?PdoQuery $pdoQuery = null;
+    private ?PdoQuery $_pdoQuery = null;
     
     /** @var string|null Stored error message before PdoQuery is instantiated */
-    private ?string $storedError = null;
+    private ?string $_storedError = null;
 
     /** @var string|null SQL query being built */
     private ?string $_query = null;
@@ -73,15 +73,15 @@ class Table
      */
     private function getPdoQuery(): PdoQuery
     {
-        if ($this->pdoQuery === null) {
-            $this->pdoQuery = new PdoQuery();
+        if ($this->_pdoQuery === null) {
+            $this->_pdoQuery = new PdoQuery();
             // Transfer any stored error to the new PdoQuery instance
-            if ($this->storedError !== null) {
-                $this->pdoQuery->setError($this->storedError);
-                $this->storedError = null;
+            if ($this->_storedError !== null) {
+                $this->_pdoQuery->setError($this->_storedError);
+                $this->_storedError = null;
             }
         }
-        return $this->pdoQuery;
+        return $this->_pdoQuery;
     }
 
     /**
@@ -89,11 +89,11 @@ class Table
      */
     public function setError(?string $error): void
     {
-        if ($this->pdoQuery !== null) {
-            $this->pdoQuery->setError($error);
+        if ($this->_pdoQuery !== null) {
+            $this->_pdoQuery->setError($error);
         } else {
             // Store the error until PdoQuery is instantiated
-            $this->storedError = $error;
+            $this->_storedError = $error;
         }
     }
 
@@ -102,10 +102,10 @@ class Table
      */
     public function getError(): ?string
     {
-        if ($this->pdoQuery !== null) {
-            return $this->pdoQuery->getError();
+        if ($this->_pdoQuery !== null) {
+            return $this->_pdoQuery->getError();
         }
-        return $this->storedError;
+        return $this->_storedError;
     }
 
     /**
@@ -113,7 +113,7 @@ class Table
      */
     public function isConnected(): bool
     {
-        return $this->pdoQuery !== null && $this->pdoQuery->isConnected();
+        return $this->_pdoQuery !== null && $this->_pdoQuery->isConnected();
     }
 
     /**
@@ -168,11 +168,25 @@ class Table
         $query = $this->buildInsertQuery();
         $arrayBind = $this->getInsertBindings();
         
+        // Debug logging to capture the actual SQL and parameters
+        error_log("Table::insertSingleQuery() - Executing query: " . $query);
+        error_log("Table::insertSingleQuery() - With bindings: " . json_encode($arrayBind));
+        
         $result = $this->getPdoQuery()->insertQuery($query, $arrayBind);
         
         if ($result === null) {
             // Error message already set by PdoQuery, just add context
             $currentError = $this->getError();
+            
+            // Enhanced error logging with SQL details
+            $errorInfo = [
+                'table' => $this->_internalTable(),
+                'query' => $query,
+                'bindings' => $arrayBind,
+                'error' => $currentError
+            ];
+            error_log("Table::insertSingleQuery() - Insert failed with full details: " . json_encode($errorInfo));
+            
             $this->setError("Insert failed in {$this->_internalTable()}: {$currentError}");
             return null;
         }
@@ -1015,9 +1029,9 @@ class Table
      */
     public function disconnect(): void
     {
-        if ($this->pdoQuery !== null) {
-            $this->pdoQuery->disconnect();
-            $this->pdoQuery = null;
+        if ($this->_pdoQuery !== null) {
+            $this->_pdoQuery->disconnect();
+            $this->_pdoQuery = null;
         }
     }
 
@@ -1039,11 +1053,11 @@ class Table
      */
     public function commit(): bool
     {
-        if ($this->pdoQuery === null) {
+        if ($this->_pdoQuery === null) {
             $this->setError('No active transaction to commit');
             return false;
         }
-        return $this->pdoQuery->commit();
+        return $this->_pdoQuery->commit();
     }
 
     /**
@@ -1053,11 +1067,11 @@ class Table
      */
     public function rollback(): bool
     {
-        if ($this->pdoQuery === null) {
+        if ($this->_pdoQuery === null) {
             $this->setError('No active transaction to rollback');
             return false;
         }
-        return $this->pdoQuery->rollback();
+        return $this->_pdoQuery->rollback();
     }
 
     /**
@@ -1065,9 +1079,9 @@ class Table
      */
     public function __destruct()
     {
-        if ($this->pdoQuery !== null) {
-            $this->pdoQuery->disconnect();
-            $this->pdoQuery = null;
+        if ($this->_pdoQuery !== null) {
+            $this->_pdoQuery->disconnect();
+            $this->_pdoQuery = null;
         }
     }
     

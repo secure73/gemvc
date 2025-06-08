@@ -156,6 +156,16 @@ class QueryExecuter
             $this->endExecutionTime = microtime(true);
             return true;
         } catch (\PDOException $e) {
+            // Enhanced error logging with more details
+            $errorDetails = [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'errorInfo' => $e->errorInfo ?? [],
+                'query' => $this->query,
+                'bindings' => $this->bindings
+            ];
+            error_log("QueryExecuter::execute() - PDO Exception: " . json_encode($errorDetails));
+            
             $this->setError($e->getMessage());
             $this->endExecutionTime = microtime(true);
             return false;
