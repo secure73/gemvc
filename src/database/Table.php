@@ -1196,8 +1196,9 @@ class Table
             $this->_query = $this->_query . 
                 "FROM {$this->_internalTable()} $joinClause $whereClause ";
         } else {
-            $this->_query = $this->_query .
-                " , (SELECT COUNT(*) FROM {$this->_internalTable()} $joinClause $whereClause) AS _total_count " .
+            // Avoid duplicate parameter binding by building simple query without subquery
+            // The count will be calculated separately if needed
+            $this->_query = $this->_query . 
                 "FROM {$this->_internalTable()} $joinClause $whereClause ";
         }
 
@@ -1252,12 +1253,28 @@ class Table
         $object_result = [];
         
         if (!$this->_skip_count && !empty($queryResult)) {
-            $this->_total_count = (int)($queryResult[0]['_total_count'] ?? 0);
+            // Since we removed the subquery, calculate total count with a separate query if needed
+            if (isset($queryResult[0]['_total_count'])) {
+                $this->_total_count = (int)$queryResult[0]['_total_count'];
+            } else {
+                // Calculate total count with separate query to avoid parameter binding issues
+                $this->_total_count = count($queryResult);
+                
+                // If we have a limit and got exactly that many results, there might be more
+                if ($this->_limit > 0 && count($queryResult) >= $this->_limit) {
+                    // Run a separate count query
+                    $countQuery = "SELECT COUNT(*) as total FROM {$this->_internalTable()}" . $this->whereMaker();
+                    $countResult = $this->getPdoQuery()->selectQuery($countQuery, $this->_binds);
+                    if ($countResult && isset($countResult[0]['total'])) {
+                        $this->_total_count = (int)$countResult[0]['total'];
+                    }
+                }
+            }
             $this->_count_pages = $this->_limit > 0 ? ceil($this->_total_count / $this->_limit) : 1;
         }
         
         foreach ($queryResult as $item) {
-            if (!$this->_skip_count) {
+            if (!$this->_skip_count && isset($item['_total_count'])) {
                 unset($item['_total_count']);
             }
             $instance = new $this();
