@@ -22,7 +22,9 @@ class JsonResponse implements ResponseInterface
     public function create(int $responseCode,mixed $data ,int $count = null , string $service_message = null):JsonResponse
     {
         $this->response_code = $responseCode;
+        
         $this->message = $this->setHttpMessage($responseCode);
+
         $this->count = $count;
         $this->service_message = $service_message;
         $this->data = $data;
@@ -183,7 +185,15 @@ class JsonResponse implements ResponseInterface
     public function showSwoole($swooleResponse): void
     {
         $swooleResponse->header('Content-Type', 'application/json');
-        $swooleResponse->status($this->response_code);
+        
+        // Force custom status codes to work with OpenSwoole by providing reason message
+        if (in_array($this->response_code, [209, 210])) {
+            $statusMessage = $this->response_code === 209 ? 'Updated' : 'Deleted';
+            $swooleResponse->status($this->response_code, $statusMessage);
+        } else {
+            $swooleResponse->status($this->response_code);
+        }
+        
         $swooleResponse->end($this->json_response);
     }
 
