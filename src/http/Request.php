@@ -117,7 +117,7 @@ class Request
     /**
      * if is empty $authRules then it will check if the user is authenticated
      * if $authRules is not empty then it will check if the user is authenticated and authorized
-     * @param array<string> $authRules
+     * @param array<string>|null $authRules
      * @return bool
      */
     public function auth(array $authRules=null): bool
@@ -696,16 +696,32 @@ class Request
         if($manualMap == null){
             return $this->_mapArrayToObject($this->post, $object, 'post');
         }
-        
-        $manualArray = [];
         $errors = [];
         
         foreach ($manualMap as $keyName => $value) {
             if(!isset($this->post[$keyName])){
                 $errors[] = "Manual map post $keyName not found in request";
             }
-            else{
-                $manualArray[$keyName] = $this->post[$keyName];
+            try{
+                if(str_ends_with($value,'()')){
+                    $methodName = substr($value, 0, -2);
+                    if(method_exists($object, $methodName)){
+                       $object->$methodName($this->post[$keyName]);
+                    }
+                    else{
+                        $errors[] = "Method $value not found in " . get_class($object);
+                    }
+                }
+                else{
+                    if(property_exists($object, $keyName)){
+                        $object->$keyName = $this->post[$keyName];
+                    }
+                    else{
+                        $errors[] = "Property $keyName not found in " . get_class($object);
+                    }
+                }
+            }catch(\Exception $e){
+                $errors[] = "Error mapping post $keyName: " . $e->getMessage();
             }
         }
         
@@ -714,7 +730,7 @@ class Request
             return null;
         }
         
-        return $this->_mapArrayToObject($manualArray, $object, 'post');
+        return $object;
     }
 
     /**
@@ -722,7 +738,7 @@ class Request
      * if $manualMap is not null then map only the put that are in the $manualMap
      * if success return object, if failed return null and set $this->error and $this->response
      * @param object $object
-     * @param array $manualMap
+     * @param array<string>|null  $manualMap
      * @return object|null
      */
     public function mapPutToObject(object $object, array $manualMap = null): null|object  
@@ -735,16 +751,32 @@ class Request
         if($manualMap == null){
             return $this->_mapArrayToObject($this->put, $object, 'put');
         }
-        
-        $manualArray = [];
         $errors = [];
         
         foreach ($manualMap as $keyName => $value) {
             if(!isset($this->put[$keyName])){
                 $errors[] = "Manual map put $keyName not found in request";
             }
-            else{
-                $manualArray[$keyName] = $this->put[$keyName];
+            try{
+                if(str_ends_with($value,'()')){
+                    $methodName = substr($value, 0, -2);
+                    if(method_exists($object, $methodName)){
+                       $object->$methodName($this->put[$keyName]);
+                    }
+                    else{
+                        $errors[] = "Method $value not found in " . get_class($object);
+                    }
+                }
+                else{
+                    if(property_exists($object, $keyName)){
+                        $object->$keyName = $this->put[$keyName];
+                    }
+                    else{
+                        $errors[] = "Property $keyName not found in " . get_class($object);
+                    }
+                }
+            }catch(\Exception $e){
+                $errors[] = "Error mapping put $keyName: " . $e->getMessage();
             }
         }
         
@@ -753,7 +785,7 @@ class Request
             return null;
         }
         
-        return $this->_mapArrayToObject($manualArray, $object, 'put');
+        return $object;
     }
 
     private function _mapArrayToObject(array $assoc_array, object $object, string $method): null|object
