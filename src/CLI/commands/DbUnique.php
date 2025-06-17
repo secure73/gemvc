@@ -12,7 +12,7 @@ use Gemvc\Helper\ProjectHelper;
  * Usage:
  *   vendor/bin/gemvc db:unique table/column
  * Example:
- *   vendor/bin/gemvc db:unique users/email
+ *   vendor/bin/gemvc db:unique users/email,name
  *
  * This command will:
  *   - Check for duplicate values in the specified column
@@ -34,10 +34,11 @@ class DbUnique extends Command
             return;
         }
 
-        // Parse table and column from argument (format: table/column)
-        list($table, $column) = explode('/', $this->args[0]);
-        if (!$table || !$column) {
-            $this->error("Invalid format. Use: gemvc db:unique table/column");
+        // Parse table and columns from argument (format: table/col1,col2,...)
+        list($table, $columns) = explode('/', $this->args[0]);
+        $columnList = array_map('trim', explode(',', $columns));
+        if (!$table || empty($columnList)) {
+            $this->error("Invalid format. Use: gemvc db:unique table/col1,col2,...");
             return;
         }
 
@@ -49,22 +50,29 @@ class DbUnique extends Command
             return;
         }
 
-        // Check for duplicate values in the column
-        $stmt = $pdo->query("SELECT `$column`, COUNT(*) as cnt FROM `$table` GROUP BY `$column` HAVING cnt > 1");
+        // Check for duplicate combinations
+        $colSql = implode('`,`', $columnList);
+        $sql = "SELECT $colSql, COUNT(*) as cnt FROM `$table` GROUP BY $colSql HAVING cnt > 1";
+        $stmt = $pdo->query($sql);
         $duplicates = $stmt->fetchAll();
         if ($duplicates) {
-            $this->error("Cannot add unique constraint: Duplicate values found in `$column`.");
+            $this->error("Cannot add unique constraint: Duplicate value combinations found in (" . implode(', ', $columnList) . ").");
             foreach ($duplicates as $row) {
-                $this->write("Duplicate: " . $row[$column]);
+                $values = [];
+                foreach ($columnList as $col) {
+                    $values[] = $col . '=' . $row[$col];
+                }
+                $this->write("Duplicate: " . implode(', ', $values));
             }
             return;
         }
 
         // Try to add the unique constraint
-        $constraintName = "unique_{$column}";
+        $constraintName = "unique_" . implode('_', $columnList);
+        $colSqlBacktick = '`' . implode('`,`', $columnList) . '`';
         try {
-            $pdo->exec("ALTER TABLE `$table` ADD CONSTRAINT `$constraintName` UNIQUE (`$column`)");
-            $this->success("Unique constraint added to `$table`.`$column` successfully!");
+            $pdo->exec("ALTER TABLE `$table` ADD CONSTRAINT `$constraintName` UNIQUE ($colSqlBacktick)");
+            $this->success("Unique constraint added to `$table` on (" . implode(', ', $columnList) . ") successfully!");
         } catch (\PDOException $e) {
             $this->error("Failed to add unique constraint: " . $e->getMessage());
         }
