@@ -218,6 +218,9 @@ class InitProject extends Command
                 $this->templateName = $templateName;  // Store the template name
                 $templateDir = $startupPath . '/' . $templateName;
                 $this->copyTemplateFiles($templateDir);
+                
+                // Copy user files after template files
+                $this->copyUserFiles($startupPath);
                 return;
             }
         }
@@ -239,6 +242,9 @@ class InitProject extends Command
                 $templateDir = $startupPath . '/' . $templateName;
                 $this->info("Using template: {$templateName}");
                 $this->copyTemplateFiles($templateDir);
+                
+                // Copy user files after template files
+                $this->copyUserFiles($startupPath);
                 return;
             } else {
                 throw new \RuntimeException("\033[31mInvalid template choice\033[0m");
@@ -250,6 +256,9 @@ class InitProject extends Command
             $this->info("No specific templates found, using startup directory directly");
             $this->templateName = 'default';  // Store default template name
             $this->copyTemplateFiles($startupPath);
+            
+            // Copy user files after template files
+            $this->copyUserFiles($startupPath);
         }
     }
     
@@ -546,5 +555,78 @@ EOT;
         }
         
         $this->info("Copied template: {$fileName}");
+    }
+
+    /**
+     * Copy user-related files from startup template to appropriate directories
+     * 
+     * @param string $startupPath The base startup directory path
+     */
+    private function copyUserFiles(string $startupPath)
+    {
+        $userDir = $startupPath . '/user';
+        if (!is_dir($userDir)) {
+            $this->warning("User template directory not found: {$userDir}");
+            return;
+        }
+
+        // Define target directories and their corresponding files
+        $fileMappings = [
+            'app/api' => ['User.php'],
+            'app/api/controller' => ['UserController.php'],
+            'app/api/model' => ['UserModel.php'],
+            'app/api/table' => ['UserTable.php']
+        ];
+
+        // Create directories if they don't exist
+        foreach (array_keys($fileMappings) as $dir) {
+            $targetDir = $this->basePath . '/' . $dir;
+            if (!is_dir($targetDir)) {
+                if (!@mkdir($targetDir, 0755, true)) {
+                    $this->warning("Failed to create directory: {$targetDir}");
+                    continue;
+                }
+                $this->info("Created directory: {$targetDir}");
+            }
+        }
+
+        // Copy each file to its target directory
+        foreach ($fileMappings as $targetDir => $files) {
+            $fullTargetDir = $this->basePath . '/' . $targetDir;
+            
+            foreach ($files as $file) {
+                $sourceFile = $userDir . '/' . $file;
+                $targetFile = $fullTargetDir . '/' . $file;
+
+                if (!file_exists($sourceFile)) {
+                    $this->warning("Source file not found: {$sourceFile}");
+                    continue;
+                }
+
+                // Check if file already exists
+                if (file_exists($targetFile) && !$this->nonInteractive) {
+                    echo "File already exists: {$targetFile}" . PHP_EOL;
+                    echo "Do you want to overwrite it? (y/N): ";
+                    $handle = fopen("php://stdin", "r");
+                    $line = fgets($handle);
+                    fclose($handle);
+                    
+                    if (strtolower(trim($line)) !== 'y') {
+                        $this->info("Skipped: {$file}");
+                        continue;
+                    }
+                } elseif (file_exists($targetFile) && $this->nonInteractive) {
+                    $this->info("File already exists (non-interactive mode): {$targetFile} - will be overwritten");
+                }
+
+                // Copy the file
+                if (!copy($sourceFile, $targetFile)) {
+                    $this->warning("Failed to copy file: {$sourceFile} to {$targetFile}");
+                    continue;
+                }
+
+                $this->info("Copied: {$file} to {$targetDir}");
+            }
+        }
     }
 } 
