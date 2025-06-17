@@ -573,9 +573,9 @@ EOT;
         // Define target directories and their corresponding files
         $fileMappings = [
             'app/api' => ['User.php'],
-            'app/api/controller' => ['UserController.php'],
-            'app/api/model' => ['UserModel.php'],
-            'app/api/table' => ['UserTable.php']
+            'app/controller' => ['UserController.php'],
+            'app/model' => ['UserModel.php'],
+            'app/table' => ['UserTable.php']
         ];
 
         // Create directories if they don't exist
