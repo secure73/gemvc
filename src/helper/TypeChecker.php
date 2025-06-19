@@ -122,7 +122,7 @@ class TypeChecker
      */
     private static function checkFloat(mixed $value, array $options): bool
     {
-        if (!is_float($value)) {
+        if (!filter_var($value, FILTER_VALIDATE_FLOAT)) {
             return false;
         }
         if (isset($options['min']) && $value < $options['min']) {
