@@ -193,7 +193,7 @@ class InitProject extends Command
         $templateDirs = [];
         $dirs = scandir($startupPath);
         foreach ($dirs as $dir) {
-            if ($dir === '.' || $dir === '..') continue;
+            if ($dir === '.' || $dir === '..' || $dir === 'user') continue; // Exclude 'user' directory from template options
             if (is_dir($startupPath . '/' . $dir)) {
                 $templateDirs[] = $dir;
                 $this->info("Found template: {$dir}");
