@@ -2,27 +2,28 @@
 
 ## Overview
 
-GEMVC provides a powerful WebSocket system built on OpenSwoole, enabling real-time communication, event handling, and room management.
+GEMVC provides a powerful WebSocket system built on OpenSwoole/Swoole, enabling real-time communication through the `SwooleWebSocketHandler` class. The system supports channel-based messaging, authentication, rate limiting, and Redis integration for scalability.
 
 ## Core Features
 
-### 1. WebSocket Server
+### 1. WebSocket Handler
 - Real-time bidirectional communication
-- Event-based message handling
-- Room management
-- Connection pooling
+- Channel-based message handling
+- Connection management with timeouts
+- Rate limiting and spam prevention
+- Heartbeat mechanism for connection health
 
-### 2. Event System
-- Custom event handling
-- Event broadcasting
-- Event filtering
-- Event logging
+### 2. Channel System
+- Subscribe/unsubscribe to channels
+- Channel-based message broadcasting
+- Redis integration for multi-server scalability
+- Channel membership tracking
 
-### 3. Room Management
-- Dynamic room creation
-- Room membership
-- Room broadcasting
-- Room persistence
+### 3. Authentication & Security
+- JWT-based authentication
+- Role-based access control
+- Rate limiting per connection
+- Connection timeout management
 
 ## Configuration
 
@@ -49,110 +50,115 @@ WS_HEARTBEAT_INTERVAL=60
 
 ### Starting WebSocket Server
 ```php
-use Gemvc\WebSocket\WebSocketServer;
+<?php
+require_once 'vendor/autoload.php';
 
-$server = new WebSocketServer();
+use Gemvc\Http\SwooleWebSocketHandler;
 
-$server->on('start', function($server) {
-    echo "WebSocket server started\n";
+// Check for Swoole/OpenSwoole
+if (!extension_loaded('openswoole') && !extension_loaded('swoole')) {
+    die('OpenSwoole or Swoole extension required');
+}
+
+// Create WebSocket handler
+$handler = new SwooleWebSocketHandler([
+    'connectionTimeout' => 300,
+    'maxMessagesPerMinute' => 60,
+    'heartbeatInterval' => 30
+]);
+
+// Create server (OpenSwoole example)
+$server = new \OpenSwoole\WebSocket\Server('0.0.0.0', 9501);
+
+// Register heartbeat
+$handler->registerHeartbeat($server);
+
+// Set up event handlers
+$server->on('open', function($server, $request) use ($handler) {
+    $handler->onOpen($server, $request);
 });
 
-$server->on('connect', function($server, $fd) {
-    echo "Client {$fd} connected\n";
+$server->on('message', function($server, $frame) use ($handler) {
+    $handler->onMessage($server, $frame);
 });
 
-$server->on('message', function($server, $fd, $data) {
-    $server->push($fd, "Received: {$data}");
-});
-
-$server->on('close', function($server, $fd) {
-    echo "Client {$fd} closed\n";
+$server->on('close', function($server, $fd) use ($handler) {
+    $handler->onClose($server, $fd);
 });
 
 $server->start();
 ```
 
-### Event Handling
-```php
-use Gemvc\WebSocket\EventManager;
-
-$events = new EventManager();
-
-// Register event handler
-$events->on('user.login', function($data) {
-    // Handle user login
-    $this->broadcast('user.status', [
-        'user_id' => $data['user_id'],
-        'status' => 'online'
-    ]);
-});
-
-// Trigger event
-$events->trigger('user.login', [
-    'user_id' => 1,
-    'username' => 'john'
-]);
+### Message Format
+```json
+{
+    "action": "subscribe|message|unsubscribe",
+    "data": {
+        "channel": "chat.room.1",
+        "message": "Hello everyone!",
+        "recipients": [1, 2, 3]
+    }
+}
 ```
 
-### Room Management
+### Channel Operations
 ```php
-use Gemvc\WebSocket\RoomManager;
+// Subscribe to channel
+$message = json_encode([
+    'action' => 'subscribe',
+    'data' => ['channel' => 'chat.room.1']
+]);
 
-$rooms = new RoomManager();
+// Send message to channel
+$message = json_encode([
+    'action' => 'message',
+    'data' => [
+        'channel' => 'chat.room.1',
+        'message' => 'Hello everyone!'
+    ]
+]);
 
-// Create room
-$rooms->create('chat.1');
-
-// Join room
-$rooms->join('chat.1', $fd);
-
-// Leave room
-$rooms->leave('chat.1', $fd);
-
-// Broadcast to room
-$rooms->broadcast('chat.1', [
-    'type' => 'message',
-    'content' => 'Hello everyone!'
+// Unsubscribe from channel
+$message = json_encode([
+    'action' => 'unsubscribe',
+    'data' => ['channel' => 'chat.room.1']
 ]);
 ```
 
 ## Advanced Features
 
 ### Authentication
+The WebSocket handler automatically attempts JWT authentication using the standard GEMVC authentication system:
+
 ```php
-$server->on('handshake', function($request, $response) {
-    // Verify token
-    $token = $request->header['authorization'];
-    if (!$this->verifyToken($token)) {
-        return false;
-    }
-    
-    // Set user data
-    $user = $this->getUserFromToken($token);
-    $request->user = $user;
-    
-    return true;
-});
+// Authentication is handled automatically in onOpen()
+// Uses the same auth system as HTTP requests
+if ($httpRequest->request->auth(['user', 'admin'])) {
+    $connectionData['authenticated'] = true;
+    $connectionData['user_id'] = $httpRequest->request->userId();
+    $connectionData['role'] = $httpRequest->request->userRole();
+}
 ```
 
-### Message Filtering
+### Rate Limiting
 ```php
-$server->on('message', function($server, $fd, $data) {
-    // Filter message
-    $filtered = $this->filterMessage($data);
-    
-    // Broadcast filtered message
-    $this->broadcast('chat.message', $filtered);
-});
+// Configure rate limiting
+$handler = new SwooleWebSocketHandler([
+    'maxMessagesPerMinute' => 60  // 60 messages per minute per connection
+]);
 ```
 
-### Connection Pooling
+### Redis Integration
 ```php
-$server->set([
-    'worker_num' => 4,
-    'max_connection' => 1000,
-    'heartbeat_idle_time' => 60,
-    'heartbeat_check_interval' => 10
+$handler = new SwooleWebSocketHandler([
+    'redis' => [
+        'enabled' => true,
+        'host' => '127.0.0.1',
+        'port' => 6379,
+        'password' => 'your_password',
+        'database' => 0,
+        'prefix' => 'websocket:'
+    ]
 ]);
 ```
 
@@ -204,6 +210,6 @@ $server->on('error', function($server, $fd, $errno, $errstr) {
 
 ## Next Steps
 
-- [Real-time Features](../guides/real-time.md)
+- [WebSocket Components](../core/websocket-components.md)
 - [Security Guide](../guides/security.md)
 - [Performance Guide](../guides/performance.md) 

@@ -23,7 +23,7 @@
 - [Configuration Guide](docs/getting-started/configuration.md)
 
 ### Core Components
-- [Database Components](docs/core/database-components.md)
+- [Database Components](docs/core/database-architecture.md)
 - [HTTP Components](docs/core/http-components.md)
 - [WebSocket Components](docs/core/websocket-components.md)
 - [Helper Components](docs/core/helper-components.md)
@@ -44,7 +44,7 @@
 ## 🚀 Quick Links
 
 ### Core Features
-- [Database Operations](docs/core/database-components.md)
+- [Database Operations](docs/core/database-architecture.md)
 - [HTTP Request/Response](docs/core/http-components.md)
 - [WebSocket Server](docs/core/websocket-components.md)
 - [Helper Utilities](docs/core/helper-components.md)
