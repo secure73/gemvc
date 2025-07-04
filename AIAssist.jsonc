@@ -212,6 +212,30 @@
             "setPerPage": {
               "returns": "bool",
               "description": "Sets items per page from GET parameters"
+            },
+            "getPageNumber": {
+              "returns": "int",
+              "description": "Gets current page number"
+            },
+            "getPerPage": {
+              "returns": "int",
+              "description": "Gets current items per page"
+            },
+            "getFilterable": {
+              "returns": "array",
+              "description": "Gets current filter parameters"
+            },
+            "getFindable": {
+              "returns": "array",
+              "description": "Gets current search parameters"
+            },
+            "getSortable": {
+              "returns": "string|null",
+              "description": "Gets current sort column"
+            },
+            "getSortableAsc": {
+              "returns": "string|null",
+              "description": "Gets current ascending sort column"
             }
           }
         },
@@ -366,7 +390,7 @@
       },
       "db:describe": {
         "description": "Describes database structure and tables",
-        "example": "vendor/bin/gemvc db:describe"
+        "example": "vendor/bin/gemvc db:describe TableClassName"
       },
       "db:list": {
         "description": "Lists all database tables",
@@ -378,15 +402,15 @@
       },
       "db:migrate": {
         "description": "Runs database migrations",
-        "example": "vendor/bin/gemvc db:migrate"
+        "example": "vendor/bin/gemvc db:migrate TableClassName [--force]"
       },
       "db:drop": {
         "description": "Drops database tables",
-        "example": "vendor/bin/gemvc db:drop"
+        "example": "vendor/bin/gemvc db:drop TableName"
       },
       "db:unique": {
         "description": "Manages unique constraints",
-        "example": "vendor/bin/gemvc db:unique"
+        "example": "vendor/bin/gemvc db:unique table/column"
       }
     }
   },
