@@ -45,10 +45,7 @@
   - Supports multiple formats
 
 ### System Components
-- **Runner.php** (1.8KB, 78 lines)
-  - Processes CLI commands
-  - Manages system operations
-  - Handles maintenance tasks
+
 
 - **RedisManager.php** (10KB, 408 lines)
   - Handles Redis connections
@@ -445,5 +442,5 @@ Client → SwooleWebSocketHandler → Redis (optional) → Client
 
 ### CLI Flow
 ```
-Command → Runner → Generator/Manager → File System/Database
+CLI Command → bin/gemvc → Command Class → Generator/Manager → File System/Database
 ``` 
