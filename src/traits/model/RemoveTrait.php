@@ -1,7 +1,6 @@
 <?php
 namespace Gemvc\Traits\Model;
 
-use Gemvc\Traits\Table\RemoveQuery;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
 use Gemvc\Http\Response;
@@ -13,10 +12,11 @@ use Gemvc\Http\Response;
  */
 trait RemoveTrait
 {
-    use RemoveQuery;
     public function removeById(int $id):bool
     {
-        if(!$this->removeQuery($id))
+        $result = $this->deleteByIdQuery($id);
+
+        if(!$result)
         {
            return false;
         }
