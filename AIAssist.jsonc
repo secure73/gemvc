@@ -5,7 +5,7 @@
     "description": "A lightweight PHP framework for building RESTful APIs with dual server support (Apache/OpenSwoole)",
     "phpVersion": ">=8.0",
     "requiredExtensions": ["pdo", "openssl", "gd"],
-    "optionalExtensions": ["openswoole"],
+    "optionalExtensions": ["openswoole", "redis"],
     "architecture": "MVC-based RESTful API",
     "aiSupport": {
       "cursor": true,
@@ -19,7 +19,7 @@
       "description": "Core framework components for request handling and routing",
       "classes": {
         "ApiService": {
-          "description": "Base class for API services",
+          "description": "Base class for API services (Apache-compatible)",
           "methods": {
             "__construct": {
               "parameters": ["Request $request"],
@@ -30,11 +30,18 @@
             },
             "validatePosts": {
               "parameters": ["array $post_schema"],
-              "returns": "void"
+              "returns": "void",
+              "description": "Validates POST data and dies on failure (Apache only)"
             },
             "validateStringPosts": {
               "parameters": ["array $post_string_schema"],
-              "returns": "void"
+              "returns": "void",
+              "description": "Validates string lengths and dies on failure (Apache only)"
+            },
+            "mockResponse": {
+              "parameters": ["string $method"],
+              "returns": "array",
+              "description": "Generates mock response data for documentation"
             }
           }
         },
@@ -50,11 +57,28 @@
             },
             "validatePosts": {
               "parameters": ["array $post_schema"],
-              "returns": "JsonResponse|null"
+              "returns": "JsonResponse|null",
+              "description": "Validates POST data and returns error response on failure"
             },
             "validateStringPosts": {
               "parameters": ["array $post_string_schema"],
-              "returns": "JsonResponse|null"
+              "returns": "JsonResponse|null",
+              "description": "Validates string lengths and returns error response on failure"
+            },
+            "safeValidatePosts": {
+              "parameters": ["array $post_schema"],
+              "returns": "JsonResponse|null",
+              "description": "Safe validation wrapper for Swoole compatibility"
+            },
+            "safeValidateStringPosts": {
+              "parameters": ["array $post_string_schema"],
+              "returns": "JsonResponse|null",
+              "description": "Safe string validation wrapper for Swoole compatibility"
+            },
+            "mockResponse": {
+              "parameters": ["string $method"],
+              "returns": "array",
+              "description": "Generates mock response data for documentation"
             }
           }
         },
@@ -120,31 +144,74 @@
           "methods": {
             "auth": {
               "parameters": ["array $authRules = null"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Authenticates and optionally authorizes user"
+            },
+            "userRole": {
+              "returns": "string|null",
+              "description": "Returns user role from JWT token"
+            },
+            "userId": {
+              "returns": "int|null",
+              "description": "Returns user ID from JWT token"
             },
             "definePostSchema": {
               "parameters": ["array $schema"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Validates POST data against schema"
+            },
+            "defineGetSchema": {
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "description": "Validates GET data against schema"
+            },
+            "definePutSchema": {
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "description": "Validates PUT data against schema"
+            },
+            "definePatchSchema": {
+              "parameters": ["array $schema"],
+              "returns": "bool",
+              "description": "Validates PATCH data against schema"
             },
             "validateStringPosts": {
               "parameters": ["array $stringPosts"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Validates string lengths in POST data"
             },
             "mapPostToObject": {
               "parameters": ["object $object", "array $manualMap = null"],
-              "returns": "object|null"
+              "returns": "object|null",
+              "description": "Maps POST data to object properties"
+            },
+            "mapPutToObject": {
+              "parameters": ["object $object", "array $manualMap = null"],
+              "returns": "object|null",
+              "description": "Maps PUT data to object properties"
             },
             "findable": {
               "parameters": ["array $searchableGetValues"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Enables search functionality for GET parameters"
             },
             "sortable": {
               "parameters": ["array $sortableGetValues"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Enables sorting functionality for GET parameters"
             },
             "filterable": {
               "parameters": ["array $filterableGetValues"],
-              "returns": "bool"
+              "returns": "bool",
+              "description": "Enables filtering functionality for GET parameters"
+            },
+            "setPageNumber": {
+              "returns": "bool",
+              "description": "Sets pagination page number from GET parameters"
+            },
+            "setPerPage": {
+              "returns": "bool",
+              "description": "Sets items per page from GET parameters"
             }
           }
         },
@@ -170,6 +237,18 @@
             "unprocessableEntity": {
               "parameters": ["string $service_message"],
               "returns": "JsonResponse"
+            },
+            "unauthorized": {
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "forbidden": {
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
+            },
+            "notFound": {
+              "parameters": ["string $service_message"],
+              "returns": "JsonResponse"
             }
           }
         }
@@ -179,7 +258,7 @@
       "description": "Database interaction components",
       "classes": {
         "Table": {
-          "description": "Base table class providing ORM capabilities",
+          "description": "Base table class providing ORM capabilities with lazy loading",
           "methods": {
             "select": {
               "parameters": ["string|null $columns"],
@@ -189,8 +268,52 @@
               "parameters": ["string $column", "mixed $value"],
               "returns": "self"
             },
+            "whereLike": {
+              "parameters": ["string $column", "string $value"],
+              "returns": "self"
+            },
+            "whereBetween": {
+              "parameters": ["string $column", "mixed $lowerBand", "mixed $higherBand"],
+              "returns": "self"
+            },
+            "whereNull": {
+              "parameters": ["string $column"],
+              "returns": "self"
+            },
+            "whereNotNull": {
+              "parameters": ["string $column"],
+              "returns": "self"
+            },
+            "join": {
+              "parameters": ["string $table", "string $condition", "string $type = 'INNER'"],
+              "returns": "self"
+            },
+            "orderBy": {
+              "parameters": ["string $columnName = null", "bool $ascending = null"],
+              "returns": "self"
+            },
+            "limit": {
+              "parameters": ["int $limit"],
+              "returns": "self"
+            },
             "run": {
               "returns": "array|null"
+            },
+            "insertSingleQuery": {
+              "returns": "static|null"
+            },
+            "updateSingleQuery": {
+              "returns": "static|null"
+            },
+            "deleteByIdQuery": {
+              "parameters": ["int $id"],
+              "returns": "int|null"
+            },
+            "safeDeleteQuery": {
+              "returns": "static|null"
+            },
+            "restoreQuery": {
+              "returns": "static|null"
             }
           }
         }
@@ -199,8 +322,12 @@
   },
 
   "cli": {
-    "description": "Command-line interface tools for code generation",
+    "description": "Command-line interface tools for code generation and database management",
     "commands": {
+      "init": {
+        "description": "Initializes a new GEMVC project with Swoole or Apache template",
+        "example": "vendor/bin/gemvc init"
+      },
       "create:service": {
         "description": "Creates a new API service with optional components",
         "options": {
@@ -228,6 +355,38 @@
       "create:table": {
         "description": "Creates a new table class",
         "example": "vendor/bin/gemvc create:table User"
+      },
+      "create:crud": {
+        "description": "Creates complete CRUD operations (service, controller, model, table)",
+        "example": "vendor/bin/gemvc create:crud User"
+      },
+      "db:connect": {
+        "description": "Tests database connection",
+        "example": "vendor/bin/gemvc db:connect"
+      },
+      "db:describe": {
+        "description": "Describes database structure and tables",
+        "example": "vendor/bin/gemvc db:describe"
+      },
+      "db:list": {
+        "description": "Lists all database tables",
+        "example": "vendor/bin/gemvc db:list"
+      },
+      "db:init": {
+        "description": "Initializes database structure",
+        "example": "vendor/bin/gemvc db:init"
+      },
+      "db:migrate": {
+        "description": "Runs database migrations",
+        "example": "vendor/bin/gemvc db:migrate"
+      },
+      "db:drop": {
+        "description": "Drops database tables",
+        "example": "vendor/bin/gemvc db:drop"
+      },
+      "db:unique": {
+        "description": "Manages unique constraints",
+        "example": "vendor/bin/gemvc db:unique"
       }
     }
   },
@@ -246,9 +405,10 @@
     "features": [
       "JWT-based authentication",
       "Role-based authorization",
-      "Input validation",
+      "Input validation with schema definition",
       "String length validation",
-      "Type-safe parameter binding"
+      "Type-safe parameter binding",
+      "Request filtering and sanitization"
     ]
   },
 
@@ -271,25 +431,40 @@
 
   "bestPractices": {
     "services": [
-      "Always extend ApiService",
-      "Validate inputs first",
+      "Always extend ApiService (Apache) or SwooleApiService (Swoole)",
+      "Use validatePosts() for input validation",
       "Use Request.auth() for authentication",
-      "Use ProjectHelper for path management"
+      "Use ProjectHelper for path management",
+      "Return JsonResponse for consistent API responses"
     ],
     "controllers": [
       "Only called by Services",
-      "Use mapPost for data binding",
+      "Use mapPostToObject() for data binding",
       "Return JsonResponse"
     ],
     "models": [
-      "Use underscore for non-DB props",
+      "Use underscore for non-DB properties",
       "Implement proper traits",
       "Type-safe properties"
     ],
     "authentication": [
       "Always use Request->auth() for authentication",
       "Check authentication before performing operations",
-      "Use proper role checks with Request.auth(['admin', 'editor'])"
+      "Use proper role checks with Request.auth(['admin', 'editor'])",
+      "Use Request.userRole() to get current user role",
+      "Use Request.userId() to get current user ID"
+    ],
+    "validation": [
+      "Use definePostSchema() for POST validation",
+      "Use defineGetSchema() for GET validation",
+      "Use validateStringPosts() for string length validation",
+      "Use mapPostToObject() for automatic object mapping"
+    ],
+    "database": [
+      "Use Table class for database operations",
+      "Leverage lazy loading for performance",
+      "Use proper WHERE clauses for filtering",
+      "Implement pagination with limit() and setPageNumber()"
     ]
   }
 }

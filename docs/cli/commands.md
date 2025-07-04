@@ -31,10 +31,6 @@ GEMVC provides a powerful command-line interface for project management, code ge
 # Initialize project
 vendor/bin/gemvc init
 
-# Setup server
-vendor/bin/gemvc setup apache
-vendor/bin/gemvc setup swoole
-
 # Test installation
 vendor/bin/gemvc test:install
 ```
@@ -52,21 +48,33 @@ vendor/bin/gemvc create:model User
 
 # Generate table
 vendor/bin/gemvc create:table User
-
-# Generate CRUD
-vendor/bin/gemvc create:crud User
 ```
 
 ### Database Management
 
-#### Initialize Database
+#### Test Database Connection
 ```bash
-vendor/bin/gemvc db:init
+vendor/bin/gemvc db:connect
 ```
-- Creates the database as defined in your `.env` configuration
+- Tests the database connection using your `.env` configuration
+- Shows connection status and any errors
 - Safe to run multiple times
-- Creates database if it doesn't exist
-- No data loss if database already exists
+
+#### Describe Table Structure
+```bash
+vendor/bin/gemvc db:describe TableClassName
+```
+- Shows detailed table structure
+- Displays:
+  - Column names and types
+  - Primary keys
+  - Indexes
+  - Foreign keys
+  - Constraints
+- Example:
+  ```bash
+  vendor/bin/gemvc db:describe UserTable
+  ```
 
 #### Migrate Table
 ```bash
@@ -108,15 +116,15 @@ vendor/bin/gemvc db:list
     - email (varchar, unique)
   ```
 
-#### Drop Table
+#### Add Unique Constraints
 ```bash
-vendor/bin/gemvc db:drop TableName --force
+vendor/bin/gemvc db:unique TableClassName
 ```
-- Deletes a table and all its data
-- Requires `--force` flag to prevent accidental deletion
+- Adds unique constraints to table columns
+- Based on the table class definition
 - Example:
   ```bash
-  vendor/bin/gemvc db:drop users --force
+  vendor/bin/gemvc db:unique UserTable
   ```
 
 ### Help & Information
@@ -198,89 +206,183 @@ $this->output->writeln('<comment>Comment</comment>');
 ### Progress Bar
 ```php
 $progress = $this->output->createProgressBar(100);
-
-for ($i = 0; $i < 100; $i++) {
-    // Do something
-    $progress->advance();
-}
-
-$progress->finish();
 ```
 
-### Table Output
-```php
-$table = $this->output->createTable();
-$table->setHeaders(['Name', 'Email']);
+## Command Examples
 
-$table->addRow(['John Doe', 'john@example.com']);
-$table->addRow(['Jane Doe', 'jane@example.com']);
+### Project Initialization
+```bash
+# Initialize a new GEMVC project
+vendor/bin/gemvc init
 
-$table->render();
+# This will:
+# - Create directory structure (app/api, app/controller, app/model, app/table)
+# - Copy templates and startup files
+# - Create .env file
+# - Set up command wrappers
+# - Choose between Apache or OpenSwoole template
 ```
 
-## Error Handling
+### Database Operations
+```bash
+# Test database connection
+vendor/bin/gemvc db:connect
 
-### Command Errors
-```php
-try {
-    // Command logic
-} catch (\Exception $e) {
-    $this->output->writeln('<error>' . $e->getMessage() . '</error>');
-    exit(1);
-}
+# Create/update a table
+vendor/bin/gemvc db:migrate UserTable
+
+# List all tables
+vendor/bin/gemvc db:list
+
+# Describe table structure
+vendor/bin/gemvc db:describe UserTable
+
+# Add unique constraints
+vendor/bin/gemvc db:unique UserTable
 ```
 
-### Validation Errors
-```php
-if (!$this->validateArguments()) {
-    $this->output->writeln('<error>Invalid arguments</error>');
-    exit(1);
-}
+### Code Generation
+```bash
+# Generate a complete service
+vendor/bin/gemvc create:service User
+
+# Generate individual components
+vendor/bin/gemvc create:controller User
+vendor/bin/gemvc create:model User
+vendor/bin/gemvc create:table User
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Command not found**
+   - Ensure you're in the project root directory
+   - Run `composer install` to install dependencies
+   - Check if `vendor/bin/gemvc` exists
+
+2. **Database connection errors**
+   - Verify your `.env` file configuration
+   - Check database server is running
+   - Ensure database credentials are correct
+
+3. **Permission errors**
+   - Check file and directory permissions
+   - Ensure you have write access to the project directory
+
+4. **Template errors**
+   - Verify template files exist in `vendor/gemvc/library/src/startup/`
+   - Check template directory permissions
+
+## Next Steps
+
+- [CLI Components](cli-components.md)
+- [Quick Start Guide](../getting-started/quick-start.md)
+- [API Features](../features/api.md)
+
+# CLI Commands Reference
+
+Gemvc provides a comprehensive CLI tool for rapid development and project management.
+
+## Project Management
+
+### Initialize Project
+```bash
+vendor/bin/gemvc init
+```
+Creates a new Gemvc project with the selected template (Apache or Swoole).
+
+## Component Generation
+
+### Create Complete CRUD (Recommended)
+```bash
+vendor/bin/gemvc create:crud ServiceName
+```
+Creates all CRUD components at once:
+- Service (API endpoints)
+- Controller (business logic)
+- Model (data model)
+- Table (database schema)
+
+### Create Individual Components
+```bash
+# Create service only
+vendor/bin/gemvc create:service ServiceName
+
+# Create service with specific components
+vendor/bin/gemvc create:service ServiceName -c  # with controller
+vendor/bin/gemvc create:service ServiceName -m  # with model
+vendor/bin/gemvc create:service ServiceName -t  # with table
+vendor/bin/gemvc create:service ServiceName -cmt  # with all components
+
+# Create individual components
+vendor/bin/gemvc create:controller ServiceName
+vendor/bin/gemvc create:model ServiceName
+vendor/bin/gemvc create:table ServiceName
+```
+
+## Database Management
+
+### Database Operations
+```bash
+vendor/bin/gemvc db:init          # Initialize database connection
+vendor/bin/gemvc db:migrate       # Run all table migrations
+vendor/bin/gemvc db:list          # List all tables
+vendor/bin/gemvc db:describe TableName  # Describe table structure
+vendor/bin/gemvc db:drop TableName      # Drop table
+vendor/bin/gemvc db:unique TableName    # Add unique constraints
+vendor/bin/gemvc db:connect       # Test database connection
+```
+
+## Examples
+
+### Create a Product API
+```bash
+# Generate complete CRUD
+vendor/bin/gemvc create:crud Product
+
+# Set up database
+vendor/bin/gemvc db:init
+vendor/bin/gemvc db:migrate
+```
+
+### Create a User Management System
+```bash
+# Generate complete CRUD
+vendor/bin/gemvc create:crud User
+
+# Set up database
+vendor/bin/gemvc db:init
+vendor/bin/gemvc db:migrate
+```
+
+## Command Flags
+
+### Service Creation Flags
+- `-c`: Include controller
+- `-m`: Include model  
+- `-t`: Include table
+- `-cmt`: Include all components (same as create:crud)
+
+## File Structure Generated
+
+When using `create:crud ServiceName`, the following structure is created:
+
+```
+app/
+├── api/
+│   └── ServiceName.php          # API endpoints
+├── controller/
+│   └── ServiceNameController.php # Business logic
+├── model/
+│   └── ServiceNameModel.php     # Data model
+└── table/
+    └── ServiceNameTable.php     # Database schema
 ```
 
 ## Best Practices
 
-### 1. Command Structure
-- Use clear command names
-- Provide helpful descriptions
-- Document arguments and options
-- Handle errors gracefully
-
-### 2. Code Generation
-- Use templates for consistency
-- Validate input before generation
-- Handle file conflicts
-- Provide helpful feedback
-
-### 3. Output Formatting
-- Use appropriate styles
-- Show progress for long operations
-- Format tables for readability
-- Handle errors clearly
-
-### 4. Error Handling
-- Validate input early
-- Handle exceptions properly
-- Provide helpful error messages
-- Use appropriate exit codes
-
-### 5. Testing
-- Test command logic
-- Test argument parsing
-- Test error handling
-- Test output formatting
-
-## Safety Notes
-- Commands that modify data or structure require `--force` flag
-- Always back up your data before using destructive commands
-- Use `--help` to see command-specific options
-- `db:migrate` will never remove columns unless `--force` is used
-- `db:drop` requires `--force` to prevent accidental data loss
-- `db:migrate` will never change a column from NULL to NOT NULL unless `--enforce-not-null` is used
-- If you use `--enforce-not-null` and there are existing NULLs, you must provide `--default` or handle the data manually
-
-## Next Steps
-
-- [Request Lifecycle](../core/request-lifecycle.md)
-- [Security Guide](../guides/security.md)
-- [Performance Guide](../guides/performance.md) 
+1. **Use `create:crud`** for most cases - it's the fastest way to get a complete API
+2. **Use individual commands** when you need specific components or want to customize the generation
+3. **Always run `db:migrate`** after creating table classes to sync with your database
+4. **Use `db:describe`** to verify your table structure matches your expectations 

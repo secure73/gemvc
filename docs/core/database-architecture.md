@@ -28,9 +28,9 @@ app/
 │   ├── ProfileTable.php       # Profiles table
 │   └── OrderTable.php         # Orders table
 └── model/                     # Model layer - business logic + multi-table operations
-    ├── User.php               # User business logic (extends UserTable)
-    ├── Order.php              # Order business logic
-    └── Product.php            # Product business logic
+    ├── UserModel.php          # User business logic (extends UserTable)
+    ├── OrderModel.php         # Order business logic (extends OrderTable)
+    └── ProductModel.php       # Product business logic (extends ProductTable)
 ```
 
 ## Database Architecture Layers
@@ -198,341 +198,170 @@ class UserTable extends Table {
 - **Use underscore-prefixed properties for non-database data**
 - Multi-table operations and business logic
 ```php
-class User extends UserTable {
-    // Database columns inherited from UserTable
-    
-    // Reserved properties (ignored by database operations)
-    public ?Profile $_profile = null;
-    public array $_orders = [];
-    public array $_validation_errors = [];
-    public bool $_is_loaded = false;
-    
-    public function loadComplete(): self {
-        // Load related data into _ properties
-        if (!$this->_is_loaded && $this->id) {
-            // Connection created only when needed
-            $this->_profile = Profile::findByUserId($this->id);
-            $this->_orders = Order::findByUserId($this->id);
-            $this->_is_loaded = true;
-        }
-        return $this;
-    }
-}
-```
-
-## Lazy Loading Benefits
-
-### 1. Resource Efficiency
-```php
-// Creating models - NO database connections
-$user = new User();              // No connection
-$product = new Product();        // No connection
-$order = new Order();           // No connection
-
-// Connection created only when database is accessed
-$result = $user->findByEmail('john@example.com'); // Connection created here
-```
-
-### 2. Memory Optimization
-```php
-// Can create many model instances without database overhead
-$models = [];
-for ($i = 0; $i < 1000; $i++) {
-    $models[] = new User(); // No connections created
-}
-
-// Connections created only when actually used
-foreach ($models as $model) {
-    if ($someCondition) {
-        $model->save(); // Connection created only here
-    }
-}
-```
-
-### 3. Conditional Database Access
-```php
-public function processUser(array $userData): array {
-    $user = User::createFromArray($userData); // No connection
-    
-    // Business validation without database
-    if (!$user->validate()) {
-        return ['errors' => $user->_validation_errors]; // No connection ever made
+class UserModel extends UserTable {
+    // Business logic methods
+    public function getActiveUsers() {
+        return $this->select('id, name, email')
+            ->where('is_active', true)
+            ->orderBy('created_at', false)
+            ->run();
     }
     
-    // Database access only when needed
-    return $user->save() ? ['success' => true] : ['success' => false];
+    public function createUser(array $data) {
+        // Map POST data to object properties
+        $this->request->mapPostToObject($this);
+        return $this->insertSingleQuery();
+    }
+    
+    // Non-database properties (use underscore prefix)
+    private string $_temp_data = '';
+    private array $_cached_results = [];
 }
 ```
 
-## System Flow
+## Key Features
 
-### 1. Lazy Connection Flow
-```mermaid
-graph TD
-    A[Model Instantiation] --> B[No Connection Created]
-    B --> C[First Database Operation]
-    C --> D[PdoQuery::getExecuter]
-    D --> E[New QueryExecuter]
-    E --> F[DatabasePoolFactory::getInstance]
-    F --> G[Environment Detection]
-    G --> H1[OpenSwooleDatabasePool]
-    G --> H2[StandardDatabasePool]
-    H1 --> I[Connection Retrieved]
-    H2 --> I
-    I --> J[Query Executed]
-    J --> K[Connection Released to Pool]
-```
+### 1. Lazy Loading
+- Database connections created only when needed
+- PdoQuery instantiated on first use
+- Error storage before connection creation
+- Memory optimization
 
-### 2. Database Layer Flow
-```mermaid
-graph TD
-    A[Model Layer - Business Logic] --> B[Table Layer - Database Operations]
-    B --> C[Base Table - Core Functionality]
-    C --> D[PdoQuery - High-level Operations]
-    D --> E[QueryExecuter - Low-level PDO]
-    E --> F[DatabasePoolFactory]
-    F --> G[Connection Pool]
-    G --> H[Database]
-```
+### 2. Type Safety
+- Property type mapping with `_type_map`
+- Automatic type casting
+- Type validation on database operations
+- Nullable property support
 
-### 3. Underscore Property Handling
-```mermaid
-graph TD
-    A[Model Properties] --> B{Property Name Check}
-    B -->|Starts with _| C[Reserved Property]
-    B -->|Normal Property| D[Database Column]
-    C --> E[Ignored by CRUD Operations]
-    D --> F[Included in Database Operations]
-    E --> G[Used for Business Logic]
-    F --> H[Saved to Database]
-```
+### 3. Security
+- Prepared statements via QueryExecuter
+- Parameter binding
+- SQL injection prevention
+- Input sanitization
 
-## Component Relationships
+### 4. Performance
+- Connection pooling
+- Query result caching
+- Lazy loading
+- Resource management
 
-### 1. PdoQuery → QueryExecuter
-- Inheritance relationship
-- PdoQuery adds high-level query methods
-- QueryExecuter handles actual execution
-- Manages connection lifecycle
-
-### 2. QueryExecuter → PdoConnection
-- Composition relationship
-- QueryExecuter uses PdoConnection to get connections
-- Manages connection state
-- Handles connection errors
-
-### 3. PdoConnection → DBPoolManager
-- Uses DBPoolManager to manage connection pool
-- Handles connection validation
-- Returns connections to pool
-- Manages connection health
-
-### 4. DBPoolManager → DBConnection
-- Uses DBConnection to create new connections
-- Manages connection lifecycle
-- Tracks connection state
-- Handles connection reuse
-
-## Configuration
-
-### Environment Variables
-```env
-# Database Configuration
-DB_HOST_CLI_DEV="localhost"
-DB_HOST="db"
-DB_PORT=3306
-DB_NAME=your_database
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_CHARSET=utf8mb4
-
-# Connection Pool Settings
-MIN_DB_CONNECTION_POOL=2
-MAX_DB_CONNECTION_POOL=10
-DB_CONNECTION_MAX_AGE=3600
-DB_CONNECTION_TIME_OUT=20
-DB_CONNECTION_EXPIER_TIME=20
-DB_QUERY_TIMEOUT=30
-
-# Query Settings
-QUERY_LIMIT=10
-
-# Environment
-APP_ENV=dev  # or 'prod'
-```
+### 5. Environment Support
+- Apache and OpenSwoole compatibility
+- Environment-specific connection pools
+- Coroutine-safe operations (OpenSwoole)
 
 ## Usage Examples
 
-### 1. Table Operations with Lazy Loading
+### Basic Table Class
 ```php
+<?php
+namespace App\Table;
+
+use Gemvc\Database\Table;
+
 class UserTable extends Table {
+    // Database properties
     public ?int $id = null;
     public ?string $name = null;
     public ?string $email = null;
     public ?bool $is_active = null;
+    public ?string $created_at = null;
     
-    public function getTable(): string { return 'users'; }
-}
-
-$userTable = new UserTable(); // No connection created
-
-// Connection created only when query runs
-$users = $userTable->select()
-    ->where('is_active', true)
-    ->orderBy('created_at', false)
-    ->run(); // Connection created here
-```
-
-### 2. Model with Reserved Properties
-```php
-class User extends UserTable {
-    // Database columns inherited from UserTable
+    // Type mapping for automatic casting
+    protected array $_type_map = [
+        'id' => 'int',
+        'is_active' => 'bool'
+    ];
     
-    // Reserved properties (ignored by database operations)
-    public ?Profile $_profile = null;
-    public array $_recent_orders = [];
-    public array $_validation_errors = [];
-    
-    public function save(): bool {
-        if (!$this->validate()) return false;
-        
-        // Only database columns are saved, _ properties ignored
-        return $this->id ? 
-            $this->updateSingleQuery() !== null : 
-            $this->insertSingleQuery() !== null;
-    }
-    
-    public function validate(): bool {
-        $this->_validation_errors = [];
-        if (empty($this->name)) {
-            $this->_validation_errors[] = 'Name required';
-        }
-        return empty($this->_validation_errors);
+    public function getTable(): string {
+        return 'users';
     }
 }
 ```
 
-### 3. Multi-Table Business Logic
+### Model with Business Logic
 ```php
-class User extends UserTable {
-    public ?Profile $_profile = null;
-    public array $_orders = [];
+<?php
+namespace App\Model;
+
+use App\Table\UserTable;
+
+class UserModel extends UserTable {
     
-    public function createWithProfile(array $userData, array $profileData): bool {
-        // Set user data
-        $this->name = $userData['name'];
-        $this->email = $userData['email'];
-        
-        // Save user - connection created
-        if (!$this->save()) return false;
-        
-        // Create profile using same or new connection
-        $profile = new Profile();
-        $profile->user_id = $this->id;
-        $profile->first_name = $profileData['first_name'];
-        
-        if ($profile->save()) {
-            $this->_profile = $profile; // Store in reserved property
-            return true;
-        }
-        
-        return false;
+    public function getActiveUsers() {
+        return $this->select('id, name, email')
+            ->where('is_active', true)
+            ->orderBy('created_at', false)
+            ->run();
+    }
+    
+    public function createUser(array $data) {
+        $this->request->mapPostToObject($this);
+        return $this->insertSingleQuery();
+    }
+    
+    public function updateUser(int $id, array $data) {
+        $this->request->mapPostToObject($this);
+        return $this->where('id', $id)->updateSingleQuery();
+    }
+    
+    public function deleteUser(int $id) {
+        return $this->deleteByIdQuery($id);
     }
 }
 ```
 
-### 4. Complex Query Building
+### CRUD Operations
 ```php
-class UserRepository {
-    public function findActiveUsersWithFilters(array $filters): array {
-        $userTable = new UserTable(); // No connection
-        
-        // Build query without connection
-        $query = $userTable->select()
-                           ->where('is_active', 1)
-                           ->whereNull('deleted_at');
-        
-        // Add filters conditionally
-        if (isset($filters['name'])) {
-            $query->whereLike('name', $filters['name']);
-        }
-        
-        if (isset($filters['created_after'])) {
-            $query->where('created_at', '>=', $filters['created_after']);
-        }
-        
-        // Connection created only when run() is called
-        return $query->run();
-    }
-}
+// Create
+$userModel = new UserModel();
+$userModel->name = 'John Doe';
+$userModel->email = 'john@example.com';
+$result = $userModel->insertSingleQuery();
+
+// Read
+$users = $userModel->select('id, name, email')->run();
+$user = $userModel->selectById(1);
+
+// Update
+$userModel->name = 'Jane Doe';
+$result = $userModel->where('id', 1)->updateSingleQuery();
+
+// Delete
+$result = $userModel->deleteByIdQuery(1);
 ```
 
 ## Best Practices
 
-### 1. Lazy Loading
-- Instantiate models without concern for database overhead
-- Let the system create connections only when needed
-- Use reserved properties for computed/related data
-
-### 2. Reserved Properties Convention
+### 1. Property Naming
 - Use underscore prefix for non-database properties
-- Store validation errors, computed values, related objects
-- Leverage automatic exclusion from CRUD operations
+- Database properties should match column names
+- Use nullable types for optional fields
 
-### 3. Database Layer Separation
-- **Model Layer**: Implement business logic, validation, multi-table operations
-- **Table Layer**: Define database schema, single-table operations
+### 2. Type Mapping
+- Define `_type_map` for automatic casting
+- Use appropriate PHP types
+- Handle nullable properties correctly
 
-### 4. Connection Management
-- Trust the lazy loading system
-- Use connection pooling automatically
-- Let the system handle resource cleanup
+### 3. Error Handling
+- Always check for null results
+- Use `getError()` for error messages
+- Log database errors appropriately
 
-### 5. Error Handling
-- Use reserved properties for validation errors
-- Implement proper error propagation through database layers
-- Log errors appropriately
+### 4. Performance
+- Use specific columns in SELECT queries
+- Implement pagination for large datasets
+- Use appropriate WHERE conditions
+- Leverage connection pooling
 
-## Architecture Benefits
+### 5. Security
+- Always use Table class methods (prepared statements)
+- Validate input data
+- Use proper authentication and authorization
+- Sanitize output data
 
-### 1. Performance
-- **Lazy Loading**: Connections created only when needed
-- **Connection Pooling**: Efficient resource reuse
-- **Memory Efficiency**: Lightweight model instantiation
+## Next Steps
 
-### 2. Maintainability
-- **Clear Separation**: Each layer has distinct responsibilities
-- **Composition over Inheritance**: Flexible and testable design
-- **Convention-based**: Underscore prefix for reserved properties
-
-### 3. Scalability
-- **Environment Adaptation**: OpenSwoole vs Standard PHP detection
-- **Resource Management**: Automatic connection lifecycle
-- **Multi-table Support**: Models can orchestrate multiple tables
-
-### 4. Developer Experience
-- **Intuitive API**: Natural property-based data access
-- **Automatic Exclusion**: No need to manually exclude properties
-- **Flexible Models**: Mix database and business properties seamlessly
-
-## Future Improvements
-
-1. **Enhanced Lazy Loading**
-   - Lazy loading of related objects
-   - Configurable loading strategies
-   - Performance monitoring
-
-2. **Advanced Validation**
-   - Rule-based validation system
-   - Cross-field validation
-   - Custom validation rules
-
-3. **Relationship Management**
-   - Automatic relationship loading
-   - Cascade operations
-   - Relationship caching
-
-4. **Performance Optimization**
-   - Query result caching
-   - Connection pool tuning
-   - Query performance monitoring
+- [Table Usage Guide](../QueryBuilder-Usage-Guide.md)
+- [CLI Database Commands](../cli/commands.md)
+- [Performance Guide](../guides/performance.md)

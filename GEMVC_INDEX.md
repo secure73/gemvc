@@ -3,7 +3,7 @@
 ## 1. Core Components (src/core/)
 
 ### Application Bootstrap
-- **Bootstrap.php** (7.9KB, 223 lines)
+- **Bootstrap.php** (7.7KB, 223 lines)
   - Routes HTTP requests
   - Handles API and web requests
   - Manages error responses
@@ -15,42 +15,42 @@
   - Manages Swoole-specific responses
 
 ### Service Layer
-- **ApiService.php** (2.5KB, 79 lines)
+- **ApiService.php** (2.4KB, 79 lines)
   - Defines API endpoint structure
   - Implements request validation
   - Handles response formatting
   - Provides authentication methods
 
-- **SwooleApiService.php** (3.1KB, 107 lines)
+- **SwooleApiService.php** (3.0KB, 107 lines)
   - Extends ApiService for Swoole
   - Adapts for async processing
   - Maintains Swoole compatibility
 
 ### Controller Layer
-- **Controller.php** (7.0KB, 220 lines)
+- **Controller.php** (6.8KB, 220 lines)
   - Handles request processing
   - Manages model interactions
   - Implements security features
   - Provides response formatting
 
 ### Documentation
-- **Documentation.php** (32KB, 849 lines)
+- **Documentation.php** (34KB, 895 lines)
   - Generates API documentation
   - Supports annotations
   - Creates OpenAPI specs
 
-- **ApiDocGenerator.php** (13KB, 385 lines)
+- **ApiDocGenerator.php** (14KB, 414 lines)
   - Analyzes API services
   - Generates documentation
   - Supports multiple formats
 
 ### System Components
-- **Runner.php** (1.9KB, 78 lines)
+- **Runner.php** (1.8KB, 78 lines)
   - Processes CLI commands
   - Manages system operations
   - Handles maintenance tasks
 
-- **RedisManager.php** (9.9KB, 389 lines)
+- **RedisManager.php** (10KB, 408 lines)
   - Handles Redis connections
   - Implements connection pooling
   - Manages Redis operations
@@ -58,7 +58,7 @@
   - Supports serialized response storage
   - Handles TTL for cached responses
 
-- **RedisConnectionException.php** (288B, 12 lines)
+- **RedisConnectionException.php** (277B, 12 lines)
   - Handles Redis connection errors
   - Provides specific error messages
   - Implements error handling
@@ -66,55 +66,70 @@
 ## 2. Database Components (src/database/)
 
 ### Core Database Classes
-- **Table.php** (31KB, 1043 lines)
+- **Table.php** (38KB, 1303 lines)
   - Provides ORM-like interface
   - Implements CRUD operations
   - Supports type mapping
   - Handles relationships
 
-- **PdoQuery.php** (9.1KB, 247 lines)
+- **PdoQuery.php** (16KB, 468 lines)
   - Extends QueryExecuter
   - Implements query building
   - Handles parameter binding
 
-- **QueryExecuter.php** (12KB, 409 lines)
+- **QueryExecuter.php** (10KB, 362 lines)
   - Manages SQL execution
   - Handles error management
   - Provides result formatting
 
-- **PdoConnection.php** (9.9KB, 335 lines)
-  - Implements connection pooling
-  - Handles connection health
-  - Manages resource tracking
+### Database Pool Management
+- **AbstractDatabasePool.php** (6.5KB, 204 lines)
+  - Abstract base for database pools
+  - Defines pool interface
+  - Handles common pool operations
 
-### Database Management
-- **DBPoolManager.php** (7.3KB, 256 lines)
-  - Manages database connections
-  - Implements connection reuse
-  - Handles pool configuration
+- **DatabasePoolFactory.php** (1.7KB, 60 lines)
+  - Creates database pool instances
+  - Manages pool configuration
+  - Handles pool selection
 
-- **DBConnection.php** (1.6KB, 67 lines)
-  - Manages database connections
-  - Implements connection options
-  - Handles connection state
+- **OpenSwooleDatabasePool.php** (4.4KB, 143 lines)
+  - Implements pool for OpenSwoole
+  - Handles async connections
+  - Manages Swoole-specific pooling
+
+- **StandardDatabasePool.php** (3.9KB, 131 lines)
+  - Implements standard database pool
+  - Handles traditional connections
+  - Manages connection lifecycle
 
 ### Schema Management
-- **TableGenerator.php** (35KB, 900 lines)
+- **Schema.php** (11KB, 511 lines)
+  - Manages database schema
+  - Handles table definitions
+  - Implements schema operations
+
+- **SchemaGenerator.php** (14KB, 402 lines)
+  - Generates database schemas
+  - Creates table structures
+  - Handles schema migrations
+
+- **TableGenerator.php** (31KB, 784 lines)
   - Creates database tables
   - Manages schema updates
   - Handles migrations
 
 ### Query Building
-- **QueryBuilder.php** (1.9KB, 79 lines)
+- **QueryBuilder.php** (7.3KB, 273 lines)
   - Builds SQL queries
   - Manages query state
   - Handles error tracking
 
-- **QueryBuilderInterface.php** (156B, 9 lines)
+- **QueryBuilderInterface.php** (1.1KB, 39 lines)
   - Defines query methods
   - Standardizes query operations
 
-- **SqlEnumCondition.php** (418B, 28 lines)
+- **SqlEnumCondition.php** (391B, 28 lines)
   - Defines SQL operators
   - Standardizes conditions
 
@@ -208,65 +223,96 @@
 ## 4. CLI Components (src/CLI/)
 
 ### Command System
-- **Command.php** (2.2KB, 88 lines)
+- **Command.php** (2.1KB, 88 lines)
   - Defines command structure
   - Handles command execution
   - Manages output
 
-- **InstallationTest.php** (809B, 27 lines)
+- **CommandCategories.php** (3.0KB, 82 lines)
+  - Organizes CLI commands
+  - Manages command categories
+  - Provides command grouping
+
+- **InstallationTest.php** (783B, 27 lines)
   - Tests installation
   - Verifies setup
   - Checks requirements
 
 ### Code Generation
-- **CreateService.php** (18KB, 589 lines)
+- **CreateService.php** (5.4KB, 177 lines)
   - Creates API services
   - Generates endpoints
   - Implements CRUD
 
-- **CreateController.php** (11KB, 379 lines)
+- **CreateController.php** (4.9KB, 161 lines)
   - Creates controllers
   - Implements actions
   - Handles models
 
-- **CreateModel.php** (8.3KB, 282 lines)
+- **CreateModel.php** (4.2KB, 145 lines)
   - Creates models
   - Implements traits
   - Handles data
 
-- **CreateTable.php** (4.9KB, 165 lines)
+- **CreateTable.php** (3.3KB, 109 lines)
   - Creates tables
   - Implements schema
   - Handles migrations
 
 ### Project Management
-- **InitProject.php** (18KB, 461 lines)
+- **InitProject.php** (26KB, 632 lines)
   - Creates project structure
   - Sets up configuration
   - Initializes environment
 
-- **Setup.php** (7.1KB, 196 lines)
-  - Configures environment
-  - Sets up server
-  - Manages settings
+### Database Management
+- **DbConnect.php** (3.3KB, 107 lines)
+  - Manages database connections
+  - Handles connection setup
+  - Implements connection testing
 
-- **Migrate.php** (2.5KB, 75 lines)
+- **DbDescribe.php** (17KB, 498 lines)
+  - Describes database structure
+  - Analyzes table schemas
+  - Generates schema documentation
+
+- **DbDrop.php** (2.2KB, 69 lines)
+  - Drops database tables
+  - Handles table removal
+  - Implements cleanup operations
+
+- **DbInit.php** (777B, 30 lines)
+  - Initializes database
+  - Sets up database structure
+  - Handles initial setup
+
+- **DbList.php** (2.8KB, 82 lines)
+  - Lists database tables
+  - Shows table information
+  - Provides database overview
+
+- **DbMigrate.php** (5.8KB, 150 lines)
   - Handles migrations
   - Updates schema
   - Manages versions
 
+- **DbUnique.php** (2.7KB, 81 lines)
+  - Manages unique constraints
+  - Handles uniqueness validation
+  - Implements constraint operations
+
 ### Base Generators
-- **BaseGenerator.php** (3.7KB, 139 lines)
+- **BaseGenerator.php** (4.3KB, 150 lines)
   - Base class for generators
   - Implements common functionality
   - Handles file operations
 
-- **BaseCrudGenerator.php** (4.0KB, 146 lines)
+- **BaseCrudGenerator.php** (3.8KB, 146 lines)
   - Base class for CRUD generators
   - Implements CRUD operations
   - Handles model generation
 
-- **CreateCrud.php** (1.7KB, 58 lines)
+- **CreateCrud.php** (867B, 29 lines)
   - Generates complete CRUD
   - Creates all necessary files
   - Implements full stack

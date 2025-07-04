@@ -36,30 +36,40 @@ Create a new file at `app/api/User.php`:
 
 namespace App\Api;
 
+use App\Controller\UserController;
 use Gemvc\Core\ApiService;
+use Gemvc\Http\JsonResponse;
 
 class User extends ApiService
 {
-    public function getUsers()
+    public function create(): JsonResponse
     {
-        $users = $this->controller->getUsers();
-        return $this->success($users);
+        // Validate POST data using definePostSchema
+        if(!$this->request->definePostSchema([
+            'name' => 'string',
+            'email' => 'email',
+            'password' => 'string'
+        ])) {
+            return $this->request->returnResponse();
+        }
+        
+        return (new UserController($this->request))->create();
     }
 
-    public function createUser()
+    public function read(): JsonResponse
     {
-        $data = $this->request->getJson();
-        
-        // Validate input
-        if (!$this->validate($data, [
-            'name' => 'required|string',
-            'email' => 'required|email'
-        ])) {
-            return $this->error('Invalid input');
+        // Validate GET parameters
+        if(!$this->request->defineGetSchema(["id" => "int"])) {
+            return $this->request->returnResponse();
         }
-
-        $user = $this->controller->createUser($data);
-        return $this->success($user);
+        
+        $id = $this->request->intValueGet("id");
+        if(!$id) {
+            return $this->request->returnResponse();
+        }
+        
+        $this->request->post['id'] = $id;
+        return (new UserController($this->request))->read();
     }
 }
 ```
@@ -74,24 +84,41 @@ Create a new file at `app/controller/UserController.php`:
 namespace App\Controller;
 
 use App\Model\UserModel;
+use Gemvc\Core\Controller;
+use Gemvc\Http\JsonResponse;
+use Gemvc\Http\Response;
 
-class UserController
+class UserController extends Controller
 {
-    private UserModel $model;
-
-    public function __construct()
+    public function create(): JsonResponse
     {
-        $this->model = new UserModel();
+        $userModel = new UserModel();
+        $userModel->request = $this->request;
+        
+        // Map POST data to model properties
+        $this->request->mapPostToObject($userModel);
+        $result = $userModel->insertSingleQuery();
+        
+        if ($result === null) {
+            return Response::badRequest('Failed to create user');
+        }
+        
+        return Response::success($result, 'User created successfully');
     }
 
-    public function getUsers()
+    public function read(): JsonResponse
     {
-        return $this->model->getAll();
-    }
-
-    public function createUser(array $data)
-    {
-        return $this->model->create($data);
+        $userModel = new UserModel();
+        $userModel->request = $this->request;
+        
+        $id = $this->request->post['id'];
+        $user = $userModel->selectById($id);
+        
+        if ($user === null) {
+            return Response::notFound('User not found');
+        }
+        
+        return Response::success($user, 'User retrieved successfully');
     }
 }
 ```
@@ -107,23 +134,18 @@ namespace App\Model;
 
 use App\Table\UserTable;
 
-class UserModel
+class UserModel extends UserTable
 {
-    private UserTable $table;
-
-    public function __construct()
-    {
-        $this->table = new UserTable();
-    }
-
     public function getAll()
     {
-        return $this->table->select()->fetchAll();
+        return $this->select()->run();
     }
 
     public function create(array $data)
     {
-        return $this->table->insert($data);
+        // Map POST data to object properties
+        $this->request->mapPostToObject($this);
+        return $this->insertSingleQuery();
     }
 }
 ```
@@ -133,58 +155,79 @@ class UserModel
 ### Request Validation
 
 ```php
-public function updateUser()
+public function update(): JsonResponse
 {
-    $data = $this->request->getJson();
-    
-    // Validate with custom rules
-    if (!$this->validate($data, [
-        'id' => 'required|integer',
-        'name' => 'required|string|min:3',
-        'email' => 'required|email|unique:users',
-        'age' => 'integer|min:18'
+    // Validate with current GEMVC validation schema
+    if(!$this->request->definePostSchema([
+        'id' => 'int',
+        'name' => 'string',
+        'email' => 'email'
     ])) {
-        return $this->error('Validation failed', $this->getErrors());
+        return $this->request->returnResponse();
     }
 
-    $user = $this->controller->updateUser($data);
-    return $this->success($user);
+    // Validate string lengths
+    if(!$this->request->validateStringPosts([
+        'name' => '3|50',  // Min 3, max 50 characters
+        'email' => '5|100' // Min 5, max 100 characters
+    ])) {
+        return $this->request->returnResponse();
+    }
+
+    return (new UserController($this->request))->update();
 }
 ```
 
 ### Authentication
 
 ```php
-public function getProfile()
+public function getProfile(): JsonResponse
 {
-    // Check authentication
+    // Check authentication using current GEMVC auth method
     if (!$this->request->auth()) {
-        return $this->error('Unauthorized', null, 401);
+        return $this->request->returnResponse();
     }
 
     // Get user ID from token
     $userId = $this->request->userId();
     $profile = $this->controller->getUserProfile($userId);
     
-    return $this->success($profile);
+    return Response::success($profile);
+}
+
+public function adminOnly(): JsonResponse
+{
+    // Check for specific roles
+    if (!$this->request->auth(['admin'])) {
+        return $this->request->returnResponse();
+    }
+    
+    return Response::success('Admin access granted');
 }
 ```
 
 ### Error Handling
 
 ```php
-public function deleteUser()
+public function delete(): JsonResponse
 {
     try {
-        $id = $this->request->getParam('id');
+        // Validate required parameters
+        if(!$this->request->definePostSchema([
+            'id' => 'int'
+        ])) {
+            return $this->request->returnResponse();
+        }
+        
+        $id = $this->request->intValuePost('id');
         
         if (!$this->controller->deleteUser($id)) {
-            return $this->error('User not found', null, 404);
+            return Response::notFound('User not found');
         }
 
-        return $this->success(null, 'User deleted successfully');
+        return Response::success(null, 'User deleted successfully');
     } catch (\Exception $e) {
-        return $this->error('Server error', $e->getMessage(), 500);
+        return Response::internalError($e->getMessage());
     }
 }
 ```
@@ -193,20 +236,36 @@ public function deleteUser()
 
 ```php
 // Success response
-return $this->success($data, 'Operation successful');
+return Response::success($data, 'Operation successful');
 
 // Error response
-return $this->error('Operation failed', $errors, 400);
+return Response::badRequest('Operation failed');
 
-// Custom response
-return $this->response([
-    'status' => 'success',
-    'data' => $data,
-    'meta' => [
-        'page' => 1,
-        'total' => 100
-    ]
-]);
+// Custom status codes (GEMVC specific)
+return Response::updated($data, 'Resource updated'); // 209
+return Response::deleted($data, 'Resource deleted'); // 210
+```
+
+### List Operations with Filtering and Sorting
+
+```php
+public function list(): JsonResponse
+{
+    // Define searchable fields and their types
+    $this->request->findable([
+        'name' => 'string',
+        'email' => 'string'
+    ]);
+
+    // Define sortable fields
+    $this->request->sortable([
+        'id',
+        'name',
+        'created_at'
+    ]);
+    
+    return (new UserController($this->request))->list();
+}
 ```
 
 ## Best Practices
@@ -218,13 +277,13 @@ return $this->response([
 - Version your APIs
 
 ### 2. Security
-- Implement authentication
-- Validate all inputs
+- Implement authentication using `$this->request->auth()`
+- Validate all inputs using `definePostSchema()` and `defineGetSchema()`
 - Sanitize outputs
 - Use HTTPS
 
 ### 3. Performance
-- Implement caching
+- Implement caching using RedisManager
 - Optimize database queries
 - Use pagination
 - Compress responses
@@ -245,4 +304,39 @@ return $this->response([
 
 - [Authentication Guide](../guides/authentication.md)
 - [Database Guide](../guides/database.md)
-- [Security Guide](../guides/security.md) 
+- [Security Guide](../guides/security.md)
+
+## CLI Commands
+
+Gemvc provides a powerful CLI tool for rapid development:
+
+```bash
+# Initialize a new project
+vendor/bin/gemvc init
+
+# Create individual components
+vendor/bin/gemvc create:service ServiceName
+vendor/bin/gemvc create:controller ServiceName
+vendor/bin/gemvc create:model ServiceName
+vendor/bin/gemvc create:table ServiceName
+
+# Create service with specific components
+vendor/bin/gemvc create:service ServiceName -c  # with controller
+vendor/bin/gemvc create:service ServiceName -m  # with model
+vendor/bin/gemvc create:service ServiceName -t  # with table
+vendor/bin/gemvc create:service ServiceName -cmt  # with all components
+
+# Create complete CRUD operations (recommended)
+vendor/bin/gemvc create:crud ServiceName
+
+# Database operations
+vendor/bin/gemvc db:init
+vendor/bin/gemvc db:migrate
+vendor/bin/gemvc db:list
+vendor/bin/gemvc db:describe TableName
+vendor/bin/gemvc db:drop TableName
+vendor/bin/gemvc db:unique TableName
+vendor/bin/gemvc db:connect
+```
+
+The `create:crud` command is the most convenient way to generate a complete CRUD API - it creates the service, controller, model, and table files all at once. 

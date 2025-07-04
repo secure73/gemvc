@@ -20,153 +20,169 @@ docker-compose up --build
 
 ---
 
-## 1. Create Your First API Service
+## 1. Create Your First API
 
-You can create a new API service using the CLI:
+Generate a complete CRUD API for a resource:
 
-### Option 1: Service Only
 ```bash
-vendor/bin/gemvc create:service User
+vendor/bin/gemvc create:crud Product
 ```
-- Generates: `app/api/User.php`
 
-### Option 2: Service + Controller, Model, Table
-```bash
-vendor/bin/gemvc create:service User -cmt
-```
-- Generates:  
-  - `app/api/User.php`  
-  - `app/controller/UserController.php`  
-  - `app/model/UserModel.php`  
-  - `app/table/UserTable.php`
+This creates:
+- `app/api/Product.php` - API endpoints
+- `app/controller/ProductController.php` - Business logic
+- `app/model/ProductModel.php` - Data model
+- `app/table/ProductTable.php` - Database schema
 
-Flags:  
-- `-c`: Controller  
-- `-m`: Model  
-- `-t`: Table
+## 2. Set Up Database
 
----
-
-## 2. Create Individual Components
+Initialize and migrate your database:
 
 ```bash
-vendor/bin/gemvc create:controller User   # Controller
-vendor/bin/gemvc create:model User        # Model
-vendor/bin/gemvc create:table User        # Table
+vendor/bin/gemvc db:init
+vendor/bin/gemvc db:migrate ProductTable
+vendor/bin/gemvc db:describe ptoducts
+
 ```
 
 ---
 
-## 3. Create CRUD Operations
-
-```bash
-vendor/bin/gemvc create:crud User
-```
-Creates all files for full CRUD.
-
----
-
-## 4. Database Management
-
-**Common commands:**
-```bash
-vendor/bin/gemvc db:init                # Initialize database
-vendor/bin/gemvc db:migrate UserTable   # Migrate/update table
-vendor/bin/gemvc db:list                # List all tables
-vendor/bin/gemvc db:drop                # Drop database
-```
-
-**Example Table Class:**
-```php
-namespace App\Table;
-use Gemvc\Database\Table;
-
-class UserTable extends Table {
-    public int $id;
-    public string $name;
-    public string $email;
-    public ?string $description;
-    public string $created_at;
-}
-```
-
-**Migrate:**
-```bash
-vendor/bin/gemvc db:migrate UserTable
-```
-- Adds new columns if you update the class.
-- **Never removes columns automatically** (prevents data loss).
-
----
-
-## 5. Test Your API
+## 3. Test Your API
 
 **Try your endpoint:**
 ```bash
-curl http://localhost:9501/user/list
+curl http://localhost:9501/api/user/list
 ```
 Or visit the [auto-generated API docs](http://localhost:9501/index/document).
 
 **Sample response:**
 ```json
 {
-    "status": "success",
+    "response_code": 200,
+    "message": "OK",
     "data": [
         {
             "id": 1,
-            "username": "john_doe",
+            "name": "John Doe",
             "email": "john@example.com",
-            "is_active": true
+            "created_at": "2024-01-01 12:00:00"
         }
-    ]
+    ],
+    "count": 1,
+    "service_message": "list of users fetched successfully"
 }
 ```
 
 ---
 
-## 6. Common Patterns
+## 4. Common Patterns
 
 ### Request Validation
 ```php
-$this->validatePosts([
-    'username' => 'string',
+// In your API service
+if(!$this->request->definePostSchema([
+    'name' => 'string',
     'email' => 'email',
-    '?bio' => 'string'  // Optional
-]);
+    '?description' => 'string'  // Optional field
+])) {
+    return $this->request->returnResponse();
+}
+
+// Validate string lengths
+if(!$this->request->validateStringPosts([
+    'name' => '3|50',      // Min 3, max 50 characters
+    'email' => '5|100'     // Min 5, max 100 characters
+])) {
+    return $this->request->returnResponse();
+}
 ```
 
 ### Error Handling
 ```php
 try {
-    // ...
+    // Your code here
 } catch (\Exception $e) {
-    return (new JsonResponse())->error($e->getMessage());
+    return Response::internalError($e->getMessage());
 }
 ```
 
 ### Authentication
 ```php
-if(!$this->request->auth(['admin'])) {
+// Simple authentication check
+if (!$this->request->auth()) {
     return $this->request->returnResponse();
+}
+
+// Role-based authorization
+if (!$this->request->auth(['admin'])) {
+    return $this->request->returnResponse();
+}
+```
+
+### Database Operations
+```php
+// In your Model class (extends Table)
+public function getAllUsers() {
+    return $this->select('id, name, email')
+                ->where('is_active', true)
+                ->orderBy('created_at', false) // DESC
+                ->run();
+}
+
+public function createUser() {
+    $this->request->mapPostToObject($this);
+    return $this->insertSingleQuery();
+}
+```
+
+### List Operations with Filtering
+```php
+public function list(): JsonResponse
+{
+    // Define searchable fields
+    $this->request->findable([
+        'name' => 'string',
+        'email' => 'string'
+    ]);
+
+    // Define sortable fields
+    $this->request->sortable([
+        'id',
+        'name',
+        'created_at'
+    ]);
+    
+    return (new UserController($this->request))->list();
 }
 ```
 
 ---
 
-## 7. CLI Commands Reference
+## 5. CLI Commands Reference
 
-- `vendor/bin/gemvc create:service ServiceName -cmt`
+### Project Management
+- `vendor/bin/gemvc init` - Initialize new project
+
+### Code Generation
+- `vendor/bin/gemvc create:service ServiceName`
 - `vendor/bin/gemvc create:controller ControllerName`
 - `vendor/bin/gemvc create:model ModelName`
 - `vendor/bin/gemvc create:table TableName`
-- `vendor/bin/gemvc create:crud ResourceName`
-- `vendor/bin/gemvc db:init`
+
+### Database Management
+- `vendor/bin/gemvc db:connect`
+- `vendor/bin/gemvc db:describe TableClassName`
+- `vendor/bin/gemvc db:list`
 - `vendor/bin/gemvc db:migrate TableClassName`
-- `vendor/bin/gemvc db:tables`
+- `vendor/bin/gemvc db:unique TableClassName`
+
+### Help & Information
+- `vendor/bin/gemvc --help`
+- `vendor/bin/gemvc --version`
 
 ---
 
-## 8. Troubleshooting
+## 6. Troubleshooting
 
 - **Docker port in use?**  
   Stop other services using port 9501, 80, 3306, or 8080.
@@ -174,13 +190,15 @@ if(!$this->request->auth(['admin'])) {
   Use Docker or install required extensions: `pdo`, `openssl`, `gd`, `redis`, `openswoole` (optional).
 - **Database connection issues?**  
   Check your `.env` file and Docker logs.
+- **CLI command not found?**  
+  Make sure you're in the project root directory and run `composer install`.
 
 ---
 
-## 9. Next Steps
+## 7. Next Steps
 
-- [Core Features](../features/README.md)
-- [Database Guide](../guides/database.md)
+- [Core Features](../features/api.md)
+- [Database Guide](../core/database-architecture.md)
 - [Authentication Guide](../guides/authentication.md)
 
 ---
