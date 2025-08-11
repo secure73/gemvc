@@ -1,6 +1,7 @@
 <?php
 
 use Gemvc\Core\SwooleBootstrap;
+use Gemvc\Helper\ProjectHelper;
 use Gemvc\Http\SwooleRequest;
 // Minimal OpenSwoole HTTP server
 
@@ -8,11 +9,28 @@ if (!extension_loaded('openswoole')) {
     die("OpenSwoole extension is not installed.\n");
 }
 
-require __DIR__ . '/vendor/autoload.php';
+$autoloaderFound = false;
+$autoloaderPaths = [
+    // First priority: for when index.php is in the project root
+    __DIR__ . '/vendor/autoload.php',
+    
+    // Second priority: for library development mode
+    __DIR__ . '/../../../vendor/autoload.php',
+];
 
-use Symfony\Component\Dotenv\Dotenv;
-$dotenv = new Dotenv();
-$dotenv->load(__DIR__.'/app/.env');
+foreach ($autoloaderPaths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
+        $autoloaderFound = true;
+        break;
+    }
+}
+
+if (!$autoloaderFound) {
+    die("Composer's autoloader not found. Please run 'composer install'.");
+}
+
+ProjectHelper::loadEnv();
 
 $server = new OpenSwoole\HTTP\Server(serverHost(), serverPort());
 
