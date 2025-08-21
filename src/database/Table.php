@@ -661,6 +661,52 @@ class Table
         $this->_binds[':' . $paramName] = $value;
         return $this;
     }
+
+    /**
+     * Adds a WHERE condition for greater than comparison
+     * 
+     * @param string $column Column name
+     * @param int|float $value Value to compare against
+     * @return self For method chaining
+     */
+    public function whereBiggerThan(string $column, int|float $value): self
+    {
+        if (empty($column)) {
+            $this->setError("Column name cannot be empty in WHERE > clause");
+            return $this;
+        }
+        
+        $paramName = $column . '_gt_' . count($this->_arr_where);
+        $this->_arr_where[] = count($this->_arr_where) 
+            ? " AND {$column} > :{$paramName} " 
+            : " WHERE {$column} > :{$paramName} ";
+            
+        $this->_binds[':' . $paramName] = $value;
+        return $this;
+    }
+
+    /**
+     * Adds a WHERE condition for less than comparison
+     * 
+     * @param string $column Column name
+     * @param int|float $value Value to compare against
+     * @return self For method chaining
+     */
+    public function whereLessThan(string $column, int|float $value): self
+    {
+        if (empty($column)) {
+            $this->setError("Column name cannot be empty in WHERE < clause");
+            return $this;
+        }
+        
+        $paramName = $column . '_lt_' . count($this->_arr_where);
+        $this->_arr_where[] = count($this->_arr_where) 
+            ? " AND {$column} < :{$paramName} " 
+            : " WHERE {$column} < :{$paramName} ";
+            
+        $this->_binds[':' . $paramName] = $value;
+        return $this;
+    }
     
     /**
      * Alias for whereOr() for backward compatibility
