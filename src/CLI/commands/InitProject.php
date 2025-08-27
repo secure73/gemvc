@@ -65,6 +65,12 @@ class InitProject extends Command
                 $this->write("  2. Then you can run 'gemvc' from any location\n\n", 'white');
             }
 
+            // Offer PHPStan installation
+            $this->offerPhpstanInstallation();
+
+            // Offer testing framework installation
+            $this->offerTestingFrameworkInstallation();
+
             $this->success("GEMVC project initialized successfully!", true);
 
         } catch (\Exception $e) {
@@ -625,8 +631,528 @@ EOT;
                     continue;
                 }
 
-                $this->info("Copied: {$file} to {$targetDir}");
+                        $this->info("Copied: {$file} to {$targetDir}");
             }
         }
     }
-} 
+
+    /**
+     * Offer PHPStan installation to the user
+     * 
+     * @return void
+     */
+    private function offerPhpstanInstallation(): void
+    {
+        // Skip if in non-interactive mode
+        if ($this->nonInteractive) {
+            $this->info("Skipped PHPStan installation (non-interactive mode)");
+            return;
+        }
+
+        $this->write("\n\033[1;33m╭─ PHPStan Installation ───────────────────────────────────────╮\033[0m\n", 'yellow');
+        $this->write("\033[1;33m│\033[0m \033[1;94mWould you like to install PHPStan for static analysis?\033[0m        \033[1;33m│\033[0m\n", 'white');
+        $this->write("\033[1;33m│\033[0m \033[1;36mPHPStan will help catch bugs and improve code quality\033[0m      \033[1;33m│\033[0m\n", 'white');
+        $this->write("\033[1;33m│\033[0m \033[1;36mThis will install phpstan/phpstan as a dev dependency\033[0m    \033[1;33m│\033[0m\n", 'white');
+        $this->write("\033[1;33m╰───────────────────────────────────────────────────────────────╯\033[0m\n", 'yellow');
+        
+        echo "\n\033[1;36mInstall PHPStan? (y/N):\033[0m ";
+        $handle = fopen("php://stdin", "r");
+        $choice = trim(fgets($handle));
+        fclose($handle);
+        
+        if (strtolower($choice) === 'y') {
+            $this->installPhpstan();
+        } else {
+            $this->info("PHPStan installation skipped");
+        }
+    }
+
+    /**
+     * Install PHPStan and copy configuration file
+     * 
+     * @return void
+     */
+    private function installPhpstan(): void
+    {
+        try {
+            $this->info("Installing PHPStan...");
+            
+            // Check if composer.json exists
+            $composerJsonPath = $this->basePath . '/composer.json';
+            if (!file_exists($composerJsonPath)) {
+                $this->warning("composer.json not found. Please run 'composer init' first.");
+                return;
+            }
+            
+            // Install PHPStan via Composer
+            $this->info("Running: composer require --dev phpstan/phpstan");
+            $output = [];
+            $returnCode = 0;
+            
+            // Change to project directory
+            $currentDir = getcwd();
+            chdir($this->basePath);
+            
+            // Execute composer require command
+            exec('composer require --dev phpstan/phpstan 2>&1', $output, $returnCode);
+            
+            // Restore original directory
+            chdir($currentDir);
+            
+            if ($returnCode !== 0) {
+                $this->warning("Failed to install PHPStan via Composer. Error output:");
+                foreach ($output as $line) {
+                    $this->write("  {$line}\n", 'red');
+                }
+                $this->warning("You can manually install PHPStan with: composer require --dev phpstan/phpstan");
+                return;
+            }
+            
+            $this->info("PHPStan installed successfully!");
+            
+            // Copy phpstan.neon configuration file
+            $this->copyPhpstanConfig();
+            
+            // Add composer script for PHPStan
+            $this->addPhpstanComposerScript();
+            
+        } catch (\Exception $e) {
+            $this->warning("PHPStan installation failed: " . $e->getMessage());
+            $this->warning("You can manually install PHPStan with: composer require --dev phpstan/phpstan");
+        }
+    }
+
+    /**
+     * Copy PHPStan configuration file to project root
+     * 
+     * @return void
+     */
+    private function copyPhpstanConfig(): void
+    {
+        try {
+            $sourceConfig = $this->packagePath . '/src/startup/phpstan.neon';
+            $targetConfig = $this->basePath . '/phpstan.neon';
+            
+            if (!file_exists($sourceConfig)) {
+                $this->warning("PHPStan configuration template not found: {$sourceConfig}");
+                return;
+            }
+            
+            // Check if target already exists
+            if (file_exists($targetConfig)) {
+                echo "PHPStan configuration already exists: {$targetConfig}" . PHP_EOL;
+                echo "Do you want to overwrite it? (y/N): ";
+                $handle = fopen("php://stdin", "r");
+                $line = fgets($handle);
+                fclose($handle);
+                
+                if (strtolower(trim($line)) !== 'y') {
+                    $this->info("Skipped PHPStan configuration copy");
+                    return;
+                }
+            }
+            
+            if (!copy($sourceConfig, $targetConfig)) {
+                throw new \RuntimeException("Failed to copy PHPStan configuration file");
+            }
+            
+            $this->info("PHPStan configuration copied: {$targetConfig}");
+            
+        } catch (\Exception $e) {
+            $this->warning("Failed to copy PHPStan configuration: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Add PHPStan script to composer.json
+     * 
+     * @return void
+     */
+    private function addPhpstanComposerScript(): void
+    {
+        try {
+            $composerJsonPath = $this->basePath . '/composer.json';
+            $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->warning("Failed to parse composer.json");
+                return;
+            }
+            
+            // Initialize scripts section if it doesn't exist
+            if (!isset($composerJson['scripts'])) {
+                $composerJson['scripts'] = [];
+            }
+            
+            // Add PHPStan scripts if they don't exist
+            if (!isset($composerJson['scripts']['phpstan'])) {
+                $composerJson['scripts']['phpstan'] = 'phpstan analyse';
+                $this->info("Added PHPStan script to composer.json");
+            }
+            
+            if (!isset($composerJson['scripts']['phpstan:check'])) {
+                $composerJson['scripts']['phpstan:check'] = 'phpstan analyse --error-format=json';
+                $this->info("Added PHPStan check script to composer.json");
+            }
+            
+            // Write updated composer.json
+            $updatedJson = json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            if (!file_put_contents($composerJsonPath, $updatedJson)) {
+                throw new \RuntimeException("Failed to update composer.json");
+            }
+            
+                         $this->info("Composer.json updated with PHPStan scripts");
+             
+         } catch (\Exception $e) {
+             $this->warning("Failed to update composer.json: " . $e->getMessage());
+         }
+     }
+
+     /**
+      * Offer testing framework installation to the user
+      * 
+      * @return void
+      */
+     private function offerTestingFrameworkInstallation(): void
+     {
+         // Skip if in non-interactive mode
+         if ($this->nonInteractive) {
+             $this->info("Skipped testing framework installation (non-interactive mode)");
+             return;
+         }
+
+         $this->write("\n\033[1;33m╭─ Testing Framework Installation ───────────────────────────────╮\033[0m\n", 'yellow');
+         $this->write("\033[1;33m│\033[0m \033[1;94mWould you like to install a testing framework?\033[0m                \033[1;33m│\033[0m\n", 'white');
+         $this->write("\033[1;33m│\033[0m \033[1;36mChoose between PHPUnit (traditional) or Pest (modern & expressive)\033[0m \033[1;33m│\033[0m\n", 'white');
+         $this->write("\033[1;33m╰──────────────────────────────────────────────────────────────────╯\033[0m\n", 'yellow');
+         
+         echo "\n\033[1;36mChoose testing framework:\033[0m\n";
+         echo "  [\033[32m1\033[0m] \033[1mPHPUnit\033[0m - Traditional PHP testing framework\n";
+         echo "  [\033[32m2\033[0m] \033[1mPest\033[0m - Modern, expressive testing framework\n";
+         echo "  [\033[32m3\033[0m] \033[1mSkip\033[0m - No testing framework\n";
+         echo "\n\033[1;36mEnter choice (1-3):\033[0m ";
+         
+         $handle = fopen("php://stdin", "r");
+         $choice = trim(fgets($handle));
+         fclose($handle);
+         
+         switch ($choice) {
+             case '1':
+                 $this->installPhpunit();
+                 break;
+             case '2':
+                 $this->installPest();
+                 break;
+             case '3':
+                 $this->info("Testing framework installation skipped");
+                 break;
+             default:
+                 $this->warning("Invalid choice. Testing framework installation skipped.");
+                 break;
+         }
+     }
+
+     /**
+      * Install PHPUnit testing framework
+      * 
+      * @return void
+      */
+     private function installPhpunit(): void
+     {
+         try {
+             $this->info("Installing PHPUnit...");
+             
+             // Check if composer.json exists
+             $composerJsonPath = $this->basePath . '/composer.json';
+             if (!file_exists($composerJsonPath)) {
+                 $this->warning("composer.json not found. Please run 'composer init' first.");
+                 return;
+             }
+             
+             // Install PHPUnit via Composer
+             $this->info("Running: composer require --dev phpunit/phpunit");
+             $output = [];
+             $returnCode = 0;
+             
+             // Change to project directory
+             $currentDir = getcwd();
+             chdir($this->basePath);
+             
+             // Execute composer require command
+             exec('composer require --dev phpunit/phpunit 2>&1', $output, $returnCode);
+             
+             // Restore original directory
+             chdir($currentDir);
+             
+             if ($returnCode !== 0) {
+                 $this->warning("Failed to install PHPUnit via Composer. Error output:");
+                 foreach ($output as $line) {
+                     $this->write("  {$line}\n", 'red');
+                 }
+                 $this->warning("You can manually install PHPUnit with: composer require --dev phpunit/phpunit");
+                 return;
+             }
+             
+             $this->info("PHPUnit installed successfully!");
+             
+             // Create PHPUnit configuration file
+             $this->createPhpunitConfig();
+             
+             // Add composer scripts for PHPUnit
+             $this->addPhpunitComposerScripts();
+             
+         } catch (\Exception $e) {
+             $this->warning("PHPUnit installation failed: " . $e->getMessage());
+             $this->warning("You can manually install PHPUnit with: composer require --dev phpunit/phpunit");
+         }
+     }
+
+     /**
+      * Install Pest testing framework
+      * 
+      * @return void
+      */
+     private function installPest(): void
+     {
+         try {
+             $this->info("Installing Pest...");
+             
+             // Check if composer.json exists
+             $composerJsonPath = $this->basePath . '/composer.json';
+             if (!file_exists($composerJsonPath)) {
+                 $this->warning("composer.json not found. Please run 'composer init' first.");
+                 return;
+             }
+             
+             // Install Pest via Composer
+             $this->info("Running: composer require --dev pestphp/pest");
+             $output = [];
+             $returnCode = 0;
+             
+             // Change to project directory
+             $currentDir = getcwd();
+             chdir($this->basePath);
+             
+             // Execute composer require command
+             exec('composer require --dev pestphp/pest 2>&1', $output, $returnCode);
+             
+             // Restore original directory
+             chdir($currentDir);
+             
+             if ($returnCode !== 0) {
+                 $this->warning("Failed to install Pest via Composer. Error output:");
+                 foreach ($output as $line) {
+                     $this->write("  {$line}\n", 'red');
+                 }
+                 $this->warning("You can manually install Pest with: composer require --dev pestphp/pest");
+                 return;
+             }
+             
+             $this->info("Pest installed successfully!");
+             
+             // Initialize Pest
+             $this->initializePest();
+             
+             // Add composer scripts for Pest
+             $this->addPestComposerScripts();
+             
+         } catch (\Exception $e) {
+             $this->warning("Pest installation failed: " . $e->getMessage());
+             $this->warning("You can manually install Pest with: composer require --dev pestphp/pest");
+         }
+     }
+
+     /**
+      * Create PHPUnit configuration file
+      * 
+      * @return void
+      */
+     private function createPhpunitConfig(): void
+     {
+         try {
+             $targetConfig = $this->basePath . '/phpunit.xml';
+             
+             // Check if target already exists
+             if (file_exists($targetConfig)) {
+                 echo "PHPUnit configuration already exists: {$targetConfig}" . PHP_EOL;
+                 echo "Do you want to overwrite it? (y/N): ";
+                 $handle = fopen("php://stdin", "r");
+                 $line = fgets($handle);
+                 fclose($handle);
+                 
+                 if (strtolower(trim($line)) !== 'y') {
+                     $this->info("Skipped PHPUnit configuration creation");
+                     return;
+                 }
+             }
+             
+             // Create basic PHPUnit configuration
+             $phpunitConfig = '<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         processIsolation="false"
+         stopOnFailure="false">
+    <testsuites>
+        <testsuite name="GEMVC Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <coverage>
+        <include>
+            <directory suffix=".php">app</directory>
+        </include>
+    </coverage>
+</phpunit>';
+             
+             if (!file_put_contents($targetConfig, $phpunitConfig)) {
+                 throw new \RuntimeException("Failed to create PHPUnit configuration file");
+             }
+             
+             $this->info("PHPUnit configuration created: {$targetConfig}");
+             
+             // Create tests directory
+             $testsDir = $this->basePath . '/tests';
+             if (!is_dir($testsDir)) {
+                 if (!@mkdir($testsDir, 0755, true)) {
+                     $this->warning("Failed to create tests directory: {$testsDir}");
+                 } else {
+                     $this->info("Created tests directory: {$testsDir}");
+                 }
+             }
+             
+         } catch (\Exception $e) {
+             $this->warning("Failed to create PHPUnit configuration: " . $e->getMessage());
+         }
+     }
+
+     /**
+      * Initialize Pest testing framework
+      * 
+      * @return void
+      */
+     private function initializePest(): void
+     {
+         try {
+             $this->info("Initializing Pest...");
+             
+             // Change to project directory
+             $currentDir = getcwd();
+             chdir($this->basePath);
+             
+             // Run Pest init command
+             $output = [];
+             $returnCode = 0;
+             exec('./vendor/bin/pest --init 2>&1', $output, $returnCode);
+             
+             // Restore original directory
+             chdir($currentDir);
+             
+             if ($returnCode !== 0) {
+                 $this->warning("Failed to initialize Pest. Error output:");
+                 foreach ($output as $line) {
+                     $this->write("  {$line}\n", 'red');
+                 }
+                 $this->warning("You can manually initialize Pest with: ./vendor/bin/pest --init");
+                 return;
+             }
+             
+             $this->info("Pest initialized successfully!");
+             
+         } catch (\Exception $e) {
+             $this->warning("Failed to initialize Pest: " . $e->getMessage());
+         }
+     }
+
+     /**
+      * Add PHPUnit composer scripts
+      * 
+      * @return void
+      */
+     private function addPhpunitComposerScripts(): void
+     {
+         try {
+             $composerJsonPath = $this->basePath . '/composer.json';
+             $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+             
+             if (json_last_error() !== JSON_ERROR_NONE) {
+                 $this->warning("Failed to parse composer.json");
+                 return;
+             }
+             
+             // Initialize scripts section if it doesn't exist
+             if (!isset($composerJson['scripts'])) {
+                 $composerJson['scripts'] = [];
+             }
+             
+             // Add PHPUnit scripts if they don't exist
+             if (!isset($composerJson['scripts']['test'])) {
+                 $composerJson['scripts']['test'] = 'phpunit';
+                 $this->info("Added PHPUnit test script to composer.json");
+             }
+             
+             if (!isset($composerJson['scripts']['test:coverage'])) {
+                 $composerJson['scripts']['test:coverage'] = 'phpunit --coverage-html coverage';
+                 $this->info("Added PHPUnit coverage script to composer.json");
+             }
+             
+             // Write updated composer.json
+             $updatedJson = json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+             if (!file_put_contents($composerJsonPath, $updatedJson)) {
+                 throw new \RuntimeException("Failed to update composer.json");
+             }
+             
+             $this->info("Composer.json updated with PHPUnit scripts");
+             
+         } catch (\Exception $e) {
+             $this->warning("Failed to update composer.json: " . $e->getMessage());
+         }
+     }
+
+     /**
+      * Add Pest composer scripts
+      * 
+      * @return void
+      */
+     private function addPestComposerScripts(): void
+     {
+         try {
+             $composerJsonPath = $this->basePath . '/composer.json';
+             $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+             
+             if (json_last_error() !== JSON_ERROR_NONE) {
+                 $this->warning("Failed to parse composer.json");
+                 $this->warning("Failed to parse composer.json");
+                 return;
+             }
+             
+             // Initialize scripts section if it doesn't exist
+             if (!isset($composerJson['scripts'])) {
+                 $composerJson['scripts'] = [];
+             }
+             
+             // Add Pest scripts if they don't exist
+             if (!isset($composerJson['scripts']['test'])) {
+                 $composerJson['scripts']['test'] = 'pest';
+                 $this->info("Added Pest test script to composer.json");
+             }
+             
+             if (!isset($composerJson['scripts']['test:parallel'])) {
+                 $composerJson['scripts']['test:parallel'] = 'pest --parallel';
+                 $this->info("Added Pest parallel test script to composer.json");
+             }
+             
+             // Write updated composer.json
+             $updatedJson = json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+             if (!file_put_contents($composerJsonPath, $updatedJson)) {
+                 throw new \RuntimeException("Failed to update composer.json");
+             }
+             
+             $this->info("Composer.json updated with Pest scripts");
+             
+         } catch (\Exception $e) {
+             $this->warning("Failed to update composer.json: " . $e->getMessage());
+         }
+     }
+ } 

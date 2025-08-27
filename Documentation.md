@@ -53,6 +53,8 @@
 - [API Documentation](docs/features/api-documentation.md)
 - [Code Generation](docs/features/code-generation.md)
 - [Testing Tools](docs/features/testing.md)
+- [Code Quality](docs/features/code-quality.md) - PHPStan integration for static analysis
+- [Testing Framework](docs/features/testing-framework.md) - PHPUnit or Pest integration for comprehensive testing
 
 ## 📋 Requirements
 - PHP 8.0+

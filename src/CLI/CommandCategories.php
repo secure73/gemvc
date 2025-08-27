@@ -6,7 +6,7 @@ class CommandCategories
 {
     public const CATEGORIES = [
         'Project Management' => [
-            'init' => 'Initialize a new GEMVC project with server configuration (Apache/Swoole)',
+            'init' => 'Initialize a new GEMVC project with server configuration (Apache/Swoole), optional PHPStan installation, and testing framework choice (PHPUnit/Pest)',
         ],
         'Code Generation' => [
             'create:service' => 'Create a new service with optional components (-c: controller, -m: model, -t: table)',

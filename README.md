@@ -135,6 +135,8 @@ Visit `yourdomain/index/document` to access the interactive API documentation. T
 - **Built-in Redis Support**: Seamless Redis integration for caching and real-time features
 - **Auto Documentation**: Interactive API documentation with Postman export
 - **AI Ready**: Built-in APIs and interfaces optimized for AI assistant integration and automation
+- **Code Quality**: Optional PHPStan integration for static analysis and bug detection
+- **Testing Framework**: Choice between PHPUnit (traditional) or Pest (modern & expressive) for comprehensive testing
 
 
 ## 📚 Documentation
