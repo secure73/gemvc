@@ -31,7 +31,8 @@ class InitProject extends Command
         '1' => [
             'name' => 'OpenSwoole',
             'class' => InitSwoole::class,
-            'package' => 'gemvc/swoole',
+            //'package' => 'gemvc/library',
+            'package' => null,
             'description' => 'High-performance async server with WebSocket support',
             'status' => 'available',
             'icon' => '🚀'
@@ -39,7 +40,7 @@ class InitProject extends Command
         '2' => [
             'name' => 'Apache',
             'class' => InitApache::class,
-            'package' => null, // No separate package needed - included in gemvc/swoole
+            'package' => null, // No separate package needed - included in gemvc/library
             'description' => 'Traditional PHP hosting with mod_php or PHP-FPM',
             'status' => 'available',
             'icon' => '🔶'
@@ -47,7 +48,7 @@ class InitProject extends Command
         '3' => [
             'name' => 'Nginx',
             'class' => InitNginx::class,
-            'package' => null, // No separate package needed - included in gemvc/swoole
+            'package' => null, // No separate package needed - included in gemvc/library
             'description' => 'Modern web server with PHP-FPM',
             'status' => 'available',
             'icon' => '🔷'
