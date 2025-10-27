@@ -1,9 +1,9 @@
 {
-    "name": "my_app/v1",
-    "description": "Super light Framework based on Gemvc Library",
-    "type": "library",
+    "name": "project/apache-app",
+    "description": "GEMVC Apache Application",
+    "type": "project",
     "require": {
-        "gemvc/swoole": "^1.0"
+        "gemvc/library": "^5.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.10"
