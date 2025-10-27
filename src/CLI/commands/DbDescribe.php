@@ -10,38 +10,43 @@ class DbDescribe extends Command
 {
     protected string $description = "Describe a specific database table structure in detail. Shows columns, indexes, foreign keys, and table statistics.";
 
-    public function execute()
+    public function execute(): bool
     {
         try {
             // Check if table name is provided
             if (empty($this->args[0])) {
                 $this->error("Table name is required. Usage: gemvc db:describe TableName");
-                return;
+                return false;
             }
 
             $tableName = $this->args[0];
+            if (!is_string($tableName)) {
+                $this->error("Table name must be a string");
+                return false;
+            }
             
             // Load environment variables
             ProjectHelper::loadEnv();
             
             // Get database name from environment
             $dbName = $_ENV['DB_NAME'] ?? null;
-            if (!$dbName) {
+            if (!$dbName || !is_string($dbName)) {
                 throw new \Exception("Database name not found in configuration (DB_NAME)");
             }
             
             // Get database connection
             $pdo = DbConnect::connect();
             if (!$pdo) {
-                return;
+                $this->error("Failed to connect to database");
+                return false;
             }
 
             // Check if table exists
             $stmt = $pdo->prepare("SHOW TABLES FROM `{$dbName}` LIKE ?");
             $stmt->execute([$tableName]);
             if ($stmt->rowCount() === 0) {
-                $this->error("Table '{$tableName}' not found in database '{$dbName}'");
-                return;
+                $this->error("Table '{$tableName}' not found in database '" . (string) $dbName . "'");
+                return false;
             }
 
             $this->displayTableHeader($tableName);
@@ -62,9 +67,10 @@ class DbDescribe extends Command
             $this->showTableOptions($pdo, $tableName, $dbName);
 
             $this->write("\n");
-            
+            return true;
         } catch (\Exception $e) {
             $this->error("Failed to describe table: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -73,6 +79,10 @@ class DbDescribe extends Command
         $this->displaySectionHeader("📋 COLUMNS");
 
         $stmt = $pdo->query("SHOW COLUMNS FROM `{$tableName}`");
+        if ($stmt === false) {
+            $this->error("Failed to query table columns");
+            return;
+        }
         $columns = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         if (empty($columns)) {
@@ -119,6 +129,10 @@ class DbDescribe extends Command
         $this->displaySectionHeader("🔍 INDEXES");
 
         $stmt = $pdo->query("SHOW INDEX FROM `{$tableName}`");
+        if ($stmt === false) {
+            $this->error("Failed to query table indexes");
+            return;
+        }
         $indexes = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         if (empty($indexes)) {
@@ -267,16 +281,22 @@ class DbDescribe extends Command
         $stmt->execute([$dbName, $tableName]);
         $stats = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        if ($stats) {
+        if ($stats && is_array($stats)) {
+            /** @var array<string, mixed> $stats */
+            $rowCount = isset($stats['row_count']) && is_numeric($stats['row_count']) ? (int) $stats['row_count'] : 0;
+            $dataSize = isset($stats['data_size']) && is_numeric($stats['data_size']) ? (int) $stats['data_size'] : 0;
+            $indexSize = isset($stats['index_size']) && is_numeric($stats['index_size']) ? (int) $stats['index_size'] : 0;
+            $totalSize = isset($stats['total_size']) && is_numeric($stats['total_size']) ? (int) $stats['total_size'] : 0;
+            
             $tableData = [
-                ['📋 Total Rows', number_format($stats['row_count'] ?? 0)],
-                ['💾 Data Size', $this->formatBytes($stats['data_size'] ?? 0)],
-                ['🔍 Index Size', $this->formatBytes($stats['index_size'] ?? 0)],
-                ['📦 Total Size', $this->formatBytes($stats['total_size'] ?? 0)],
+                ['📋 Total Rows', number_format($rowCount)],
+                ['💾 Data Size', $this->formatBytes($dataSize)],
+                ['🔍 Index Size', $this->formatBytes($indexSize)],
+                ['📦 Total Size', $this->formatBytes($totalSize)],
             ];
             
-            if ($stats['next_auto_increment']) {
-                $tableData[] = ['🔢 Next Auto Increment', number_format($stats['next_auto_increment'])];
+            if (isset($stats['next_auto_increment']) && $stats['next_auto_increment'] && is_numeric($stats['next_auto_increment'])) {
+                $tableData[] = ['🔢 Next Auto Increment', number_format((int) $stats['next_auto_increment'])];
             }
 
             $this->displayTable(['Metric', 'Value'], $tableData);
@@ -309,21 +329,25 @@ class DbDescribe extends Command
         $stmt->execute([$dbName, $tableName]);
         $options = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        if ($options) {
+        if ($options && is_array($options)) {
+            /** @var array<string, mixed> $options */
+            $engine = isset($options['ENGINE']) && is_string($options['ENGINE']) ? $options['ENGINE'] : 'Unknown';
+            $collation = isset($options['TABLE_COLLATION']) && is_string($options['TABLE_COLLATION']) ? $options['TABLE_COLLATION'] : 'Unknown';
+            
             $tableData = [
-                ['🚀 Engine', $options['ENGINE'] ?? 'Unknown'],
-                ['🔤 Collation', $options['TABLE_COLLATION'] ?? 'Unknown'],
+                ['🚀 Engine', $engine],
+                ['🔤 Collation', $collation],
             ];
             
-            if ($options['CREATE_TIME']) {
+            if (isset($options['CREATE_TIME']) && $options['CREATE_TIME'] && is_string($options['CREATE_TIME'])) {
                 $tableData[] = ['📅 Created', $options['CREATE_TIME']];
             }
             
-            if ($options['UPDATE_TIME']) {
+            if (isset($options['UPDATE_TIME']) && $options['UPDATE_TIME'] && is_string($options['UPDATE_TIME'])) {
                 $tableData[] = ['🔄 Last Updated', $options['UPDATE_TIME']];
             }
             
-            if ($options['TABLE_COMMENT']) {
+            if (isset($options['TABLE_COMMENT']) && $options['TABLE_COMMENT'] && is_string($options['TABLE_COMMENT'])) {
                 $tableData[] = ['💬 Comment', $options['TABLE_COMMENT']];
             }
 
@@ -378,6 +402,10 @@ class DbDescribe extends Command
         $this->write("├" . str_repeat("─", $totalWidth) . "┤\n", 'cyan');
     }
 
+    /**
+     * @param array<string> $headers
+     * @param array<array<string>> $data
+     */
     private function displayTable(array $headers, array $data): void
     {
         if (empty($data)) {
@@ -425,7 +453,7 @@ class DbDescribe extends Command
         // Display headers
         $this->write("│", 'cyan');
         foreach ($headers as $i => $header) {
-            $this->write(" " . $this->padString($header, $columnWidths[$i]), 'yellow');
+            $this->write(" " . $this->padString($header, (int) $columnWidths[$i]), 'yellow');
             $this->write(" │", 'cyan');
         }
         $this->write("\n");
@@ -433,7 +461,7 @@ class DbDescribe extends Command
         // Header separator
         $this->write("├", 'cyan');
         foreach ($columnWidths as $i => $width) {
-            $this->write(str_repeat("─", $width + 2), 'cyan');
+            $this->write(str_repeat("─", (int) $width + 2), 'cyan');
             if ($i < count($columnWidths) - 1) {
                 $this->write("┼", 'cyan');
             }
@@ -445,9 +473,9 @@ class DbDescribe extends Command
             $this->write("│", 'cyan');
             foreach ($row as $i => $cell) {
                 $truncated = $this->getDisplayWidth($cell) > $columnWidths[$i] 
-                    ? $this->truncateString($cell, $columnWidths[$i] - 3) . '...'
+                    ? $this->truncateString($cell, (int) $columnWidths[$i] - 3) . '...'
                     : $cell;
-                $this->write(" " . $this->padString($truncated, $columnWidths[$i]), 'white');
+                $this->write(" " . $this->padString($truncated, (int) $columnWidths[$i]), 'white');
                 $this->write(" │", 'cyan');
             }
             $this->write("\n");
@@ -461,7 +489,7 @@ class DbDescribe extends Command
     private function getDisplayWidth(string $text): int
     {
         // Remove ANSI escape sequences and handle unicode/emoji properly
-        $clean = preg_replace('/\x1b\[[0-9;]*m/', '', $text);
+        $clean = preg_replace('/\x1b\[[0-9;]*m/', '', $text) ?? '';
         return mb_strwidth($clean);
     }
 

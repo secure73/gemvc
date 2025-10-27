@@ -47,7 +47,7 @@ class NoCors
 
     /**
      * Handle cross-origin requests for Swoole/OpenSwoole
-     * @param mixed $response Swoole response object
+     * @param object $response Swoole response object
      * @method void swoole($response)
      * @example
      * ```php
@@ -58,18 +58,26 @@ class NoCors
      * });
      * $http->start();
      */
-    public static function swoole($response): void
+    public static function swoole(object $response): void
     {
+        // @phpstan-ignore-next-line
         $response->header('Access-Control-Allow-Origin', '*');
+        // @phpstan-ignore-next-line
         $response->header('Access-Control-Allow-Headers', '*');
+        // @phpstan-ignore-next-line
         $response->header('Access-Control-Allow-Headers', 'HTTP_AUTHORIZATION');
+        // @phpstan-ignore-next-line
         $response->header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+        // @phpstan-ignore-next-line
         $response->header('Content-Type', 'application/json');
 
         // Allow from any origin
         if (isset($response->header['origin']) && is_string($response->header['origin'])) {
+            // @phpstan-ignore-next-line
             $response->header('Access-Control-Allow-Origin', $response->header['origin']);
+            // @phpstan-ignore-next-line
             $response->header('Access-Control-Allow-Credentials', 'true');
+            // @phpstan-ignore-next-line
             $response->header('Access-Control-Max-Age', '86400');
         }
 
@@ -77,9 +85,11 @@ class NoCors
         $requestMethod = $response->request->server['request_method'] ?? null;
         if ('OPTIONS' === $requestMethod) {
             if (isset($response->header['access-control-request-method'])) {
+                // @phpstan-ignore-next-line
                 $response->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
             }
             if (isset($response->header['access-control-request-headers']) && is_string($response->header['access-control-request-headers'])) {
+                // @phpstan-ignore-next-line
                 $response->header('Access-Control-Allow-Headers', $response->header['access-control-request-headers']);
             }
         }

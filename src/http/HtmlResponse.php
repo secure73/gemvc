@@ -6,8 +6,12 @@ class HtmlResponse implements ResponseInterface
 {
     private string $content;
     private int $status;
+    /** @var array<string, string> */
     private array $headers;
 
+    /**
+     * @param array<string, string> $headers
+     */
     public function __construct(string $content, int $status = 200, array $headers = [])
     {
         $this->content = $content;
@@ -18,7 +22,7 @@ class HtmlResponse implements ResponseInterface
     /**
      * Show the response in Swoole
      * 
-     * @param \Swoole\Http\Response $response The Swoole response object
+     * @param \OpenSwoole\HTTP\Response $response The Swoole response object
      */
     public function showSwoole($response): void
     {
@@ -29,6 +33,26 @@ class HtmlResponse implements ResponseInterface
         $response->end($this->content);
     }
 
+    /**
+     * Show the response in Apache/Nginx (standard PHP)
+     */
+    public function show(): void
+    {
+        // Set status code
+        http_response_code($this->status);
+        
+        // Set headers
+        foreach ($this->headers as $key => $value) {
+            header("$key: $value");
+        }
+        
+        // Output content
+        echo $this->content;
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
     public static function create(string $content, int $status = 200, array $headers = []): self
     {
         return new self($content, $status, $headers);

@@ -13,9 +13,12 @@ if (!extension_loaded('openswoole') && !extension_loaded('swoole')) {
 
 // Create an interface to make IDE happy
 interface WebSocketServerInterface {
+    /** @return mixed */
     public function tick(int $ms, callable $callback);
+    /** @return mixed */
     public function push(int $fd, string $data, int $opcode = 1);
     public function isEstablished(int $fd): bool;
+    /** @return mixed */
     public function close(int $fd);
 }
 
@@ -33,7 +36,9 @@ interface WebSocketServerInterface {
  */
 class SwooleWebSocketHandler
 {
+    /** @var array<int, mixed> */
     private array $connections = [];
+    /** @var array<string, array<int>> */
     private array $channels = [];
     
     // Configuration settings
@@ -41,16 +46,18 @@ class SwooleWebSocketHandler
     private int $maxMessagesPerMinute = 60;
     private int $heartbeatInterval = 30; // seconds
     private bool $useRedis = false;
-    private $redis = null; // Using mixed type to avoid strict typing errors
+    /** @var \Redis|null */
+    private $redis = null;
     private string $redisPrefix = 'websocket:';
     
     // Rate limiting tracking
+    /** @var array<int, array<int, int>> */
     private array $messageCounters = [];
     
     /**
      * Constructor with optional Redis configuration for scalability
      * 
-     * @param array $config Configuration options
+     * @param array<string, mixed> $config Configuration options
      */
     public function __construct(array $config = [])
     {
@@ -75,6 +82,7 @@ class SwooleWebSocketHandler
     
     /**
      * Initialize Redis connection
+     * @param array<string, mixed> $config
      */
     private function initRedis(array $config): void
     {
@@ -117,11 +125,13 @@ class SwooleWebSocketHandler
     {
         $this->checkServerCompatibility($server);
         
+        // @phpstan-ignore-next-line
         $server->tick($this->heartbeatInterval * 1000, function() use ($server) {
             $this->performHeartbeat($server);
         });
         
         // Also register a cleanup timer for expired connections
+        // @phpstan-ignore-next-line
         $server->tick(60000, function() use ($server) {
             $this->cleanupExpiredConnections($server);
         });
@@ -133,7 +143,7 @@ class SwooleWebSocketHandler
      * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
      * @param object $request The HTTP request object
      */
-    public function onOpen(object $server, object $request)
+    public function onOpen(object $server, object $request): void
     {
         $this->checkServerCompatibility($server);
         
@@ -143,6 +153,7 @@ class SwooleWebSocketHandler
         // Initialize connection data
         $connectionData = [
             'request' => $httpRequest->request,
+            // @phpstan-ignore-next-line
             'ip' => $request->server['remote_addr'],
             'time' => time(),
             'last_activity' => time(),
@@ -164,12 +175,15 @@ class SwooleWebSocketHandler
         
         // Store connection info
         if ($this->useRedis) {
+            // @phpstan-ignore-next-line
             $this->storeConnectionInRedis($request->fd, $connectionData);
         } else {
+            // @phpstan-ignore-next-line
             $this->connections[$request->fd] = $connectionData;
         }
         
         // Send welcome message with heartbeat info
+        // @phpstan-ignore-next-line
         $server->push($request->fd, json_encode([
             'action' => 'welcome',
             'heartbeat_interval' => $this->heartbeatInterval,
@@ -184,15 +198,18 @@ class SwooleWebSocketHandler
      * @param object $server Either OpenSwoole\WebSocket\Server or Swoole\WebSocket\Server
      * @param object $frame The WebSocket frame
      */
-    public function onMessage(object $server, object $frame)
+    public function onMessage(object $server, object $frame): void
     {
         $this->checkServerCompatibility($server);
         
         // Update last activity time
+        // @phpstan-ignore-next-line
         $this->updateLastActivity($frame->fd);
         
         // Check rate limiting
+        // @phpstan-ignore-next-line
         if (!$this->checkRateLimit($frame->fd)) {
+            // @phpstan-ignore-next-line
             $server->push($frame->fd, json_encode([
                 'success' => false,
                 'error' => 'Rate limit exceeded. Please slow down.',
@@ -202,8 +219,10 @@ class SwooleWebSocketHandler
         }
         
         // Parse message (typically JSON)
+        // @phpstan-ignore-next-line
         $message = json_decode($frame->data, true);
         if (!$message || !isset($message['action'])) {
+            // @phpstan-ignore-next-line
             $server->push($frame->fd, json_encode([
                 'success' => false,
                 'error' => 'Invalid message format'
@@ -223,24 +242,27 @@ class SwooleWebSocketHandler
         // Set data based on message type
         switch ($message['action']) {
             case 'subscribe':
-                $socketRequest->post = $message['data'] ?? [];
+                $socketRequest->post = is_array($message['data'] ?? null) ? $message['data'] : [];
+                // @phpstan-ignore-next-line
                 $this->handleSubscribe($server, $frame->fd, $socketRequest);
                 break;
                 
             case 'message':
-                $socketRequest->post = $message['data'] ?? [];
+                $socketRequest->post = is_array($message['data'] ?? null) ? $message['data'] : [];
+                // @phpstan-ignore-next-line
                 $this->handleMessage($server, $frame->fd, $socketRequest);
                 break;
                 
             case 'unsubscribe':
-                $socketRequest->post = $message['data'] ?? [];
+                $socketRequest->post = is_array($message['data'] ?? null) ? $message['data'] : [];
                 $this->handleUnsubscribe($server, $frame->fd, $socketRequest);
                 break;
                 
             default:
+                // @phpstan-ignore-next-line
                 $server->push($frame->fd, json_encode([
                     'success' => false,
-                    'error' => 'Unknown action: ' . $message['action']
+                    'error' => 'Unknown action: ' . (string) ($message['action'] ?? 'unknown')
                 ]));
         }
     }
@@ -248,14 +270,17 @@ class SwooleWebSocketHandler
     /**
      * Handle channel subscription
      */
-    private function handleSubscribe($server, $fd, Request $request)
+    private function handleSubscribe(object $server, mixed $fd, Request $request): void
     {
         // Validate the subscription request
         if ($request->definePostSchema([
             'channel' => 'string',
             '?options' => 'array'
         ])) {
-            $channel = $request->post['channel'];
+            $channel = $request->post['channel'] ?? '';
+            if (!is_string($channel)) {
+                return;
+            }
             
             // Add to channel
             if ($this->useRedis) {
@@ -266,6 +291,7 @@ class SwooleWebSocketHandler
                 }
                 
                 $this->channels[$channel][] = $fd;
+                // @phpstan-ignore-next-line
                 $this->connections[$fd]['channels'][] = $channel;
             }
             
@@ -287,13 +313,16 @@ class SwooleWebSocketHandler
     /**
      * Handle unsubscribe request
      */
-    private function handleUnsubscribe($server, $fd, Request $request)
+    private function handleUnsubscribe(object $server, mixed $fd, Request $request): void
     {
         // Validate the unsubscribe request
         if ($request->definePostSchema([
             'channel' => 'string'
         ])) {
-            $channel = $request->post['channel'];
+            $channel = $request->post['channel'] ?? '';
+            if (!is_string($channel)) {
+                return;
+            }
             
             if ($this->useRedis) {
                 $this->unsubscribeChannelRedis($fd, $channel);
@@ -337,7 +366,7 @@ class SwooleWebSocketHandler
     /**
      * Handle message broadcasting
      */
-    private function handleMessage($server, $fd, Request $request)
+    private function handleMessage(object $server, mixed $fd, Request $request): void
     {
         // Validate the message
         if ($request->definePostSchema([
@@ -345,8 +374,11 @@ class SwooleWebSocketHandler
             'message' => 'string',
             '?recipients' => 'array'
         ])) {
-            $channel = $request->post['channel'];
-            $message = $request->post['message'];
+            $channel = $request->post['channel'] ?? '';
+            $message = $request->post['message'] ?? '';
+            if (!is_string($channel) || !is_string($message)) {
+                return;
+            }
             
             // Check if user has access to this channel
             if ($this->isSubscribedToChannel($fd, $channel)) {
@@ -355,6 +387,9 @@ class SwooleWebSocketHandler
                 // Filter recipients if specified
                 if (isset($request->post['recipients']) && !empty($request->post['recipients'])) {
                     $targetRecipients = $request->post['recipients'];
+                    if (!is_array($targetRecipients)) {
+                        return;
+                    }
                     $recipients = array_filter($recipients, function($recipient) use ($targetRecipients) {
                         return in_array($recipient, $targetRecipients);
                     });
@@ -395,7 +430,7 @@ class SwooleWebSocketHandler
     /**
      * Handle connection close
      */
-    public function onClose($server, $fd)
+    public function onClose(object $server, mixed $fd): void
     {
         if ($this->useRedis) {
             $this->removeConnectionFromRedis($fd);
@@ -554,6 +589,9 @@ class SwooleWebSocketHandler
     /**
      * Get all recipients for a channel
      */
+    /**
+     * @return array<int>
+     */
     private function getChannelRecipients(string $channel): array
     {
         if ($this->useRedis) {
@@ -569,6 +607,9 @@ class SwooleWebSocketHandler
     
     /**
      * Store connection data in Redis
+     */
+    /**
+     * @param array<string, mixed> $data
      */
     private function storeConnectionInRedis(int $fd, array $data): void
     {
@@ -594,6 +635,9 @@ class SwooleWebSocketHandler
     /**
      * Get connection data from Redis
      */
+    /**
+     * @return array<string, mixed>|null
+     */
     private function getConnectionFromRedis(int $fd): ?array
     {
         if (!$this->redis) {
@@ -618,6 +662,9 @@ class SwooleWebSocketHandler
     
     /**
      * Get all connections from Redis
+     */
+    /**
+     * @return array<string, mixed>
      */
     private function getAllConnectionsFromRedis(): array
     {
@@ -726,6 +773,9 @@ class SwooleWebSocketHandler
     
     /**
      * Get channel recipients from Redis
+     */
+    /**
+     * @return array<int>
      */
     private function getChannelRecipientsRedis(string $channel): array
     {

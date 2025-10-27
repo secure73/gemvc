@@ -8,7 +8,7 @@ use Gemvc\Helper\ProjectHelper;
 
 class DbList extends Command
 {
-    public function execute()
+    public function execute(): bool
     {
         try {
             $this->info("Fetching database tables...");
@@ -18,24 +18,29 @@ class DbList extends Command
             
             // Get database name from environment
             $dbName = $_ENV['DB_NAME'] ?? null;
-            if (!$dbName) {
-                throw new \Exception("Database name not found in configuration (DB_NAME)");
+            if (!$dbName || !is_string($dbName)) {
+                $this->error("Database name not found in configuration (DB_NAME)");
+                return false;
             }
             
             // Get database connection
             
             $pdo = DbConnect::connect();
             if (!$pdo) {
-                return;
+                return false;
             }
             
             // Get all tables
             $stmt = $pdo->query("SHOW TABLES FROM `{$dbName}`");
+            if ($stmt === false) {
+                $this->error("Failed to query database tables");
+                return false;
+            }
             $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
             
             if (empty($tables)) {
                 $this->info("No tables found in database '{$dbName}'");
-                return;
+                return false;
             }
             
             // Display tables and their columns
@@ -45,11 +50,15 @@ class DbList extends Command
                 
                 // Get columns for this table
                 $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}`");
+                if ($stmt === false) {
+                    $this->warning("Failed to get columns for table: {$table}");
+                    return false;
+                }
                 $columns = $stmt->fetchAll(\PDO::FETCH_ASSOC);
                 
                 if (empty($columns)) {
                     $this->write("  No columns found\n", 'red');
-                    continue;
+                    return false;
                 }
                 
                 // Display column information
@@ -74,9 +83,10 @@ class DbList extends Command
                 }
             }
             $this->write("\n");
-            
+            return true;
         } catch (\Exception $e) {
             $this->error("Failed to list tables: " . $e->getMessage());
+            return false;
         }
     }
 } 

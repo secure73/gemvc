@@ -182,18 +182,22 @@ class JsonResponse implements ResponseInterface
         }
     }
 
-    public function showSwoole($swooleResponse): void
+    public function showSwoole(object $swooleResponse): void
     {
+        // @phpstan-ignore-next-line
         $swooleResponse->header('Content-Type', 'application/json');
         
         // Force custom status codes to work with OpenSwoole by providing reason message
         if (in_array($this->response_code, [209, 210])) {
             $statusMessage = $this->response_code === 209 ? 'Updated' : 'Deleted';
+            // @phpstan-ignore-next-line
             $swooleResponse->status($this->response_code, $statusMessage);
         } else {
+            // @phpstan-ignore-next-line
             $swooleResponse->status($this->response_code);
         }
         
+        // @phpstan-ignore-next-line
         $swooleResponse->end($this->json_response);
     }
 

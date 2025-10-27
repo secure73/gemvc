@@ -207,6 +207,9 @@ class ApiCall
     /**
      * POST with application/x-www-form-urlencoded body (opt-in).
      */
+    /**
+     * @param array<string, mixed> $fields
+     */
     public function postForm(string $remoteApiUrl, array $fields = []): string|false
     {
         $this->method = 'POST';
@@ -219,6 +222,10 @@ class ApiCall
      * POST multipart/form-data with files (opt-in).
      *
      * @param array<string,string> $files Map of field => filePath
+     */
+    /**
+     * @param array<string, mixed> $fields
+     * @param array<string, string> $files
      */
     public function postMultipart(string $remoteApiUrl, array $fields = [], array $files = []): string|false
     {
@@ -337,8 +344,8 @@ class ApiCall
             if ($this->ssl_ca) {
                 curl_setopt($ch, CURLOPT_CAINFO, $this->ssl_ca);
             }
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->ssl_verify_peer ? 1 : 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->ssl_verify_host);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->ssl_verify_peer);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->ssl_verify_host ? 2 : 0);
 
             $this->setMethod($ch);
             $this->setHeaders($ch);
@@ -354,7 +361,7 @@ class ApiCall
 
             // Retry policy (opt-in)
             $shouldRetry =
-                ($this->retry_on_network_error && is_string($this->error) && $this->error !== '') ||
+                ($this->retry_on_network_error && $this->error !== '') ||
                 in_array($this->http_response_code, $this->retry_on_http_codes, true);
 
             if ($shouldRetry && $attempt < $attempts) {

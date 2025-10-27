@@ -13,8 +13,11 @@ use PDOException;
  */
 class TableGenerator {
     private ?PDO $pdo = null;
+    /** @var array<string, mixed> */
     private array $columnProperties = [];
+    /** @var array<int, string> */
     private array $indexedProperties = [];
+    /** @var array<int, string> */
     private array $uniqueIndexedProperties = [];
     private string $error = '';
 
@@ -32,7 +35,7 @@ class TableGenerator {
      * @param string|null $tableName The name of the table to create
      * @return bool True if the table was created successfully, false otherwise
      */
-    public function createTableFromObject(object $object, string $tableName = null): bool {
+    public function createTableFromObject(object $object, ?string $tableName = null): bool {
         if (!$tableName) {
             if (!method_exists($object, 'getTable')) {
                 $this->error = 'public function getTable() not found in object';
@@ -64,7 +67,7 @@ class TableGenerator {
             }
             $nullSql = $isNullable ? 'NULL' : 'NOT NULL';
 
-            if (isset($this->columnProperties[$propertyName])) {
+            if (isset($this->columnProperties[$propertyName]) && is_string($this->columnProperties[$propertyName])) {
                 $sqlType .= ' ' . $this->columnProperties[$propertyName];
             }
             $columns[] = "`$propertyName` $sqlType $nullSql";
@@ -76,6 +79,10 @@ class TableGenerator {
         $columnsSql = implode(", ", $columns);
         $query = "CREATE TABLE IF NOT EXISTS `$tableName` ($columnsSql);";
         try {
+            if ($this->pdo === null) {
+                $this->error = 'PDO connection is not available';
+                return false;
+            }
             $this->pdo->exec($query);
             return true;
         } catch (PDOException $e) {
@@ -103,10 +110,20 @@ class TableGenerator {
         $indexName = "uidx_{$tableName}_{$columnName}";
         
         try {
+            if ($this->pdo === null) {
+                $this->error = 'PDO connection is not available';
+                return false;
+            }
+            
             // Start transaction
             $this->pdo->beginTransaction();
             $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
             $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            if ($result === false) {
+                $this->error = 'Failed to query table columns';
+                $this->pdo->rollBack();
+                return false;
+            }
             $result = $result->fetchAll();
             if (empty($result)) {
                 $this->error = "Column '$columnName' does not exist in table '$tableName'";
@@ -119,6 +136,11 @@ class TableGenerator {
                 // Find any existing indexes on this column
                 $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
                 $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                if ($indexes === false) {
+                    $this->error = 'Failed to query indexes';
+                    $this->pdo->rollBack();
+                    return false;
+                }
                 $indexes = $indexes->fetchAll();
                 
                 foreach ($indexes as $index) {
@@ -162,8 +184,10 @@ class TableGenerator {
      */
     public function setNotNull(string $propertyName): self {
         $properties = $this->columnProperties[$propertyName] ?? '';
-        if (strpos($properties, 'NOT NULL') === false) {
+        if (is_string($properties) && strpos($properties, 'NOT NULL') === false) {
             $this->columnProperties[$propertyName] = trim($properties . ' NOT NULL');
+        } elseif (!is_string($properties)) {
+            $this->columnProperties[$propertyName] = 'NOT NULL';
         }
         return $this;
     }
@@ -186,14 +210,18 @@ class TableGenerator {
         } elseif (is_null($defaultValue)) {
             $defaultSql = "DEFAULT NULL";
         } else {
-            $defaultSql = "DEFAULT " . $defaultValue;
+            $defaultSql = "DEFAULT " . var_export($defaultValue, true);
         }
         
         // Remove any existing DEFAULT clause
-        if (preg_match('/DEFAULT\s+[^,]+/', $properties)) {
-            $properties = preg_replace('/DEFAULT\s+[^,]+/', $defaultSql, $properties);
+        if (is_string($properties)) {
+            if (preg_match('/DEFAULT\s+[^,]+/', $properties)) {
+                $properties = preg_replace('/DEFAULT\s+[^,]+/', $defaultSql, $properties);
+            } else {
+                $properties = trim($properties . ' ' . $defaultSql);
+            }
         } else {
-            $properties = trim($properties . ' ' . $defaultSql);
+            $properties = $defaultSql;
         }
         
         $this->columnProperties[$propertyName] = $properties;
@@ -211,7 +239,11 @@ class TableGenerator {
         $properties = $this->columnProperties[$propertyName] ?? '';
         $checkSql = "CHECK ($checkExpression)";
         
-        $this->columnProperties[$propertyName] = trim($properties . ' ' . $checkSql);
+        if (is_string($properties)) {
+            $this->columnProperties[$propertyName] = trim($properties . ' ' . $checkSql);
+        } else {
+            $this->columnProperties[$propertyName] = $checkSql;
+        }
         return $this;
     }
     
@@ -259,34 +291,6 @@ class TableGenerator {
         return $this;
     }
     
-    /**
-     * Generate SQL statements for creating indexes
-     * 
-     * @param string $tableName The name of the table
-     * @param array $validPropertyNames List of valid property names in the table
-     * @return array Array of SQL statements for creating indexes
-     */
-    private function generateIndexesSql(string $tableName, array $validPropertyNames): array {
-        $indexSqlStatements = [];
-        
-        // Process regular indexes
-        foreach ($this->indexedProperties as $property) {
-            if (in_array($property, $validPropertyNames)) {
-                $indexName = "idx_{$tableName}_{$property}";
-                $indexSqlStatements[] = "CREATE INDEX `$indexName` ON `$tableName` (`$property`);";
-            }
-        }
-        
-        // Process unique indexes
-        foreach ($this->uniqueIndexedProperties as $property) {
-            if (in_array($property, $validPropertyNames)) {
-                $indexName = "uidx_{$tableName}_{$property}";
-                $indexSqlStatements[] = "CREATE UNIQUE INDEX `$indexName` ON `$tableName` (`$property`);";
-            }
-        }
-        
-        return $indexSqlStatements;
-    }
 
     /**
      * Remove a column from an existing table
@@ -302,10 +306,20 @@ class TableGenerator {
         }
         
         try {
+            if ($this->pdo === null) {
+                $this->error = 'PDO connection is not available';
+                return false;
+            }
+            
             // Start transaction
             $this->pdo->beginTransaction();
             $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
             $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+            if ($result === false) {
+                $this->error = 'Failed to query table columns';
+                $this->pdo->rollBack();
+                return false;
+            }
             $result = $result->fetchAll();
             if (empty($result)) {
                 $this->error = "Column '$columnName' does not exist in table '$tableName'";
@@ -316,11 +330,22 @@ class TableGenerator {
             // Check if the column is part of any indexes and drop them first
             $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
             $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+            if ($indexes === false) {
+                $this->error = 'Failed to query indexes';
+                $this->pdo->rollBack();
+                return false;
+            }
             $indexes = $indexes->fetchAll();
             $processedIndexes = [];
             
             foreach ($indexes as $index) {
-                $indexName = $index['Key_name'];
+                if (!is_array($index) || !isset($index['Key_name'])) {
+                    continue;
+                }
+                if (!is_string($index['Key_name'])) {
+                    continue;
+                }
+                $indexName = (string) $index['Key_name'];
                 
                 // Skip already processed indexes and PRIMARY keys (needs special handling)
                 if (in_array($indexName, $processedIndexes) || $indexName === 'PRIMARY') {
@@ -366,7 +391,7 @@ class TableGenerator {
      */
     public function updateTable(
         object $object,
-        string $tableName = null,
+        ?string $tableName = null,
         bool $removeExtraColumns = false,
         bool $enforceNotNull = false,
         $defaultValue = null
@@ -389,6 +414,12 @@ class TableGenerator {
         }
 
         try {
+            // @phpstan-ignore-next-line
+            if ($this->pdo === null) {
+                $this->error = 'PDO connection is not available';
+                return false;
+            }
+            
             // Ensure we're not in a transaction
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -402,6 +433,11 @@ class TableGenerator {
 
             // Get existing columns
             $stmt = $this->pdo->query("DESCRIBE `$tableName`");
+            if ($stmt === false) {
+                $this->error = 'Failed to describe table';
+                $this->pdo->rollBack();
+                return false;
+            }
             $existingColumns = $stmt->fetchAll();
             if (empty($existingColumns)) {
                 $this->error = "DESCRIBE failed or table has no columns.";
@@ -441,7 +477,7 @@ class TableGenerator {
                 }
                 $nullSql = $isNullable ? 'NULL' : 'NOT NULL';
 
-                if (isset($this->columnProperties[$propertyName])) {
+                if (isset($this->columnProperties[$propertyName]) && is_string($this->columnProperties[$propertyName])) {
                     $sqlType .= ' ' . $this->columnProperties[$propertyName];
                 }
 
@@ -451,27 +487,36 @@ class TableGenerator {
                         'definition' => $sqlType
                     ];
                 } else {
+                    if (!isset($columnMap[$propertyName]['Type']) || !is_string($columnMap[$propertyName]['Type'])) {
+                        continue;
+                    }
                     $existingType = strtolower($columnMap[$propertyName]['Type']);
-                    $newType = strtolower(preg_replace('/\s+.*$/', '', $sqlType));
+                    $newType = strtolower(preg_replace('/\s+.*$/', '', $sqlType) ?? '');
                     if ($propertyName === 'id') continue;
                     
                     // Compare types more accurately
                     $existingType = $this->normalizeType($existingType);
                     $newType = $this->normalizeType($newType);
                     
-                    $existingNull = strtolower($columnMap[$propertyName]['Null']) === 'yes';
+                    $existingNull = isset($columnMap[$propertyName]['Null']) && is_string($columnMap[$propertyName]['Null']) ? strtolower($columnMap[$propertyName]['Null']) === 'yes' : false;
                     $newNull = $isNullable; // from Reflection
 
                     if ($existingType !== $newType || $existingNull !== $newNull) {
                         // If changing from NULL to NOT NULL
                         if ($existingNull && !$newNull && $enforceNotNull) {
                             // Check for NULLs in the column
-                            $nullCount = $this->pdo->query("SELECT COUNT(*) FROM `$tableName` WHERE `$propertyName` IS NULL")->fetchColumn();
+                            $stmt = $this->pdo->query("SELECT COUNT(*) FROM `$tableName` WHERE `$propertyName` IS NULL");
+                            $nullCount = $stmt !== false ? $stmt->fetchColumn() : 0;
                             if ($nullCount > 0) {
                                 if ($defaultValue !== null) {
                                     // Update NULLs to default value
-                                    $defaultSql = is_string($defaultValue) ? $this->pdo->quote($defaultValue) : $defaultValue;
-                                    $this->pdo->exec("UPDATE `$tableName` SET `$propertyName` = $defaultSql WHERE `$propertyName` IS NULL");
+                                    if (is_string($defaultValue)) {
+                                        $defaultSql = $this->pdo->quote($defaultValue);
+                                        $this->pdo->exec("UPDATE `$tableName` SET `$propertyName` = $defaultSql WHERE `$propertyName` IS NULL");
+                                    } else {
+                                        $defaultSql = var_export($defaultValue, true);
+                                        $this->pdo->exec("UPDATE `$tableName` SET `$propertyName` = $defaultSql WHERE `$propertyName` IS NULL");
+                                    }
                                 } else {
                                     $this->error = "Cannot set `$propertyName` to NOT NULL: $nullCount NULL values exist. Use --default to set a value.";
                                     return false;
@@ -511,15 +556,21 @@ class TableGenerator {
 
             // Execute all changes
             foreach ($columnsToAdd as $column) {
-                $this->pdo->exec("ALTER TABLE `$tableName` ADD COLUMN `{$column['name']}` {$column['definition']}");
+                $name = $column['name'];
+                $definition = $column['definition'];
+                $this->pdo->exec("ALTER TABLE `$tableName` ADD COLUMN `$name` $definition");
             }
 
             foreach ($columnsToModify as $column) {
-                $this->pdo->exec("ALTER TABLE `$tableName` MODIFY COLUMN `{$column['name']}` {$column['definition']}");
+                $name = $column['name'];
+                $definition = $column['definition'];
+                $this->pdo->exec("ALTER TABLE `$tableName` MODIFY COLUMN `$name` $definition");
             }
 
             foreach ($columnsToRemove as $columnName) {
-                $this->pdo->exec("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
+                if (is_string($columnName)) {
+                    $this->pdo->exec("ALTER TABLE `$tableName` DROP COLUMN `$columnName`");
+                }
             }
 
             // Commit the transaction
@@ -544,7 +595,7 @@ class TableGenerator {
      */
     private function normalizeType(string $type): string {
         // Remove length specifications
-        $type = preg_replace('/\(\d+\)/', '', $type);
+        $type = preg_replace('/\(\d+\)/', '', $type) ?? '';
         
         // Normalize common type variations
         $type = strtolower($type);
@@ -696,7 +747,7 @@ class TableGenerator {
      * Create a unique constraint across multiple columns
      * 
      * @param string $tableName The name of the table
-     * @param array $columnNames Array of column names to include in the unique constraint
+     * @param array<string> $columnNames Array of column names to include in the unique constraint
      * @param string|null $indexName Optional custom name for the index (defaults to auto-generated name)
      * @param bool $dropExistingIndexes Whether to drop any existing indexes on these columns
      * @return bool True if successful, false otherwise
@@ -729,11 +780,21 @@ class TableGenerator {
         }
         
         try {
+            if ($this->pdo === null) {
+                $this->error = 'PDO connection is not available';
+                return false;
+            }
+            
             // Start transaction
             $this->pdo->beginTransaction();
             foreach ($columnNames as $columnName) {
                 $this->pdo->exec("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
                 $result = $this->pdo->query("SHOW COLUMNS FROM `$tableName` LIKE '$columnName'");
+                if ($result === false) {
+                    $this->error = 'Failed to query table columns';
+                    $this->pdo->rollBack();
+                    return false;
+                }
                 $result = $result->fetchAll();
                 if (empty($result)) {
                     $this->error = "Column '$columnName' does not exist in table '$tableName'";
@@ -750,10 +811,21 @@ class TableGenerator {
                 foreach ($columnNames as $columnName) {
                     $this->pdo->exec("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
                     $indexes = $this->pdo->query("SHOW INDEXES FROM `$tableName` WHERE Column_name = '$columnName'");
+                    if ($indexes === false) {
+                        $this->error = 'Failed to query indexes';
+                        $this->pdo->rollBack();
+                        return false;
+                    }
                     $indexes = $indexes->fetchAll();
                     
                     foreach ($indexes as $index) {
-                        $existingIndexName = $index['Key_name'];
+                        if (!is_array($index) || !isset($index['Key_name'])) {
+                            continue;
+                        }
+                        if (!is_string($index['Key_name'])) {
+                            continue;
+                        }
+                        $existingIndexName = (string) $index['Key_name'];
                         // Don't drop primary key
                         if ($existingIndexName !== 'PRIMARY') {
                             $indexesToDrop[$existingIndexName] = true; // Use associative array to avoid duplicates

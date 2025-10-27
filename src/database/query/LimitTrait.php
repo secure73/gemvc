@@ -78,10 +78,8 @@ trait LimitTrait
             $orderByColumn = 'id'; // Safe default
         }
         
-        // Only call orderBy if the method exists (check for method existence)
-        if (method_exists($this, 'orderBy')) {
-            $this->orderBy($orderByColumn, false); // ASC for first
-        }
+        // Call orderBy method (guaranteed to exist in classes using this trait)
+        $this->orderBy($orderByColumn, false); // ASC for first
         
         $this->limit = $count;
         $this->offset = null; // Reset offset for first()
@@ -106,10 +104,8 @@ trait LimitTrait
             $byColumn = 'id'; // Safe default
         }
         
-        // Only call orderBy if the method exists
-        if (method_exists($this, 'orderBy')) {
-            $this->orderBy($byColumn, true); // DESC for last
-        }
+        // Call orderBy method (guaranteed to exist in classes using this trait)
+        $this->orderBy($byColumn, true); // DESC for last
         
         $this->limit = $count;
         $this->offset = null; // Reset offset for last()

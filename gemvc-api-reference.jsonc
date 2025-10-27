@@ -1,0 +1,211 @@
+{
+  // This file provides GEMVC API reference for AI assistants
+  // Format: JSONC (JSON with Comments)
+  "framework": {
+    "name": "GEMVC",
+    "type": "PHP REST API Framework",
+    "version": "2.0",
+    "target_platforms": ["OpenSwoole", "Apache", "Nginx"],
+    "platform_status": "All platforms fully supported and production-ready",
+    "architecture": {
+      "layers": [
+        { "name": "API", "location": "app/api/", "purpose": "URL endpoints, schema validation" },
+        { "name": "Controller", "location": "app/controller/", "purpose": "Business logic orchestration" },
+        { "name": "Model", "location": "app/model/", "purpose": "Data logic, validations" },
+        { "name": "Table", "location": "app/table/", "purpose": "Database operations" }
+      ]
+    },
+    "features": [
+      "Server-agnostic code",
+      "90% automatic security",
+      "PHPStan Level 9 compliance",
+      "Code generation CLI",
+      "Auto-generated API documentation"
+    ]
+  },
+  "request_class": {
+    "namespace": "Gemvc\\Http\\Request",
+    "properties": {
+      "post": { "type": "array", "sanitized": true, "description": "POST data (pre-sanitized)" },
+      "get": { "type": "array", "sanitized": true, "description": "GET data (pre-sanitized)" },
+      "put": { "type": "array|null", "sanitized": true, "description": "PUT data" },
+      "patch": { "type": "array|null", "sanitized": true, "description": "PATCH data" },
+      "files": { "type": "array|null", "sanitized": true, "description": "File uploads" },
+      "cookies": { "type": "mixed", "description": "Filtered cookies" }
+    },
+    "methods": {
+      "definePostSchema": {
+        "signature": "definePostSchema(array $schema): bool",
+        "description": "Validate POST request schema (prevents mass assignment)",
+        "example": "{ 'name': 'string', 'email': 'email', '?phone': 'string' }"
+      },
+      "defineGetSchema": {
+        "signature": "defineGetSchema(array $schema): bool",
+        "description": "Validate GET request schema"
+      },
+      "intValueGet": { "signature": "intValueGet(string $key): ?int" },
+      "stringValueGet": { "signature": "stringValueGet(string $key): ?string" },
+      "auth": {
+        "signature": "auth(?array $roles = null): bool",
+        "description": "JWT authentication/authorization check"
+      },
+      "mapPostToObject": {
+        "signature": "mapPostToObject(object $object, array $mapping = []): object|false",
+        "description": "Map POST data to model with optional method calls"
+      },
+      "returnResponse": { "signature": "returnResponse(): JsonResponse" }
+    }
+  },
+  "response_factory": {
+    "namespace": "Gemvc\\Http\\Response",
+    "methods": {
+      "success": { "code": 200, "signature": "success($data, $count, $message): JsonResponse" },
+      "created": { "code": 201, "signature": "created($data, $count, $message): JsonResponse" },
+      "updated": { "code": 209, "signature": "updated($result, $count, $message): JsonResponse" },
+      "deleted": { "code": 210, "signature": "deleted($result, $count, $message): JsonResponse" },
+      "notFound": { "code": 404, "signature": "notFound(string $message): JsonResponse" },
+      "badRequest": { "code": 400, "signature": "badRequest(string $message): JsonResponse" },
+      "unprocessableEntity": { "code": 422, "signature": "unprocessableEntity(string $message): JsonResponse" },
+      "internalError": { "code": 500, "signature": "internalError(string $message): JsonResponse" },
+      "unauthorized": { "code": 401, "signature": "unauthorized(string $message): JsonResponse" },
+      "forbidden": { "code": 403, "signature": "forbidden(string $message): JsonResponse" }
+    }
+  },
+  "table_orm": {
+    "namespace": "Gemvc\\Database\\Table",
+    "base_class": "All table classes MUST extend Table",
+    "required_methods": [
+      "getTable(): string",
+      "defineSchema(): array"
+    ],
+    "required_properties": [
+      { "name": "_type_map", "type": "array", "description": "Property-to-type mapping" }
+    ],
+    "query_builder_methods": {
+      "select": { "signature": "select(?array $columns = null): self", "description": "Start SELECT query" },
+      "from": { "signature": "from(string $table): self" },
+      "where": { "signature": "where(string $column, mixed $value): self", "description": "WHERE clause (AND)" },
+      "whereIn": { "signature": "whereIn(string $column, array $values): self" },
+      "whereLike": { "signature": "whereLike(string $column, string $pattern): self" },
+      "whereOr": { "signature": "whereOr(string $column, array $values): self", "description": "WHERE clause (OR)" },
+      "join": { "signature": "join(string $table, string $condition, string $type = 'INNER'): self" },
+      "orderBy": { "signature": "orderBy(string $column, string $direction = 'ASC'): self" },
+      "limit": { "signature": "limit(int $limit): self" },
+      "offset": { "signature": "offset(int $offset): self" },
+      "run": { "signature": "run(): array", "description": "Execute query and return results" }
+    },
+    "crud_methods": {
+      "insertSingleQuery": { "signature": "insertSingleQuery(): ?static", "description": "Insert single record, returns self with ID" },
+      "updateSingleQuery": { "signature": "updateSingleQuery(): ?static", "description": "Update single record, returns self" },
+      "deleteByIdQuery": { "signature": "deleteByIdQuery(int $id): ?int", "description": "Delete by ID, returns deleted ID" },
+      "selectById": { "signature": "selectById(int $id): null|static", "description": "Custom method pattern" }
+    }
+  },
+  "validation_types": {
+    "basic": ["string", "int", "float", "bool", "array"],
+    "advanced": ["email", "url", "date", "datetime", "json", "ip", "ipv4", "ipv6"],
+    "optional": { "prefix": "?", "example": "?name" },
+    "length_validation": {
+      "method": "validateStringPosts",
+      "format": "field_name => 'min|max'",
+      "example": "{ 'name': '2|100', 'password': '8|128' }"
+    }
+  },
+  "security": {
+    "automatic": [
+      "Path protection (blocks /app, /vendor, .env)",
+      "Header sanitization",
+      "Input sanitization (XSS prevention)",
+      "SQL injection prevention (prepared statements)",
+      "Cookie filtering"
+    ],
+    "developer_required": [
+      "Schema validation (definePostSchema)",
+      "Authentication (auth())",
+      "Authorization (auth(['role']))",
+      "Password hashing (CryptHelper)"
+    ]
+  },
+  "common_patterns": {
+    "create_operation": {
+      "api_layer": "Validate schema with definePostSchema()",
+      "controller_layer": "Map POST to model with mapPostToObject()",
+      "model_layer": "Business validation → Transform data → insertSingleQuery()",
+      "response": "Response::created()"
+    },
+    "read_operation": {
+      "api_layer": "Validate GET schema → Extract ID → Pass to controller",
+      "model_layer": "selectById() → Hide sensitive data → Response::success()"
+    },
+    "update_operation": {
+      "api_layer": "auth() → definePostSchema()",
+      "model_layer": "Verify exists → updateSingleQuery() → Response::updated()"
+    },
+    "list_operation": {
+      "api_layer": "Set findable() and sortable() fields",
+      "controller_layer": "createList(model) - auto pagination/filtering"
+    }
+  },
+  "property_rules": {
+    "database_columns": "Match property names to column names exactly",
+    "protected_properties": "Not returned in SELECT queries (use for passwords)",
+    "underscore_prefix": "Properties starting with _ are IGNORED in CRUD operations",
+    "nullable_types": "Use ? for optional fields: ?string, ?int",
+    "type_mapping": "Must define all properties in $_type_map"
+  },
+  "cli_commands": {
+    "project_management": {
+      "init": { "command": "gemvc init [--swoole|--apache]", "description": "Initialize project" }
+    },
+    "code_generation": {
+      "create:crud": "gemvc create:crud ServiceName",
+      "create:service": "gemvc create:service Name [-cmt]",
+      "create:controller": "gemvc create:controller Name [-mt]",
+      "create:model": "gemvc create:model Name [-t]",
+      "create:table": "gemvc create:table Name"
+    },
+    "database": {
+      "db:init": "gemvc db:init",
+      "db:migrate": "gemvc db:migrate TableClassName [--force]",
+      "db:list": "gemvc db:list",
+      "db:describe": "gemvc db:describe TableName",
+      "db:drop": "gemvc db:drop TableName"
+    }
+  },
+  "helpers": {
+    "CryptHelper": {
+      "hashPassword": "hashPassword(string $plain): string // Argon2i",
+      "passwordVerify": "passwordVerify(string $plain, string $hashed): bool",
+      "encrypt": "encrypt(string $data, string $secret): string",
+      "decrypt": "decrypt(string $encrypted, string $secret): string"
+    },
+    "FileHelper": {
+      "encrypt": "encrypt(): ?string // AES-256-CBC",
+      "decrypt": "decrypt(): ?string"
+    },
+    "ImageHelper": {
+      "convertToWebP": "convertToWebP(int $quality): bool // Validates signature"
+    }
+  },
+  "dont_create": {
+    "routes": "No routes config files (URL mapping is automatic)",
+    "sanitization": "No manual input sanitization (automatic)",
+    "raw_sql": "No string concatenation for SQL (use prepared statements)",
+    "autoloader": "No autoloader config (handled by framework)"
+  },
+  "must_extend": {
+    "api_classes": "ApiService",
+    "controller_classes": "Controller",
+    "model_classes": "Table (or Table subclass)",
+    "table_classes": "Table"
+  },
+  "url_structure": {
+    "pattern": "/api/{ServiceName}/{MethodName}",
+    "examples": [
+      "/api/User/create",
+      "/api/User/read/?id=1",
+      "/api/Product/list/?sort_by=name"
+    ]
+  }
+}
+

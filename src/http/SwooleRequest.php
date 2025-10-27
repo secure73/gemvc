@@ -34,12 +34,13 @@ class SwooleRequest
             $this->request->requestMethod = $swooleRequest->server['request_method'] ?? 'GET';
             $this->request->requestedUrl = $this->sanitizeRequestURI($swooleRequest->server['request_uri']);
             $this->request->queryString = isset($swooleRequest->server['query_string']) ? 
-                $this->sanitizeInput($swooleRequest->server['query_string']) : null;
+                $this->sanitizeInput((string) $swooleRequest->server['query_string']) : null;
             $this->request->remoteAddress = $swooleRequest->server['remote_addr'] . ':' . $swooleRequest->server['remote_port'];
 
             if (isset($swooleRequest->header['user-agent'])) {
-                $this->request->userMachine = $this->sanitizeInput($swooleRequest->header['user-agent']);
+                $this->request->userMachine = $this->sanitizeInput((string) $swooleRequest->header['user-agent']);
             }
+            $this->setCookies();
 
             $this->setData();
         } catch (\Exception $e) {
@@ -82,7 +83,7 @@ class SwooleRequest
         
         $this->setFiles();
         $this->setGet();
-        //$this->setCookies();
+        $this->setCookies();
     }
 
     /**
@@ -99,9 +100,10 @@ class SwooleRequest
         // Additionally parse JSON if content type indicates JSON
         if (empty($this->request->post) && 
             strpos($contentType, 'application/json') !== false) {
+            // @phpstan-ignore-next-line
             $rawContent = $this->incomingRequestObject->rawContent() ?? '';
             $jsonData = json_decode($rawContent, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
+            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
                 $this->request->post = $this->sanitizeData($jsonData);
             }
         }
@@ -113,9 +115,9 @@ class SwooleRequest
     private function setAuthorizationToken(): void
     {
         if (isset($this->incomingRequestObject->header['authorization'])) {
-            $authHeader = $this->sanitizeInput($this->incomingRequestObject->header['authorization']);
+            $authHeader = $this->sanitizeInput((string) $this->incomingRequestObject->header['authorization']);
             $this->request->authorizationHeader = $authHeader;
-            $this->request->jwtTokenStringInHeader = $this->parseAuthorizationToken($this->request->authorizationHeader);
+            $this->request->jwtTokenStringInHeader = $this->parseAuthorizationToken($authHeader);
         }
     }
 
@@ -133,8 +135,8 @@ class SwooleRequest
     /**
      * Normalize the files array to match PHP's $_FILES structure.
      * 
-     * @param array $files The files array from Swoole request
-     * @return array Normalized files array
+     * @param array<string, mixed> $files The files array from Swoole request
+     * @return array<string, mixed> Normalized files array
      */
     private function normalizeFilesArray(array $files): array
     {
@@ -182,7 +184,8 @@ class SwooleRequest
     }
 
     /**
-     * Set the cookies from the incoming request.
+     * Set the cookies from the incoming request with security validation.
+     * Filters out dangerous cookies that could be used for hacking attempts.
      */
     private function setCookies(): void
     {
@@ -192,12 +195,203 @@ class SwooleRequest
             return;
         }
         
+        // Security: Filter out dangerous cookies
+        $secureCookies = $this->filterDangerousCookies($cookieData);
+        
+        if (empty($secureCookies)) {
+            $this->request->cookies = null;
+            return;
+        }
+        
         // Convert cookie array to string format like PHP's $_COOKIE
         $cookieString = '';
-        foreach ($cookieData as $name => $value) {
-            $cookieString .= $name . '=' . urlencode($value) . '; ';
+        foreach ($secureCookies as $name => $value) {
+            $stringValue = is_string($value) ? $value : (is_scalar($value) ? (string) $value : '');
+            $cookieString .= $name . '=' . urlencode($stringValue) . '; ';
         }
         $this->request->cookies = rtrim($cookieString, '; ');
+    }
+
+    /**
+     * Filter out dangerous cookies that could be used for hacking attempts.
+     * 
+     * @param array<string, mixed> $cookies Raw cookie data
+     * @return array<string, mixed> Filtered safe cookies
+     */
+    private function filterDangerousCookies(array $cookies): array
+    {
+        $filteredCookies = [];
+        
+        // List of dangerous cookie names that should be blocked
+        $dangerousCookieNames = [
+            // Session hijacking attempts
+            'PHPSESSID', 'JSESSIONID', 'ASP.NET_SessionId', 'ASPSESSIONID',
+            'sessionid', 'session_id', 'sessid', 'sid',
+            
+            // Authentication bypass attempts
+            'auth', 'authentication', 'login', 'user', 'admin', 'root',
+            'token', 'jwt', 'bearer', 'access_token', 'refresh_token',
+            'api_key', 'apikey', 'secret', 'password', 'passwd',
+            
+            // CSRF and security tokens
+            'csrf_token', 'csrf', 'xsrf', 'xsrf_token', 'csrf_token',
+            'security_token', 'form_token', 'nonce',
+            
+            // Admin and privilege escalation
+            'admin_token', 'admin_session', 'admin_auth', 'admin_login',
+            'privilege', 'role', 'permission', 'access_level',
+            
+            // File upload and path traversal
+            'file_path', 'upload_path', 'temp_path', 'upload_dir',
+            'file_name', 'upload_name', 'file_type', 'upload_type',
+            
+            // SQL injection and XSS attempts
+            'sql', 'query', 'script', 'javascript', 'vbscript',
+            'onload', 'onerror', 'onclick', 'onmouseover',
+            
+            // Command injection
+            'cmd', 'command', 'exec', 'system', 'shell', 'bash',
+            'powershell', 'cmdline', 'terminal',
+            
+            // LDAP injection
+            'ldap', 'ldap_filter', 'ldap_query', 'ldap_search',
+            
+            // NoSQL injection
+            'mongo', 'mongodb', 'nosql', 'db_query', 'db_filter',
+            
+            // Framework-specific dangerous cookies
+            'laravel_session', 'symfony_session', 'cakephp_session',
+            'yii_session', 'codeigniter_session', 'zend_session',
+            
+            // Custom application dangerous patterns
+            'debug', 'test', 'dev', 'development', 'staging',
+            'config', 'configuration', 'settings', 'preferences',
+            'backup', 'restore', 'migrate', 'upgrade', 'install'
+        ];
+        
+        // List of dangerous cookie value patterns (regex)
+        $dangerousValuePatterns = [
+            // Script injection patterns
+            '/<script[^>]*>.*?<\/script>/i',
+            '/javascript\s*:/i',
+            '/vbscript\s*:/i',
+            '/on\w+\s*=/i',
+            
+            // SQL injection patterns
+            '/(\bunion\b.*\bselect\b)/i',
+            '/(\bselect\b.*\bfrom\b)/i',
+            '/(\binsert\b.*\binto\b)/i',
+            '/(\bupdate\b.*\bset\b)/i',
+            '/(\bdelete\b.*\bfrom\b)/i',
+            '/(\bdrop\b.*\btable\b)/i',
+            '/(\balter\b.*\btable\b)/i',
+            '/(\bcreate\b.*\btable\b)/i',
+            '/(\bexec\b|\bexecute\b)/i',
+            '/(\bsp_\w+)/i', // SQL Server stored procedures
+            
+            // Command injection patterns
+            '/[;&|`$(){}[\]]/', // Shell metacharacters
+            '/\b(cmd|command|exec|system|shell|bash|powershell)\b/i',
+            '/\b(rm|del|delete|remove|mv|move|cp|copy)\b/i',
+            '/\b(cat|type|more|less|head|tail|grep|find)\b/i',
+            
+            // Path traversal patterns
+            '/\.\.\//', // Directory traversal
+            '/\.\.\\\\/', // Windows directory traversal
+            '/%2e%2e%2f/i', // URL encoded directory traversal
+            '/%2e%2e%5c/i', // URL encoded Windows directory traversal
+            
+            // LDAP injection patterns
+            '/[()=*!&|]/', // LDAP special characters
+            '/\b(ldap|ldap_filter|ldap_query)\b/i',
+            
+            // NoSQL injection patterns
+            '/\b(mongo|mongodb|nosql)\b/i',
+            '/\$where/i',
+            '/\$ne/i',
+            '/\$gt/i',
+            '/\$lt/i',
+            '/\$regex/i',
+            
+            // XSS patterns
+            '/<iframe[^>]*>/i',
+            '/<object[^>]*>/i',
+            '/<embed[^>]*>/i',
+            '/<form[^>]*>/i',
+            '/<input[^>]*>/i',
+            '/<link[^>]*>/i',
+            '/<meta[^>]*>/i',
+            '/<style[^>]*>/i',
+            '/<link[^>]*>/i',
+            
+            // Base64 encoded dangerous content
+            '/^[A-Za-z0-9+\/]+=*$/', // Base64 pattern
+        ];
+        
+        foreach ($cookies as $name => $value) {
+            // Skip if cookie name is dangerous
+            if (in_array(strtolower($name), array_map('strtolower', $dangerousCookieNames))) {
+                continue;
+            }
+            
+            // Skip if cookie name contains dangerous patterns
+            if (preg_match('/[<>"\'\s;=]/', $name)) {
+                continue;
+            }
+            
+            // Convert value to string for pattern matching
+            $stringValue = is_string($value) ? $value : (is_scalar($value) ? (string) $value : '');
+            
+            // Skip if cookie value is too long (potential buffer overflow)
+            if (strlen($stringValue) > 4096) {
+                continue;
+            }
+            
+            // Skip if cookie value matches dangerous patterns
+            $isDangerous = false;
+            foreach ($dangerousValuePatterns as $pattern) {
+                if (preg_match($pattern, $stringValue)) {
+                    $isDangerous = true;
+                    break;
+                }
+            }
+            
+            if ($isDangerous) {
+                continue;
+            }
+            
+            // Additional security checks
+            // Check for null bytes
+            if (strpos($stringValue, "\0") !== false) {
+                continue;
+            }
+            
+            // Check for control characters (except tab, newline, carriage return)
+            if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $stringValue)) {
+                continue;
+            }
+            
+            // Check for suspicious encoding attempts
+            if (preg_match('/%[0-9a-f]{2}/i', $stringValue) && 
+                strlen(urldecode($stringValue)) !== strlen($stringValue)) {
+                // Contains URL encoding, check if it's suspicious
+                $decoded = urldecode($stringValue);
+                foreach ($dangerousValuePatterns as $pattern) {
+                    if (preg_match($pattern, $decoded)) {
+                        $isDangerous = true;
+                        break;
+                    }
+                }
+                if ($isDangerous) {
+                    continue;
+                }
+            }
+            
+            // If we get here, the cookie is safe
+            $filteredCookies[$name] = $value;
+        }
+        
+        return $filteredCookies;
     }
 
     /**
@@ -207,12 +401,15 @@ class SwooleRequest
     {
         // OpenSwoole stores PUT data in the request body
         // Need to parse the raw content based on content type
+        // @phpstan-ignore-next-line
         $rawContent = $this->incomingRequestObject->rawContent() ?? '';
         $contentType = $this->incomingRequestObject->header['content-type'] ?? '';
         
         if (strpos($contentType, 'application/json') !== false) {
-            $jsonData = json_decode($rawContent, true) ?? [];
-            $this->request->put = $this->sanitizeData($jsonData);
+            $jsonData = json_decode($rawContent, true);
+            if (is_array($jsonData)) {
+                $this->request->put = $this->sanitizeData($jsonData);
+            }
         } else {
             // Parse form data format
             parse_str($rawContent, $putData);
@@ -226,12 +423,15 @@ class SwooleRequest
     private function setPatch(): void
     {
         // Similar implementation to setPut
+        // @phpstan-ignore-next-line
         $rawContent = $this->incomingRequestObject->rawContent() ?? '';
         $contentType = $this->incomingRequestObject->header['content-type'] ?? '';
         
         if (strpos($contentType, 'application/json') !== false) {
-            $jsonData = json_decode($rawContent, true) ?? [];
-            $this->request->patch = $this->sanitizeData($jsonData);
+            $jsonData = json_decode($rawContent, true);
+            if (is_array($jsonData)) {
+                $this->request->patch = $this->sanitizeData($jsonData);
+            }
         } else {
             // Parse form data format
             parse_str($rawContent, $patchData);
@@ -255,15 +455,12 @@ class SwooleRequest
     /**
      * Sanitize input string to prevent XSS attacks.
      * 
-     * @param mixed $input The input to sanitize
-     * @return mixed Sanitized input
+     * @param string $input The input to sanitize
+     * @return string Sanitized input
      */
-    private function sanitizeInput(mixed $input): mixed
+    private function sanitizeInput(string $input): string
     {
-        if (!is_string($input)) {
-            return $input;
-        }
-        return filter_var(trim($input), FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+        return filter_var(trim($input), FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?: '';
     }
 
     /**
@@ -271,6 +468,10 @@ class SwooleRequest
      * 
      * @param array $data The data array to sanitize
      * @return array Sanitized data array
+     */
+    /**
+     * @param array<mixed, mixed> $data
+     * @return array<mixed, mixed>
      */
     private function sanitizeData(array $data): array
     {

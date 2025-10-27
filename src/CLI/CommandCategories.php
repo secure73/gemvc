@@ -61,6 +61,9 @@ class CommandCategories
         return '';
     }
 
+    /**
+     * @return array<string, string|array<string>>
+     */
     public static function getExamples(): array
     {
         return [

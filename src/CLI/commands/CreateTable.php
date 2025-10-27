@@ -2,12 +2,12 @@
 
 namespace Gemvc\CLI\Commands;
 
-use Gemvc\CLI\Commands\BaseCrudGenerator;
+use Gemvc\CLI\Commands\AbstractBaseCrudGenerator;
 
-class CreateTable extends BaseCrudGenerator
+class CreateTable extends AbstractBaseCrudGenerator
 {
-    protected $serviceName;
-    protected $basePath;
+    protected string $serviceName;
+    protected string $basePath;
 
     /**
      * Format service name to proper case
@@ -20,12 +20,12 @@ class CreateTable extends BaseCrudGenerator
         return ucfirst(strtolower($name));
     }
 
-    public function execute(): void
+    public function execute(): bool
     {
-        if (empty($this->args[0])) {
+        if (empty($this->args[0]) || !is_string($this->args[0])) {
             $this->error("Table name is required. Usage: gemvc create:table TableName");
+            return false;
         }
-
         $this->serviceName = $this->formatServiceName($this->args[0]);
         $this->basePath = defined('PROJECT_ROOT') ? PROJECT_ROOT : $this->determineProjectRoot();
 
@@ -37,51 +37,16 @@ class CreateTable extends BaseCrudGenerator
             $this->createTable();
 
             $this->success("Table {$this->serviceName} created successfully!");
+            return true;
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+            
         }
+        return false;
     }
 
-    protected function createDirectories(array $directories): void
-    {
-        foreach ($directories as $directory) {
-            if (!is_dir($directory)) {
-                if (!@mkdir($directory, 0755, true)) {
-                    throw new \RuntimeException("Failed to create directory: {$directory}");
-                }
-                $this->info("Created directory: {$directory}");
-            }
-        }
-    }
 
-    protected function confirmOverwrite(string $path): bool
-    {
-        if (!file_exists($path)) {
-            return true;
-        }
-        
-        echo "File already exists: {$path}" . PHP_EOL;
-        echo "Do you want to overwrite it? (y/N): ";
-        $handle = fopen("php://stdin", "r");
-        $line = fgets($handle);
-        fclose($handle);
-        return strtolower(trim($line)) === 'y';
-    }
-
-    protected function writeFile(string $path, string $content, string $fileType): void
-    {
-        if (!$this->confirmOverwrite($path)) {
-            $this->info("Skipped {$fileType}: " . basename($path));
-            return;
-        }
-
-        if (!file_put_contents($path, $content)) {
-            $this->error("Failed to create {$fileType} file: {$path}");
-        }
-        $this->info("Created {$fileType}: " . basename($path));
-    }
-
-    protected function createTable(): void
+    protected function createTable(): bool
     {
         $template = $this->getTemplate('table');
         $content = $this->replaceTemplateVariables($template, [
@@ -91,6 +56,7 @@ class CreateTable extends BaseCrudGenerator
 
         $path = $this->basePath . "/app/table/{$this->serviceName}Table.php";
         $this->writeFile($path, $content, "Table");
+        return true;
     }
 
     protected function determineProjectRoot(): string

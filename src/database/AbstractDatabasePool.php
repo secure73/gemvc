@@ -18,20 +18,24 @@ abstract class AbstractDatabasePool {
     protected int $reinitializeAttempts = 0;
 
     // Connection tracking
+    /** @var array<string, array{connection: PDO, created_at: int, last_used: int}> */
     protected array $activeConnections = [];
+    /** @var array<string, mixed> */
     protected array $connectionStats = [];
+    /** @var array<string, mixed> */
     protected array $queryStats = [];
 
     // Performance metrics
+    /** @var array<string, int|float> */
     protected array $metrics = [
         'total_connections' => 0,
         'failed_connections' => 0,
-        'average_connection_time' => 0,
-        'total_connection_time' => 0,
+        'average_connection_time' => 0.0,
+        'total_connection_time' => 0.0,
         'connection_attempts' => 0,
         'query_count' => 0,
         'failed_queries' => 0,
-        'average_query_time' => 0
+        'average_query_time' => 0.0
     ];
 
     protected const MAX_REINITIALIZE_ATTEMPTS = 3;
@@ -45,9 +49,13 @@ abstract class AbstractDatabasePool {
     protected const MAX_RETRY_ATTEMPTS = 3;
 
     protected function __construct() {
-        $this->maxPoolSize = (int) ($_ENV['MAX_DB_CONNECTION_POOL'] ?? 10);
-        $this->maxConnectionAge = (int) ($_ENV['DB_CONNECTION_MAX_AGE'] ?? 300);
-        $this->initialPoolSize = (int) ($_ENV['INITIAL_DB_CONNECTION_POOL'] ?? 3);
+        $maxPool = $_ENV['MAX_DB_CONNECTION_POOL'] ?? '10';
+        $maxAge = $_ENV['DB_CONNECTION_MAX_AGE'] ?? '300';
+        $initialPool = $_ENV['INITIAL_DB_CONNECTION_POOL'] ?? '3';
+        
+        $this->maxPoolSize = is_numeric($maxPool) ? (int) $maxPool : 10;
+        $this->maxConnectionAge = is_numeric($maxAge) ? (int) $maxAge : 300;
+        $this->initialPoolSize = is_numeric($initialPool) ? (int) $initialPool : 3;
         $this->debugMode = ($_ENV['APP_ENV'] ?? 'prod') === 'dev';
 
         $this->validateConfiguration();
@@ -56,10 +64,15 @@ abstract class AbstractDatabasePool {
     /**
      * Get the singleton instance
      */
+    /**
+     * @return static
+     */
     public static function getInstance(): self {
         if (static::$instance === null) {
+            // @phpstan-ignore-next-line
             static::$instance = new static();
         }
+        /** @var static */
         return static::$instance;
     }
 
@@ -106,12 +119,17 @@ abstract class AbstractDatabasePool {
      * Create a new database connection
      */
     protected function createConnection(): PDO {
+        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        $port = $_ENV['DB_PORT'] ?? '3306';
+        $dbname = $_ENV['DB_NAME'] ?? '';
+        $charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+        
         $dsn = sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-            $_ENV['DB_HOST'],
-            $_ENV['DB_PORT'],
-            $_ENV['DB_NAME'],
-            $_ENV['DB_CHARSET']
+            is_string($host) ? $host : 'localhost',
+            is_string($port) ? $port : '3306',
+            is_string($dbname) ? $dbname : '',
+            is_string($charset) ? $charset : 'utf8mb4'
         );
         
         $options = [
@@ -121,8 +139,17 @@ abstract class AbstractDatabasePool {
             PDO::ATTR_TIMEOUT => self::CONNECTION_TIMEOUT
         ];
         
-        $pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], $options);
-        $pdo->setAttribute(PDO::MYSQL_ATTR_INIT_COMMAND, "SET NAMES " . $_ENV['DB_CHARSET']);
+        $user = $_ENV['DB_USER'] ?? '';
+        $password = $_ENV['DB_PASSWORD'] ?? '';
+        $dbCharset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+        
+        $pdo = new PDO(
+            $dsn, 
+            is_string($user) ? $user : '', 
+            is_string($password) ? $password : '', 
+            $options
+        );
+        $pdo->setAttribute(PDO::MYSQL_ATTR_INIT_COMMAND, 'SET NAMES ' . (is_string($dbCharset) ? $dbCharset : 'utf8mb4'));
         $this->log("New database connection created");
         
         return $pdo;

@@ -4,17 +4,22 @@ namespace Gemvc\CLI;
 
 abstract class Command
 {
+    /** @var array<int, mixed> */
     protected array $args;
-    protected $options;
+    /** @var array<string, mixed> */
+    protected array $options;
 
+    /**
+     * @param array<int, mixed> $args
+     * @param array<string, mixed> $options
+     */
     public function __construct(array $args = [], array $options = [])
     {
         $this->args = $args;
         $this->options = $options;
     }
 
-    abstract public function execute();
-
+    abstract public function execute(): bool;
     private function supportsAnsiColors(): bool
     {
         if (DIRECTORY_SEPARATOR === '\\') {
@@ -49,7 +54,7 @@ abstract class Command
     protected function error(string $message): void
     {
         if ($this->supportsAnsiColors()) {
-            echo "\033[31m{$message}\033[0m\n";
+            echo "\033[31m❌ {$message}\033[0m\n";
         } else {
             echo "Error: {$message}\n";
         }
@@ -59,7 +64,7 @@ abstract class Command
     protected function success(string $message, bool $shouldExit = true): void
     {
         if ($this->supportsAnsiColors()) {
-            echo "\033[32m{$message}\033[0m\n";
+            echo "\033[32m✅ {$message}\033[0m\n";
         } else {
             echo "Success: {$message}\n";
         }
@@ -71,7 +76,7 @@ abstract class Command
     protected function info(string $message): void
     {
         if ($this->supportsAnsiColors()) {
-            echo "\033[32m{$message}\033[0m\n";
+            echo "\033[34mℹ️  {$message}\033[0m\n";
         } else {
             echo "Info: {$message}\n";
         }
@@ -80,7 +85,7 @@ abstract class Command
     protected function warning(string $message): void
     {
         if ($this->supportsAnsiColors()) {
-            echo "\033[33m{$message}\033[0m\n";
+            echo "\033[33m⚠️  {$message}\033[0m\n";
         } else {
             echo "Warning: {$message}\n";
         }

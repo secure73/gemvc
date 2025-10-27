@@ -109,7 +109,7 @@ class Request
     {
         if(!$this->response)
         {
-            return Response::unknownError("No response property set in Request Object");
+            return Response::unknownError("No response property set in Request Object", null);
         }
         return $this->response;
     }
@@ -126,7 +126,7 @@ class Request
         {
             return false;
         }
-        if ($authRules) {
+        if ($authRules && $this->token) {
             $this->authorize($this->token,$authRules);
             if(!$this->isAuthorized)
             {
@@ -137,10 +137,10 @@ class Request
     }
 
     /**
-     * @return null|string
-     * in case of Authenticated user with valid JWT Token return string role, otherwise return null and set $this->error and $this->response
+     * @return null|string|false
+     * in case of Authenticated user with valid JWT Token return string role, otherwise return false and set $this->error and $this->response
      */
-    public function userRole(): null|string
+    public function userRole(): null|string|false
     {
         // Check if token exists
         if (!$this->token) {
@@ -441,10 +441,10 @@ class Request
     }
 
     /**
-     * @return int|null     
-     * in case of Authenticated user with valid JWT Token return int user_id, otherwise return null and set $this->error and $this->response
+     * @return int|null|false     
+     * in case of Authenticated user with valid JWT Token return int user_id, otherwise return false and set $this->error and $this->response
      */
-    public function userId(): null|int
+    public function userId(): null|int|false
     {
         // Check if token exists
         if (!$this->token) {
@@ -457,7 +457,8 @@ class Request
         }
         
         // Check if user_id is actually set and valid
-        if (empty($this->token->user_id) || !is_numeric($this->token->user_id)) {
+        // @phpstan-ignore-next-line
+        if (!isset($this->token->user_id) || !is_numeric($this->token->user_id)) {
             return $this->setErrorResponse(['User ID not found or invalid in token.'], 403);
         }
         
@@ -743,7 +744,7 @@ class Request
      */
     public function mapPutToObject(object $object, array $manualMap = null): null|object  
     {
-        if(count($this->put) == 0){
+        if(!is_array($this->put) || count($this->put) == 0){
             $this->setErrorResponse(["No put data available"], 422);
             return null;
         }
@@ -788,6 +789,9 @@ class Request
         return $object;
     }
 
+    /**
+     * @param array<mixed, mixed> $assoc_array
+     */
     private function _mapArrayToObject(array $assoc_array, object $object, string $method): null|object
     {
         try {

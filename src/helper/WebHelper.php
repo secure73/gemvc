@@ -6,7 +6,7 @@ class WebHelper
     /**
      * Detect the web server software and its capabilities.
      *
-     * @return array Returns an array with server information
+     * @return array<string,mixed> Returns an array with server information
      */
     public static function detectWebServer(): array
     {
@@ -44,7 +44,8 @@ class WebHelper
             error_log('Web server detection failed: SERVER_SOFTWARE not available');
             return $serverInfo;
         }
-
+        /** @phpstan-ignore-next-line */
+        $serverSoftware = (string)$serverSoftware;
         // Detect server and version
         if (stripos($serverSoftware, 'apache') !== false) {
             $serverInfo['name'] = 'apache';

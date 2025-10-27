@@ -1,37 +1,52 @@
 <?php
 
 namespace Gemvc\Database;
-use Gemvc\Database\QueryExecuter;
+use Gemvc\Database\UniversalQueryExecuter;
+
 /**
- * PdoQuery uses QueryExecuter as a component with lazy loading to provide high-level methods for common database operations
+ * PdoQuery uses UniversalQueryExecuter as a component with lazy loading to provide high-level methods for common database operations
  * All methods follow the unified return pattern: result|null where null indicates error and result indicates success
+ * 
+ * This class now works across all web server environments:
+ * - OpenSwoole (with connection pooling)
+ * - Apache PHP-FPM (with simple PDO)
+ * - Nginx PHP-FPM (with simple PDO)
  */
 class PdoQuery
 {
-    /** @var QueryExecuter|null Lazy-loaded query executor */
-    private ?QueryExecuter $executer = null;
+    /** @var UniversalQueryExecuter|null Lazy-loaded universal query executor */
+    private ?UniversalQueryExecuter $executer = null;
     
     /** @var bool Whether we have an active database connection */
     private bool $isConnected = false;
 
+
     /**
-     * Constructor - no connection is created here
+     * Clean constructor - no parameters needed!
+     * Everything is handled automatically through the universal database interface.
      */
     public function __construct()
     {
-        // No QueryExecuter instance created here - lazy loading
+        // No configuration needed - UniversalQueryExecuter handles everything
     }
 
     /**
-     * Lazy initialization of QueryExecuter
-     * Connection is created only when this method is called
+     * Lazy initialization of UniversalQueryExecuter.
+     * Connection is automatically acquired from the appropriate manager when needed.
      */
-    private function getExecuter(): QueryExecuter
+    private function getExecuter(): UniversalQueryExecuter
     {
         if ($this->executer === null) {
-            $this->executer = new QueryExecuter();
+            $this->executer = new UniversalQueryExecuter();
             $this->isConnected = true;
         }
+        
+        // Propagate errors from UniversalQueryExecuter to PdoQuery
+        if ($this->executer->getError() !== null) {
+            $this->setError($this->executer->getError());
+        }
+        
+        /** @var UniversalQueryExecuter */
         return $this->executer;
     }
 
@@ -44,6 +59,7 @@ class PdoQuery
      */
     public function insertQuery(string $query, array $params = []): int|null
     {
+        $success = false;
         try {
             if ($this->executeQuery($query, $params)) {
                 // Check if there were any errors during execution
@@ -56,6 +72,7 @@ class PdoQuery
                 
                 // If lastId is a valid ID (not 0 or false), return it as integer
                 if ($lastId && is_numeric($lastId) && (int)$lastId > 0) {
+                    $success = true;
                     return (int)$lastId;
                 }
                 
@@ -65,6 +82,7 @@ class PdoQuery
                 if ($affectedRows > 0) {
                     // Insert was successful but table has no auto-increment ID
                     // Return 1 to indicate success
+                    $success = true;
                     return 1;
                 }
                 
@@ -77,8 +95,11 @@ class PdoQuery
             $this->handleInsertError($e);
             return null;
         } finally {
-            // Force rollback on error for INSERT
-            $this->getExecuter()->secure(true);
+            // Ensure connection is returned to the appropriate pool
+            // secure(false) releases connection without forcing rollback
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(!$success);
+            }
         }
     }
 
@@ -128,10 +149,12 @@ class PdoQuery
      */
     public function updateQuery(string $query, array $params = []): int|null
     {
+        $success = false;
         try {
             if ($this->executeQuery($query, $params)) {
                 $affectedRows = $this->getExecuter()->getAffectedRows();
                 // Note: 0 affected rows is valid (no changes needed), not an error
+                $success = true;
                 return $affectedRows;
             }
             return null;
@@ -139,8 +162,10 @@ class PdoQuery
             $this->handleUpdateError($e);
             return null;
         } finally {
-            // Force rollback on error for UPDATE
-            $this->getExecuter()->secure(true);
+            // Ensure connection is returned to the appropriate pool
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(!$success);
+            }
         }
     }
 
@@ -182,10 +207,12 @@ class PdoQuery
      */
     public function deleteQuery(string $query, array $params = []): int|null
     {
+        $success = false;
         try {
             if ($this->executeQuery($query, $params)) {
                 $affectedRows = $this->getExecuter()->getAffectedRows();
                 // Note: 0 affected rows is valid (record not found), not an error
+                $success = true;
                 return $affectedRows;
             }
             return null;
@@ -193,8 +220,10 @@ class PdoQuery
             $this->handleDeleteError($e);
             return null;
         } finally {
-            // Force rollback on error for DELETE
-            $this->getExecuter()->secure(true);
+            // Ensure connection is returned to the appropriate pool
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(!$success);
+            }
         }
     }
 
@@ -231,7 +260,7 @@ class PdoQuery
      * 
      * @param string $query The SQL SELECT query
      * @param array<string, mixed> $params Key-value pairs for parameter binding
-     * @return array|null Array of objects (empty array if no results), null on error
+     * @return array<object>|null Array of objects (empty array if no results), null on error
      */
     public function selectQueryObjects(string $query, array $params = []): array|null
     {
@@ -250,8 +279,11 @@ class PdoQuery
             $this->handleQueryError('Select objects', $e);
             return null;
         } finally {
-            // Don't force rollback for SELECT queries
-            $this->getExecuter()->secure(false);
+            // Ensure connection is returned to the appropriate pool for SELECT queries
+            // secure(false) releases without rollback
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(false);
+            }
         }
     }
 
@@ -260,7 +292,7 @@ class PdoQuery
      * 
      * @param string $query The SQL SELECT query
      * @param array<string, mixed> $params Key-value pairs for parameter binding
-     * @return array|null Array of rows (empty array if no results), null on error
+     * @return array<array<string, mixed>>|null Array of rows (empty array if no results), null on error
      */
     public function selectQuery(string $query, array $params = []): array|null
     {
@@ -279,8 +311,11 @@ class PdoQuery
             $this->handleQueryError('Select', $e);
             return null;
         } finally {
-            // Don't force rollback for SELECT queries
-            $this->getExecuter()->secure(false);
+            // Ensure connection is returned to the appropriate pool for SELECT queries
+            // secure(false) releases without rollback
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(false);
+            }
         }
     }
 
@@ -313,8 +348,11 @@ class PdoQuery
             $this->handleQueryError('Count', $e);
             return null;
         } finally {
-            // Don't force rollback for COUNT queries
-            $this->getExecuter()->secure(false);
+            // Ensure connection is returned to the appropriate pool for COUNT queries
+            // secure(false) releases without rollback
+            if ($this->executer !== null) {
+                $this->getExecuter()->secure(false);
+            }
         }
     }
 
@@ -333,15 +371,31 @@ class PdoQuery
             
             $executer->query($query);
             
+            // Propagate error from QueryExecuter
             if ($executer->getError() !== null) {
+                $this->setError($executer->getError());
                 return false;
             }
             
             foreach ($params as $key => $value) {
                 $executer->bind($key, $value);
+                
+                // Check for binding errors
+                if ($executer->getError() !== null) {
+                    $this->setError($executer->getError());
+                    return false;
+                }
             }
             
-            return $executer->execute();
+            $result = $executer->execute();
+            
+            // Propagate execution errors
+            // @phpstan-ignore-next-line
+            if (!$result && $executer->getError() !== null) {
+                $this->setError($executer->getError());
+            }
+            
+            return $result;
         } catch (\PDOException $e) {
             $this->handleQueryError('Query execution', $e);
             return false;
@@ -349,34 +403,78 @@ class PdoQuery
     }
 
     /**
-     * Handle query errors consistently
+     * Handle query errors consistently with retry logic for transient errors
      * 
      * @param string $operation The operation that failed
      * @param \PDOException $e The exception that was thrown
      */
     private function handleQueryError(string $operation, \PDOException $e): void
     {
+        $context = [
+            'operation' => $operation,
+            'error_code' => $e->getCode(),
+            'sql_state' => $e->errorInfo[0] ?? 'unknown',
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        
+        // Check for transient errors that might be retryable
+        $isTransient = $this->isTransientError($e);
+        if ($isTransient) {
+            $context['retryable'] = true;
+            $context['suggestion'] = 'This error might be temporary. Consider retrying the operation.';
+        }
+        
         $errorMessage = sprintf(
             '%s operation failed: %s (Code: %s)',
             $operation,
             $e->getMessage(),
             $e->getCode()
         );
-        $this->setError($errorMessage);
+        
+        $this->setError($errorMessage, $context);
         error_log($errorMessage . "\nStack trace: " . $e->getTraceAsString());
+    }
+
+    /**
+     * Check if an error is transient and potentially retryable
+     * 
+     * @param \PDOException $e The exception to check
+     * @return bool True if the error is transient
+     */
+    private function isTransientError(\PDOException $e): bool
+    {
+        $transientCodes = [
+            '08000', // Connection exception
+            '08003', // Connection does not exist
+            '08006', // Connection failure
+            '08001', // SQL client unable to establish SQL connection
+            '08004', // SQL server rejected establishment of SQL connection
+            '08007', // Transaction resolution unknown
+            '40001', // Serialization failure
+            '40P01', // Deadlock detected
+        ];
+        
+        $errorCode = $e->getCode();
+        $sqlState = $e->errorInfo[0] ?? '';
+        
+        return in_array($sqlState, $transientCodes) || 
+               in_array($errorCode, $transientCodes) ||
+               stripos($e->getMessage(), 'timeout') !== false ||
+               stripos($e->getMessage(), 'connection') !== false ||
+               stripos($e->getMessage(), 'deadlock') !== false;
     }
 
     /**
      * Set error message
      * 
      * @param string|null $error Error message
+     * @param array<string, mixed> $context
      */
-    public function setError(?string $error): void
+    public function setError(?string $error, array $context = []): void
     {
         if ($this->executer !== null) {
-            $this->executer->setError($error);
+            $this->executer->setError($error, $context);
         }
-        // If no executer yet, the error will be set when it's created
     }
 
     /**
@@ -451,6 +549,31 @@ class PdoQuery
             return false;
         }
         return $this->executer->rollback();
+    }
+
+    /**
+     * Get information about the current database environment
+     * 
+     * @return array<string, mixed> Environment information
+     */
+    public function getEnvironmentInfo(): array
+    {
+        if ($this->executer !== null) {
+            return $this->executer->getManagerInfo();
+        }
+        
+        // If no executer yet, get info directly from factory
+        return DatabaseManagerFactory::getManagerInfo();
+    }
+
+    /**
+     * Clear the error message.
+     */
+    public function clearError(): void
+    {
+        if ($this->executer !== null) {
+            $this->executer->setError(null);
+        }
     }
 
     /**

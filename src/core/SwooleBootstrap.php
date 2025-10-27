@@ -38,8 +38,8 @@ class SwooleBootstrap
 
         $segments = explode('/', $this->request->requestedUrl);
         
-        $serviceIndex = $_ENV["SERVICE_IN_URL_SECTION"] ?? 1;
-        $methodIndex = $_ENV["METHOD_IN_URL_SECTION"] ?? 2;
+        $serviceIndex = is_numeric($_ENV["SERVICE_IN_URL_SECTION"] ?? 1) ? (int) ($_ENV["SERVICE_IN_URL_SECTION"] ?? 1) : 1;
+        $methodIndex = is_numeric($_ENV["METHOD_IN_URL_SECTION"] ?? 2) ? (int) ($_ENV["METHOD_IN_URL_SECTION"] ?? 2) : 2;
         
         $service = isset($segments[$serviceIndex]) && $segments[$serviceIndex] ? ucfirst($segments[$serviceIndex]) : "Index";
         

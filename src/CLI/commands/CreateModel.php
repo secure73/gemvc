@@ -2,13 +2,14 @@
 
 namespace Gemvc\CLI\Commands;
 
-use Gemvc\CLI\Commands\BaseCrudGenerator;
+use Gemvc\CLI\Commands\AbstractBaseCrudGenerator;
 
-class CreateModel extends BaseCrudGenerator
+class CreateModel extends AbstractBaseCrudGenerator
 {
-    protected $serviceName;
-    protected $basePath;
-    protected $flags = [];
+    protected string $serviceName;
+    protected string $basePath;
+    /** @var array<string, bool> */
+    protected array $flags = [];
 
     /**
      * Format service name to proper case
@@ -33,16 +34,17 @@ class CreateModel extends BaseCrudGenerator
         ];
 
         // Check for table flag
-        if (isset($this->args[1]) && strpos($this->args[1], '-') === 0) {
+        if (isset($this->args[1]) && is_string($this->args[1]) && strpos($this->args[1], '-') === 0) {
             $flagStr = substr($this->args[1], 1);
             $this->flags['table'] = strpos($flagStr, 't') !== false;
         }
     }
 
-    public function execute(): void
+    public function execute(): bool
     {
-        if (empty($this->args[0])) {
+        if (empty($this->args[0]) || !is_string($this->args[0])) {
             $this->error("Model name is required. Usage: gemvc create:model ModelName [-t]");
+            return false;
         }
 
         $this->serviceName = $this->formatServiceName($this->args[0]);
@@ -62,49 +64,13 @@ class CreateModel extends BaseCrudGenerator
             }
 
             $this->success("Model {$this->serviceName} created successfully!");
+            return true;
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+            return false;
         }
     }
 
-    protected function createDirectories(array $directories): void
-    {
-        foreach ($directories as $directory) {
-            if (!is_dir($directory)) {
-                if (!@mkdir($directory, 0755, true)) {
-                    throw new \RuntimeException("Failed to create directory: {$directory}");
-                }
-                $this->info("Created directory: {$directory}");
-            }
-        }
-    }
-
-    protected function confirmOverwrite(string $path): bool
-    {
-        if (!file_exists($path)) {
-            return true;
-        }
-        
-        echo "File already exists: {$path}" . PHP_EOL;
-        echo "Do you want to overwrite it? (y/N): ";
-        $handle = fopen("php://stdin", "r");
-        $line = fgets($handle);
-        fclose($handle);
-        return strtolower(trim($line)) === 'y';
-    }
-
-    protected function writeFile(string $path, string $content, string $fileType): void
-    {
-        if (!$this->confirmOverwrite($path)) {
-            $this->info("Skipped {$fileType}: " . basename($path));
-            return;
-        }
-
-        if (!file_put_contents($path, $content)) {
-            $this->error("Failed to create {$fileType} file: {$path}");
-        }
-        $this->info("Created {$fileType}: " . basename($path));
-    }
 
     protected function createModel(): void
     {
@@ -117,7 +83,7 @@ class CreateModel extends BaseCrudGenerator
         $this->writeFile($path, $content, "Model");
     }
 
-    protected function createTable(): void
+    protected function createTable(): bool
     {
         $template = $this->getTemplate('table');
         $content = $this->replaceTemplateVariables($template, [
@@ -127,6 +93,7 @@ class CreateModel extends BaseCrudGenerator
 
         $path = $this->basePath . "/app/table/{$this->serviceName}Table.php";
         $this->writeFile($path, $content, "Table");
+        return true;
     }
 
     protected function determineProjectRoot(): string

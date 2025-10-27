@@ -104,16 +104,6 @@ class TypeChecker
     }
 
     /**
-     * Checks if a value is an integer and meets the given options.
-     * @param mixed $value The value to check.
-     * @return bool True if the value is an integer and meets the options, false otherwise.
-     */
-    private static function checkInteger(mixed $value): bool
-    {
-        return is_numeric($value);
-    }
-
-    /**
      * Checks if a value is a float and meets the given options.
      *
      * @param mixed $value The value to check.

@@ -21,21 +21,26 @@ class DbMigrate extends Command
     - Apply schema constraints (unique, foreign keys, indexes, etc.)
     - Remove obsolete constraints (with --sync-schema flag)";
 
-    public function execute()
+    public function execute(): bool
     {
         try {
             ProjectHelper::loadEnv();
             $pdo = DbConnect::connect();
             if (!$pdo) {
-                return;
+                return false;
             }
 
             if (empty($this->args[0])) {
                 $this->error("Table class name is required. Usage: gemvc db:migrate TableClassName [--force] [--sync-schema]");
-                return;
+                return false;
             }
 
             $tableClass = $this->args[0];
+            if (!is_string($tableClass)) {
+                $this->error("Table class name must be a string");
+                return false;
+            }
+            
             $force = in_array('--force', $this->args);
             $enforceNotNull = in_array('--enforce-not-null', $this->args);
             $syncSchema = in_array('--sync-schema', $this->args);
@@ -51,22 +56,27 @@ class DbMigrate extends Command
 
             if (!file_exists($tableFile)) {
                 $this->error("Table file not found: {$tableFile}");
-                return;
+                return false;
             }
 
             require_once $tableFile;
             $className = "App\\Table\\{$tableClass}";
             if (!class_exists($className)) {
                 $this->error("Table class not found: {$className}");
-                return;
+                return false;
             }
 
             $table = new $className();
             $generator = new TableGenerator($pdo);
 
             // First check if table exists
+            // @phpstan-ignore-next-line
             $tableName = $table->getTable();
             $stmt = $pdo->query("SHOW TABLES LIKE '{$tableName}'");
+            if ($stmt === false) {
+                $this->error("Failed to check if table exists");
+                return false;
+            }
             $tableExists = $stmt->rowCount() > 0;
 
             if ($tableExists) {
@@ -79,25 +89,28 @@ class DbMigrate extends Command
                 }
                 if ($generator->updateTable($table, null, $force, $enforceNotNull, $defaultValue)) {
                     $this->success("Table '{$tableName}' synchronized successfully!");
-                    
-                    // Apply schema constraints after table update
                     $this->applySchemaConstraints($pdo, $table, $tableName, $syncSchema);
+                    return true;
+                    // Apply schema constraints after table update
                 } else {
                     $this->error("Failed to sync table: " . $generator->getError());
+                    return false;
                 }
             } else {
                 $this->info("Table '{$tableName}' does not exist. Creating new table...");
                 if ($generator->createTableFromObject($table)) {
-                    $this->success("Table '{$tableName}' created successfully!");
-                    
-                    // Apply schema constraints after table creation
                     $this->applySchemaConstraints($pdo, $table, $tableName, $syncSchema);
+                    $this->success("Table '{$tableName}' created successfully!");
+                    return true;
+                    // Apply schema constraints after table creation
                 } else {
                     $this->error("Failed to create table: " . $generator->getError());
+                    return false;
                 }
             }
         } catch (\Exception $e) {
             $this->error("Migration failed: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -109,11 +122,12 @@ class DbMigrate extends Command
      * @param string $tableName Table name
      * @param bool $syncSchema Whether to remove obsolete constraints
      */
-    private function applySchemaConstraints(\PDO $pdo, object $table, string $tableName, bool $syncSchema = false): void
+    private function applySchemaConstraints(\PDO $pdo, object $table, string $tableName, bool $syncSchema = false): bool
     {
         // Check if table has schema constraints defined
         if (!method_exists($table, 'defineSchema')) {
-            return;
+            $this->error("Table '{$tableName}' has no schema constraints defined.");
+            return false;
         }
 
         $this->info("Processing schema constraints...");
@@ -121,7 +135,7 @@ class DbMigrate extends Command
         
         if (empty($schemaDefinition) && !$syncSchema) {
             $this->info("No schema constraints defined.");
-            return;
+            return false;
         }
 
         // Create SchemaGenerator instance
@@ -131,20 +145,30 @@ class DbMigrate extends Command
         if ($schemaGenerator->applyConstraints($syncSchema)) {
             $summary = $schemaGenerator->getSummary();
             
-            if ($summary['total_constraints'] > 0) {
-                $this->success("Applied {$summary['total_constraints']} schema constraints successfully!");
+            if (isset($summary['total_constraints']) && is_numeric($summary['total_constraints']) && $summary['total_constraints'] > 0) {
+                $totalConstraints = (int) $summary['total_constraints'];
+                $this->success("Applied {$totalConstraints} schema constraints successfully!");
                 
                 // Show details of applied constraints
-                foreach ($summary['constraint_types'] as $type => $count) {
-                    $this->info("  ✓ {$count} {$type} constraint(s)");
+                if (isset($summary['constraint_types']) && is_array($summary['constraint_types'])) {
+                    foreach ($summary['constraint_types'] as $type => $count) {
+                        $typeStr = is_string($type) ? $type : 'unknown';
+                        $countStr = is_string($count) ? $count : (is_numeric($count) ? (string) $count : '0');
+                        $this->info("  ✓ {$countStr} {$typeStr} constraint(s)");
+                    }
                 }
             } else if ($syncSchema) {
                 $this->info("Schema synchronized successfully (no constraints to add).");
+                return true;
             } else {
                 $this->info("No schema constraints to apply.");
+                return true;
             }
         } else {
             $this->error("Failed to apply schema constraints: " . $schemaGenerator->getError());
+            return false;
         }
+        
+        return true;
     }
 } 

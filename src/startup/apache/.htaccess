@@ -18,22 +18,6 @@ AddDefaultCharset UTF-8
     Require all denied
 </FilesMatch>
 
-<Directory "app">
-    Require all denied
-</Directory>
-
-<Directory "vendor">
-    Require all denied
-</Directory>
-
-<Directory "bin">
-    Require all denied
-</Directory>
-
-<Directory "config">
-    Require all denied
-</Directory> 
-
-<Directory "templates">
-Require all denied
-</Directory> 
+# Deny access to app/, vendor/, bin/, config/, templates/ directories
+# Note: <Directory> is not allowed in .htaccess, using RedirectMatch instead
+RedirectMatch 403 ^/(app|vendor|bin|config|templates)/ 

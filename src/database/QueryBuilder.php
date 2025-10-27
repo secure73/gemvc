@@ -158,13 +158,25 @@ class QueryBuilder
     }
 
     /**
-     * Set an error message at the builder level
+     * Set an error message at the builder level with optional context
      * 
      * @param string|null $error Error message to set
+     * @param array<string, mixed> $context Additional context information
      */
-    public function setError(?string $error): void
+    public function setError(?string $error, array $context = []): void
     {
-        $this->error = $error;
+        if ($error === null) {
+            $this->error = null;
+            return;
+        }
+        
+        // Add context information to error message
+        if (!empty($context)) {
+            $contextStr = ' [Context: ' . json_encode($context) . ']';
+            $this->error = $error . $contextStr;
+        } else {
+            $this->error = $error;
+        }
     }
 
     /**
@@ -176,8 +188,9 @@ class QueryBuilder
     }
 
     /**
-     * Get a shared PdoQuery instance for consistent connection management
-     * This provides lazy loading and connection reuse across queries
+     * Get a shared PdoQuery instance for consistent connection management.
+     * This provides lazy loading and automatic connection pooling.
+     * All connections are intelligently managed by the singleton DatabaseManager.
      * 
      * @return PdoQuery Database query executor
      */
@@ -186,6 +199,13 @@ class QueryBuilder
         if ($this->pdoQuery === null) {
             $this->pdoQuery = new PdoQuery();
         }
+        
+        // Propagate errors from PdoQuery to QueryBuilder
+        if ($this->pdoQuery->getError() !== null) {
+            $this->setError($this->pdoQuery->getError());
+        }
+        
+        /** @var PdoQuery */
         return $this->pdoQuery;
     }
 
@@ -206,9 +226,12 @@ class QueryBuilder
      */
     public function beginTransaction(): bool
     {
+        $this->clearError();
         $result = $this->getPdoQuery()->beginTransaction();
         if (!$result) {
-            $this->setError("Failed to begin transaction: " . $this->getPdoQuery()->getError());
+            // Propagate error from PdoQuery
+            $pdoError = $this->getPdoQuery()->getError();
+            $this->setError("Failed to begin transaction" . ($pdoError ? ": " . $pdoError : ''));
         }
         return $result;
     }
@@ -220,14 +243,19 @@ class QueryBuilder
      */
     public function commit(): bool
     {
+        $this->clearError();
+        
         if (!$this->isConnected()) {
             $this->setError("No active connection to commit transaction");
             return false;
         }
         
-        $result = $this->pdoQuery->commit();
+        $pdoQuery = $this->getPdoQuery();
+        $result = $pdoQuery->commit();
         if (!$result) {
-            $this->setError("Failed to commit transaction: " . $this->pdoQuery->getError());
+            // Propagate error from PdoQuery
+            $pdoError = $pdoQuery->getError();
+            $this->setError("Failed to commit transaction" . ($pdoError ? ": " . $pdoError : ''));
         }
         return $result;
     }
@@ -239,14 +267,19 @@ class QueryBuilder
      */
     public function rollback(): bool
     {
+        $this->clearError();
+        
         if (!$this->isConnected()) {
             $this->setError("No active connection to rollback transaction");
             return false;
         }
         
-        $result = $this->pdoQuery->rollback();
+        $pdoQuery = $this->getPdoQuery();
+        $result = $pdoQuery->rollback();
         if (!$result) {
-            $this->setError("Failed to rollback transaction: " . $this->pdoQuery->getError());
+            // Propagate error from PdoQuery
+            $pdoError = $pdoQuery->getError();
+            $this->setError("Failed to rollback transaction" . ($pdoError ? ": " . $pdoError : ''));
         }
         return $result;
     }

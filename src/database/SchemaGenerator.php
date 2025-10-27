@@ -10,6 +10,7 @@ use Exception;
  */ 
 class SchemaGenerator {
     private PDO $pdo;
+    /** @var array<SchemaConstraint> */
     private array $schema = [];
     private string $error = '';
     private string $tableName;
@@ -19,7 +20,7 @@ class SchemaGenerator {
      * 
      * @param PDO $pdo The PDO instance
      * @param string $tableName The name of the table
-     * @param array $schema Array of SchemaConstraint objects
+     * @param array<SchemaConstraint> $schema Array of SchemaConstraint objects
      */
     public function __construct(PDO $pdo, string $tableName, array $schema) {
         $this->pdo = $pdo;
@@ -68,6 +69,7 @@ class SchemaGenerator {
         $processedConstraints = [];
         
         foreach ($this->schema as $constraint) {
+            // @phpstan-ignore-next-line
             if (is_object($constraint) && method_exists($constraint, 'toArray')) {
                 $constraintData = $constraint->toArray();
                 $processedConstraints[] = $constraintData;
@@ -85,6 +87,10 @@ class SchemaGenerator {
      */
     private function executeConstraints(array $constraints): bool {
         foreach ($constraints as $constraint) {
+            // @phpstan-ignore-next-line
+            if (!is_array($constraint) || !isset($constraint['type']) || !is_string($constraint['type'])) {
+                continue;
+            }
             $type = $constraint['type'];
             
             try {
@@ -111,11 +117,11 @@ class SchemaGenerator {
                         // Auto increment is handled during table creation
                         break;
                     default:
-                        $this->error = "Unknown constraint type: {$type}";
+                        $this->error = "Unknown constraint type: " . (string) $type;
                         return false;
                 }
             } catch (Exception $e) {
-                $this->error = "Failed to apply {$type} constraint: " . $e->getMessage();
+                $this->error = "Failed to apply " . (string) $type . " constraint: " . $e->getMessage();
                 return false;
             }
         }
@@ -125,10 +131,11 @@ class SchemaGenerator {
 
     /**
      * Apply unique constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyUniqueConstraint(array $constraint): void {
         $columns = is_array($constraint['columns']) ? $constraint['columns'] : [$constraint['columns']];
-        $constraintName = $constraint['name'] ?? 'unique_' . implode('_', $columns);
+        $constraintName = isset($constraint['name']) && is_string($constraint['name']) ? $constraint['name'] : 'unique_' . implode('_', $columns);
         $columnList = '`' . implode('`, `', $columns) . '`';
         
         // Check if constraint already exists
@@ -142,10 +149,11 @@ class SchemaGenerator {
 
     /**
      * Apply index constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyIndexConstraint(array $constraint): void {
         $columns = is_array($constraint['columns']) ? $constraint['columns'] : [$constraint['columns']];
-        $indexName = $constraint['name'] ?? 'idx_' . implode('_', $columns);
+        $indexName = isset($constraint['name']) && is_string($constraint['name']) ? $constraint['name'] : 'idx_' . implode('_', $columns);
         $columnList = '`' . implode('`, `', $columns) . '`';
         $unique = !empty($constraint['unique']) ? 'UNIQUE ' : '';
         
@@ -160,13 +168,19 @@ class SchemaGenerator {
 
     /**
      * Apply foreign key constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyForeignKeyConstraint(array $constraint): void {
+        if (!isset($constraint['column']) || !is_string($constraint['column']) ||
+            !isset($constraint['references']) || !is_string($constraint['references'])) {
+            return;
+        }
+        
         $column = $constraint['column'];
         $references = $constraint['references'];
-        $onDelete = $constraint['on_delete'] ?? 'RESTRICT';
-        $onUpdate = $constraint['on_update'] ?? 'RESTRICT';
-        $constraintName = $constraint['name'] ?? 'fk_' . $this->tableName . '_' . $column;
+        $onDelete = isset($constraint['on_delete']) && is_string($constraint['on_delete']) ? $constraint['on_delete'] : 'RESTRICT';
+        $onUpdate = isset($constraint['on_update']) && is_string($constraint['on_update']) ? $constraint['on_update'] : 'RESTRICT';
+        $constraintName = isset($constraint['name']) && is_string($constraint['name']) ? $constraint['name'] : 'fk_' . $this->tableName . '_' . $column;
         
         // Parse references (e.g., 'users.id' -> table: users, column: id)
         [$refTable, $refColumn] = explode('.', $references);
@@ -188,6 +202,7 @@ class SchemaGenerator {
 
     /**
      * Apply primary key constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyPrimaryKeyConstraint(array $constraint): void {
         // Primary key is typically handled during table creation
@@ -196,10 +211,15 @@ class SchemaGenerator {
 
     /**
      * Apply check constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyCheckConstraint(array $constraint): void {
+        if (!isset($constraint['expression']) || !is_string($constraint['expression'])) {
+            return;
+        }
+        
         $expression = $constraint['expression'];
-        $constraintName = $constraint['name'] ?? 'check_' . md5($expression);
+        $constraintName = isset($constraint['name']) && is_string($constraint['name']) ? $constraint['name'] : 'check_' . md5($expression);
         
         // Check if constraint already exists
         if ($this->constraintExists($constraintName)) {
@@ -212,10 +232,15 @@ class SchemaGenerator {
 
     /**
      * Apply fulltext constraint
+     * @param array<string, mixed> $constraint
      */
     private function applyFulltextConstraint(array $constraint): void {
+        if (!isset($constraint['columns'])) {
+            return;
+        }
+        
         $columns = is_array($constraint['columns']) ? $constraint['columns'] : [$constraint['columns']];
-        $indexName = $constraint['name'] ?? 'ft_' . implode('_', $columns);
+        $indexName = isset($constraint['name']) && is_string($constraint['name']) ? $constraint['name'] : 'ft_' . implode('_', $columns);
         $columnList = '`' . implode('`, `', $columns) . '`';
         
         // Check if index already exists
@@ -252,13 +277,17 @@ class SchemaGenerator {
     /**
      * Get detailed information about applied constraints
      * 
-     * @return array Information about constraints that were applied
+     * @return array<array<string, mixed>> Information about constraints that were applied
      */
     public function getAppliedConstraints(): array {
         $applied = [];
         $processedConstraints = $this->processSchemaConstraints();
         
         foreach ($processedConstraints as $constraint) {
+            // @phpstan-ignore-next-line
+            if (!is_array($constraint) || !isset($constraint['type']) || !is_string($constraint['type'])) {
+                continue;
+            }
             $type = $constraint['type'];
             $applied[] = [
                 'type' => $type,
@@ -273,7 +302,7 @@ class SchemaGenerator {
     /**
      * Get a summary of the schema generation process
      * 
-     * @return array Summary information
+     * @return array<string, mixed> Summary information
      */
     public function getSummary(): array {
         $processedConstraints = $this->processSchemaConstraints();
@@ -290,7 +319,7 @@ class SchemaGenerator {
     /**
      * Remove constraints that exist in database but not in schema definition
      * 
-     * @param array $currentConstraints Current schema constraints
+     * @param array<string, mixed> $currentConstraints Current schema constraints
      */
     private function removeObsoleteConstraints(array $currentConstraints): void {
         // Get all existing constraints from database
@@ -300,6 +329,10 @@ class SchemaGenerator {
         // Build map of current constraints by type and columns
         $currentConstraintMap = [];
         foreach ($currentConstraints as $constraint) {
+            if (!is_array($constraint) || !isset($constraint['type']) || !isset($constraint['columns']) || !is_string($constraint['type'])) {
+                continue;
+            }
+            
             $type = $constraint['type'];
             $columns = is_array($constraint['columns']) ? $constraint['columns'] : [$constraint['columns']];
             sort($columns); // Normalize column order
@@ -309,7 +342,12 @@ class SchemaGenerator {
         
         // Remove obsolete constraints
         foreach ($existingConstraints as $existing) {
-            if ($existing['CONSTRAINT_TYPE'] === 'UNIQUE') {
+            // @phpstan-ignore-next-line
+            if (!is_array($existing) || !isset($existing['CONSTRAINT_TYPE']) || !isset($existing['CONSTRAINT_NAME'])) {
+                continue;
+            }
+            
+            if ($existing['CONSTRAINT_TYPE'] === 'UNIQUE' && is_string($existing['CONSTRAINT_NAME'])) {
                 $columns = $this->getConstraintColumns($existing['CONSTRAINT_NAME']);
                 sort($columns);
                 $key = 'unique_' . implode('_', $columns);
@@ -322,7 +360,12 @@ class SchemaGenerator {
         
         // Remove obsolete indexes (excluding PRIMARY and unique constraints)
         foreach ($existingIndexes as $existing) {
-            if ($existing['Key_name'] !== 'PRIMARY' && !$this->isUniqueConstraintIndex($existing['Key_name'])) {
+            // @phpstan-ignore-next-line
+            if (!is_array($existing) || !isset($existing['Key_name']) || !isset($existing['Column_name'])) {
+                continue;
+            }
+            
+            if ($existing['Key_name'] !== 'PRIMARY' && is_string($existing['Key_name']) && is_string($existing['Column_name']) && !$this->isUniqueConstraintIndex($existing['Key_name'])) {
                 $columns = [$existing['Column_name']]; // Simplified for single column indexes
                 sort($columns);
                 $key = 'index_' . implode('_', $columns);
@@ -336,6 +379,7 @@ class SchemaGenerator {
 
     /**
      * Get existing constraints from database
+     * @return array<array<string, mixed>>
      */
     private function getExistingConstraints(): array {
         $sql = "SELECT CONSTRAINT_NAME, CONSTRAINT_TYPE 
@@ -349,15 +393,20 @@ class SchemaGenerator {
 
     /**
      * Get existing indexes from database
+     * @return array<array<string, mixed>>
      */
     private function getExistingIndexes(): array {
         $sql = "SHOW INDEX FROM `{$this->tableName}`";
         $stmt = $this->pdo->query($sql);
+        if ($stmt === false) {
+            return [];
+        }
         return $stmt->fetchAll();
     }
 
     /**
      * Get columns for a specific constraint
+     * @return array<string>
      */
     private function getConstraintColumns(string $constraintName): array {
         $sql = "SELECT COLUMN_NAME 

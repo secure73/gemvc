@@ -24,22 +24,23 @@ class DbUnique extends Command
     /**
      * Execute the command to add a unique constraint to a table column.
      *
-     * @return void
+     * @return bool
      */
-    public function execute()
+    public function execute(): bool
     {
         // Check for required argument
-        if (empty($this->args[0])) {
+        if (empty($this->args[0]) || !is_string($this->args[0])) {
             $this->error("Usage: gemvc db:unique table/column");
-            return;
+            return false;
         }
 
         // Parse table and columns from argument (format: table/col1,col2,...)
         list($table, $columns) = explode('/', $this->args[0]);
         $columnList = array_map('trim', explode(',', $columns));
-        if (!$table || empty($columnList)) {
+        // @phpstan-ignore-next-line
+        if (!$table || count($columnList) === 0) {
             $this->error("Invalid format. Use: gemvc db:unique table/col1,col2,...");
-            return;
+            return false;
         }
 
         // Load environment variables and connect to the database
@@ -47,13 +48,17 @@ class DbUnique extends Command
         $pdo = DbConnect::connect();
         if (!$pdo) {
             $this->error("Could not connect to database.");
-            return;
+            return false;
         }
 
         // Check for duplicate combinations
         $colSql = implode('`,`', $columnList);
         $sql = "SELECT $colSql, COUNT(*) as cnt FROM `$table` GROUP BY $colSql HAVING cnt > 1";
         $stmt = $pdo->query($sql);
+        if ($stmt === false) {
+            $this->error("Failed to check for duplicates");
+            return false;
+        }
         $duplicates = $stmt->fetchAll();
         if ($duplicates) {
             $this->error("Cannot add unique constraint: Duplicate value combinations found in (" . implode(', ', $columnList) . ").");
@@ -63,8 +68,8 @@ class DbUnique extends Command
                     $values[] = $col . '=' . $row[$col];
                 }
                 $this->write("Duplicate: " . implode(', ', $values));
+                return false;
             }
-            return;
         }
 
         // Try to add the unique constraint
@@ -73,8 +78,10 @@ class DbUnique extends Command
         try {
             $pdo->exec("ALTER TABLE `$table` ADD CONSTRAINT `$constraintName` UNIQUE ($colSqlBacktick)");
             $this->success("Unique constraint added to `$table` on (" . implode(', ', $columnList) . ") successfully!");
+            return true;
         } catch (\PDOException $e) {
             $this->error("Failed to add unique constraint: " . $e->getMessage());
+            return false;
         }
     }
 }

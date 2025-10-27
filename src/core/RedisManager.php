@@ -36,7 +36,7 @@ class RedisManager
 
     private function getHost(): string
     {
-        return $this->getEnvString('REDIS_HOST', '127.0.0.1');
+        return $this->getEnvString('REDIS_HOST', '127.0.0.1') ?? '127.0.0.1';
     }
 
     private function getPort(): int
@@ -51,7 +51,7 @@ class RedisManager
 
     private function getPassword(): string  
     {
-        return $this->getEnvString('REDIS_PASSWORD');
+        return $this->getEnvString('REDIS_PASSWORD') ?? '';
     }
 
     private function getDatabase(): int
@@ -61,7 +61,7 @@ class RedisManager
 
     private function getPrefix(): string
     {
-        return $this->getEnvString('REDIS_PREFIX', 'gemvc:');
+        return $this->getEnvString('REDIS_PREFIX', 'gemvc:') ?? 'gemvc:';
     }   
 
     private function getPersistent(): bool
@@ -77,17 +77,20 @@ class RedisManager
 
     private function getEnvString(string $key, ?string $default = null): ?string
     {
-        return $_ENV[$key] ?? $default;
+        $value = $_ENV[$key] ?? $default;
+        return is_string($value) ? $value : $default;
     }
 
     private function getEnvInt(string $key, int $default = 0): int
     {
-        return (int)($_ENV[$key] ?? $default);
+        $value = $_ENV[$key] ?? $default;
+        return is_numeric($value) ? (int) $value : $default;
     }
 
     private function getEnvFloat(string $key, float $default = 0.0): float
     {
-        return (float)($_ENV[$key] ?? $default);
+        $value = $_ENV[$key] ?? $default;
+        return is_numeric($value) ? (float) $value : $default;
     }
 
     private function getEnvBool(string $key, bool $default = false): bool
@@ -113,8 +116,7 @@ class RedisManager
     /**
      * Connect to Redis server
      * 
-     * @return void
-     * @throws RedisConnectionException if connection fails
+     * @return bool
      * @example
      * $redis = RedisManager::getInstance();
      * $redis->connect();
@@ -178,7 +180,7 @@ class RedisManager
      * $redis = RedisManager::getInstance();
      * $redisInstance = $redis->getRedis();
      */
-    public function getRedis(): Redis
+    public function getRedis(): ?Redis
     {
         if (!$this->isConnected) {
             $this->connect();
@@ -207,12 +209,12 @@ class RedisManager
      * $redis->set('user:1', 'John', 3600); // Expires in 1 hour
      * $redis->set('config', 'value'); // No expiration
      */
-    public function set(string $key, $value, ?int $ttl = null): bool
+    public function set(string $key, mixed $value, ?int $ttl = null): bool
     {
         if ($ttl !== null) {
-            return $this->getRedis()->setex($key, $ttl, $value);
+            return $this->getRedis()?->setex($key, $ttl, $value) ?? false;
         }
-        return $this->getRedis()->set($key, $value);
+        return $this->getRedis()?->set($key, $value) ?? false;
     }
 
     public function setJsonResponse(string $key, JsonResponse $response, ?int $ttl = null): bool
@@ -226,7 +228,7 @@ class RedisManager
         if ($data === null) {
             return null;
         }
-        $response = unserialize($data);
+        $response = is_string($data) ? unserialize($data) : null;
         if ($response instanceof JsonResponse) {
             return $response;
         }
@@ -241,29 +243,29 @@ class RedisManager
      * @example
      * $value = $redis->get('user:1');
      */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
-        return $this->getRedis()->get($key);
+        return $this->getRedis()?->get($key);
     }
 
     public function delete(string $key): int
     {
-        return $this->getRedis()->del($key);
+        return $this->getRedis()?->del($key) ?? 0;
     }
 
     public function exists(string $key): bool
     {
-        return (bool)$this->getRedis()->exists($key);
+        return (bool)($this->getRedis()?->exists($key) ?? false);
     }
 
     public function ttl(string $key): int
     {
-        return $this->getRedis()->ttl($key);
+        return $this->getRedis()?->ttl($key) ?? -1;
     }
 
     public function flush(): bool
     {
-        return $this->getRedis()->flushDB();
+        return $this->getRedis()?->flushDB() ?? false;
     }
 
     /**
@@ -277,49 +279,49 @@ class RedisManager
      * $redis->hSet('user:1', 'name', 'John');
      * $redis->hSet('user:1', 'email', 'john@example.com');
      */
-    public function hSet(string $key, string $field, $value): int
+    public function hSet(string $key, string $field, mixed $value): int
     {
-        return $this->getRedis()->hSet($key, $field, $value);
+        return $this->getRedis()?->hSet($key, $field, $value) ?? 0;
     }
 
-    public function hGet(string $key, string $field)
+    public function hGet(string $key, string $field): mixed
     {
-        return $this->getRedis()->hGet($key, $field);
+        return $this->getRedis()?->hGet($key, $field);
     }
 
     /**
      * Get all fields and values from a Redis hash
      * 
      * @param string $key The hash key
-     * @return array
+     * @return array<string, mixed>
      * @example
      * $userData = $redis->hGetAll('user:1');
      * // Returns: ['name' => 'John', 'email' => 'john@example.com']
      */
     public function hGetAll(string $key): array
     {
-        return $this->getRedis()->hGetAll($key);
+        return $this->getRedis()?->hGetAll($key) ?? [];
     }
 
     // List Operations
-    public function lPush(string $key, $value): int
+    public function lPush(string $key, mixed $value): int
     {
-        return $this->getRedis()->lPush($key, $value);
+        return $this->getRedis()?->lPush($key, $value) ?? 0;
     }
 
-    public function rPush(string $key, $value): int
+    public function rPush(string $key, mixed $value): int
     {
-        return $this->getRedis()->rPush($key, $value);
+        return $this->getRedis()?->rPush($key, $value) ?? 0;
     }
 
-    public function lPop(string $key)   
+    public function lPop(string $key): mixed
     {
-        return $this->getRedis()->lPop($key);
+        return $this->getRedis()?->lPop($key);
     }
 
-    public function rPop(string $key)
+    public function rPop(string $key): mixed
     {
-        return $this->getRedis()->rPop($key);
+        return $this->getRedis()?->rPop($key);
     }
 
     /**
@@ -332,39 +334,40 @@ class RedisManager
      * $redis->sAdd('tags', 'php');
      * $redis->sAdd('tags', 'redis');
      */
-    public function sAdd(string $key, $value): int
+    public function sAdd(string $key, mixed $value): int
     {
-        return $this->getRedis()->sAdd($key, $value);
+        return $this->getRedis()?->sAdd($key, $value) ?? 0;
     }
 
     /**
      * Get all members of a Redis set
      * 
      * @param string $key The set key
-     * @return array
+     * @return array<string>
      * @example
      * $tags = $redis->sMembers('tags');
      * // Returns: ['php', 'redis']
      */
     public function sMembers(string $key): array
     {
-        return $this->getRedis()->sMembers($key);
+        return $this->getRedis()?->sMembers($key) ?? [];
     }
 
-    public function sIsMember(string $key, $value): bool
+    public function sIsMember(string $key, mixed $value): bool
     {
-        return $this->getRedis()->sIsMember($key, $value);
+        return $this->getRedis()?->sIsMember($key, $value) ?? false;
     }
 
     // Sorted Set Operations
-    public function zAdd(string $key, float $score, $value): int
+    public function zAdd(string $key, float $score, mixed $value): int
     {
-        return $this->getRedis()->zAdd($key, $score, $value);
+        return $this->getRedis()?->zAdd($key, $score, $value) ?? 0;
     }
 
+    /** @return array<string> */
     public function zRange(string $key, int $start, int $end, bool $withScores = false): array
     {
-        return $this->getRedis()->zRange($key, $start, $end, $withScores);
+        return $this->getRedis()?->zRange($key, $start, $end, $withScores) ?? [];
     }
 
     /**
@@ -378,12 +381,13 @@ class RedisManager
      */
     public function publish(string $channel, string $message): int
     {
-        return $this->getRedis()->publish($channel, $message);
+        return $this->getRedis()?->publish($channel, $message) ?? 0;
     }
 
+    /** @param array<string> $channels */
     public function subscribe(array $channels, callable $callback): void
     {
-        $this->getRedis()->subscribe($channels, $callback);
+        $this->getRedis()?->subscribe($channels, $callback);
     }
 
     /**
@@ -396,13 +400,15 @@ class RedisManager
      * $pipe->set('key2', 'value2');
      * $pipe->execute();
      */
-    public function pipeline(): \Redis
+    public function pipeline(): ?\Redis
     {
-        return $this->getRedis()->multi(Redis::PIPELINE);
+        $result = $this->getRedis()?->multi(Redis::PIPELINE);
+        return $result instanceof \Redis ? $result : null;
     }
 
-    public function transaction(): \Redis
+    public function transaction(): ?\Redis
     {
-        return $this->getRedis()->multi(Redis::MULTI);
+        $result = $this->getRedis()?->multi(Redis::MULTI);
+        return $result instanceof \Redis ? $result : null;
     }
 } 

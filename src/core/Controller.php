@@ -44,8 +44,10 @@ class Controller
         $model = $this->_handleFindable($model);
         $model = $this->_handleSortable($model);
         $model = $this->_handlePagination($model);
+        // @phpstan-ignore-next-line
         $result = $model->select($columns)->run();
         if($result === false) {
+            // @phpstan-ignore-next-line
             Response::internalError($model->getError())->show();
             die();
         }

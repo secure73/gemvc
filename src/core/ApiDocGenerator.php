@@ -225,7 +225,7 @@ class ApiDocGenerator
         }
 
         // Parse @parameter annotations
-        if (preg_match_all('/@parameter\s+(\w+)\s+(\w+)\s+(required|optional)/', $docComment, $matches)) {
+        if (is_string($docComment) && preg_match_all('/@parameter\s+(\w+)\s+(\w+)\s+(required|optional)/', $docComment, $matches)) {
             for ($i = 0; $i < count($matches[1]); $i++) {
                 $details['url_parameters'][$matches[1][$i]] = [
                     'type' => $matches[2][$i],
@@ -397,17 +397,4 @@ class ApiDocGenerator
         return $parameters;
     }
 
-    private function validateDescription(string $description): string
-    {
-        // Remove any HTML tags for security
-        $description = strip_tags($description);
-        
-        // Limit description length if too long
-        $maxLength = 2000;
-        if (strlen($description) > $maxLength) {
-            $description = substr($description, 0, $maxLength) . '...';
-        }
-        
-        return $description;
-    }
 } 

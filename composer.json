@@ -1,10 +1,10 @@
 {
     "name": "gemvc/library",
-    "description": "core library of gemvc",
+    "description": "Server Agnostic (openSwoole/Nginx/Apache) Rest Api Microservice ready Framework/Library",
     "type": "library",
+    "homepage": "https://gemvc.de",
     "require": {
         "firebase/php-jwt": "^6.8",
-        "phpmailer/phpmailer": "^6.8",
         "symfony/dotenv": "^7.2"
     },
     "license": "MIT",
@@ -13,13 +13,9 @@
             "Gemvc\\": "src/",
             "Gemvc\\Database\\": "src/database/",
             "Gemvc\\Database\\Query\\": "src/database/query/",
-            "Gemvc\\Email\\": "src/email/",
             "Gemvc\\Helper\\": "src/helper/",
             "Gemvc\\Http\\": "src/http/",
             "Gemvc\\Core\\": "src/core/",
-            "Gemvc\\Traits\\": "src/traits/",
-            "Gemvc\\Traits\\Model\\": "src/traits/model/",
-            "Gemvc\\Traits\\Controller\\": "src/traits/controller/",
             "Gemvc\\CLI\\": "src/CLI/",
             "Gemvc\\CLI\\Commands\\": "src/CLI/commands/"
         },
@@ -38,6 +34,7 @@
     ],
     "minimum-stability": "stable",
     "require-dev": {
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^10.1"
     }
 }

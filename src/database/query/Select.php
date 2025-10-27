@@ -77,8 +77,57 @@ class Select implements QueryBuilderInterface
      */
     private array $leftJoin = [];
 
-    private ?int $limit = null;
-    private ?int $offset = null;
+    /** @var int|null */
+    private $limit = null;
+    /** @var int|null */
+    private $offset = null;
+
+    /**
+     * Generate the LIMIT clause with modern SQL syntax
+     * This method is used by the LimitTrait
+     * 
+     * @return string The LIMIT clause string
+     */
+    private function limitMaker(): string
+    {
+        $limitQuery = '';
+        
+        // Handle LIMIT clause
+        if (isset($this->limit) && $this->limit >= 0) {
+            $limitQuery = ' LIMIT ' . $this->limit;
+            
+            // Add OFFSET if specified and valid
+            if (isset($this->offset) && $this->offset > 0) {
+                $limitQuery .= ' OFFSET ' . $this->offset;
+            }
+        }
+        // Handle OFFSET without LIMIT (supported by some databases)
+        elseif (isset($this->offset) && $this->offset > 0) {
+            // For databases that support OFFSET without LIMIT, use a large number
+            // This is more compatible across different database systems
+            $limitQuery = ' LIMIT 18446744073709551615 OFFSET ' . $this->offset;
+        }
+        
+        return $limitQuery;
+    }
+
+    /**
+     * Set limit value (used by LimitTrait)
+     * @param int|null $limit
+     */
+    public function setLimit(?int $limit): void
+    {
+        $this->limit = $limit;
+    }
+
+    /**
+     * Set offset value (used by LimitTrait)
+     * @param int|null $offset
+     */
+    public function setOffset(?int $offset): void
+    {
+        $this->offset = $offset;
+    }
 
     /**
      * @param array<mixed> $select
@@ -225,16 +274,12 @@ class Select implements QueryBuilderInterface
     {
         $query = $this->__toString();
         $result = $classTable->selectQuery($query, $this->arrayBindValues);
-        if ($result === false) {
+        if ($result === null) {
             $this->_lastError = $classTable->getError();
             return [];
         }
-        if (\is_array($result)) {
-            foreach ($result as $item) {
-                if (\is_array($item)) {
-                    $this->object[] = (object) $item;
-                }
-            }
+        foreach ($result as $item) {
+            $this->object[] = (object) $item;
         }
         return $this->object;
     }

@@ -4,7 +4,7 @@ use Symfony\Component\Dotenv\Dotenv;
 
 class ProjectHelper
 {
-    private static $rootDir = null;
+    private static ?string $rootDir = null;
     public static function rootDir(): string
     {
         if (self::$rootDir !== null) {

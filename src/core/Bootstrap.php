@@ -54,12 +54,19 @@ class Bootstrap
         $method = $this->requested_method;
         $response = $serviceInstance->$method();
         
-        if(!$response instanceof JsonResponse) {
-            Response::internalError("API method '$method' does not provide JsonResponse as return value")->show();
-            die;
+        // Handle different response types (JsonResponse, HtmlResponse, etc.)
+        if ($response instanceof JsonResponse) {
+            $response->show();
+        } elseif ($response instanceof \Gemvc\Http\HtmlResponse) {
+            // For Apache/Nginx, use the show() method
+            $response->show();
+        } elseif (method_exists($response, 'show')) {
+            // For any response with a show() method
+            $response->show();
+        } else {
+            Response::internalError("API method '$method' does not provide a valid Response as return value")->show();
         }
         
-        $response->show();  
         die;
     }
 
@@ -88,6 +95,7 @@ class Bootstrap
             $serviceInstance = new $serviceClass($this->request);
             
             // Verify it's a web service
+            // @phpstan-ignore-next-line
             if (!($serviceInstance instanceof WebService)) {
                 throw new \Exception("Web controller must extend WebService class");
             }
@@ -97,6 +105,7 @@ class Bootstrap
             if (!method_exists($serviceInstance, $method)) {
                 // Try using the method as a parameter to the index method
                 if (method_exists($serviceInstance, 'index')) {
+                    // @phpstan-ignore-next-line
                     $this->request->params['action'] = $method;
                     $method = 'index';
                 } else {
@@ -146,23 +155,24 @@ class Bootstrap
         $segments = explode('/', $this->request->requestedUrl);
         
         // Get the first segment (service indicator)
-        $service = isset($segments[$_ENV["SERVICE_IN_URL_SECTION"]]) ? 
-            strtolower($segments[$_ENV["SERVICE_IN_URL_SECTION"]]) : "";
+        $serviceIndex = is_numeric($_ENV["SERVICE_IN_URL_SECTION"] ?? 1) ? (int) ($_ENV["SERVICE_IN_URL_SECTION"] ?? 1) : 1;
+        $service = isset($segments[$serviceIndex]) ? 
+            strtolower($segments[$serviceIndex]) : "";
             
         // Check if this is an API request
         if ($service === "api") {
             $this->is_web = false;
             
             // For API requests, get the actual service name from the next segment
-            if (isset($segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1]) && $segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1]) {
-                $service = ucfirst($segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1]);
+            if (isset($segments[$serviceIndex + 1]) && $segments[$serviceIndex + 1]) {
+                $service = ucfirst($segments[$serviceIndex + 1]);
             } else {
                 $service = "Index";
             }
             
             // Get the method for API
-            if (isset($segments[$_ENV["SERVICE_IN_URL_SECTION"] + 2]) && $segments[$_ENV["SERVICE_IN_URL_SECTION"] + 2]) {
-                $method = $segments[$_ENV["SERVICE_IN_URL_SECTION"] + 2];
+            if (isset($segments[$serviceIndex + 2]) && $segments[$serviceIndex + 2]) {
+                $method = $segments[$serviceIndex + 2];
             }
         } else {
             // Default to web
@@ -178,8 +188,8 @@ class Bootstrap
             }
             
             // Get the method for web pages
-            if (isset($segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1]) && $segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1]) {
-                $method = $segments[$_ENV["SERVICE_IN_URL_SECTION"] + 1];
+            if (isset($segments[$serviceIndex + 1]) && $segments[$serviceIndex + 1]) {
+                $method = $segments[$serviceIndex + 1];
             }
         }
         
@@ -200,6 +210,7 @@ class Bootstrap
         
         // Check if a custom 404 page exists
         if (file_exists('./app/web/Error/404.php')) {
+            // @phpstan-ignore-next-line
             include './app/web/Error/404.php';
         } else {
             echo '<!DOCTYPE html>
