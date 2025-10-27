@@ -866,7 +866,7 @@ if (pathinfo($file, PATHINFO_EXTENSION) === 'jpg') {
 If you discover a security vulnerability in GEMVC:
 
 1. **DO NOT** create public issues for security vulnerabilities
-2. **Email** security concerns to: security@yourcompany.com
+2. **Email** security concerns to: security@gemvc.de
 3. **Include** detailed information about the vulnerability
 4. **Wait** for response before public disclosure
 
