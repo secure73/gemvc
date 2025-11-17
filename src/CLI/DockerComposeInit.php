@@ -28,8 +28,7 @@ class DockerComposeInit extends Command
             'default' => true,
             'image' => 'redis:latest',
             'ports' => ['6379:6379'],
-            'volumes' => ['redis-data:/data'],
-            'environment' => []
+            'volumes' => ['redis-data:/data']
         ],
         'phpmyadmin' => [
             'name' => 'phpMyAdmin',
@@ -436,6 +435,11 @@ EOT;
             // Continue with other MySQL service properties
         }
         
+        // Handle Redis command
+        if ($serviceKey === 'redis') {
+            $content .= "    command: redis-server --requirepass rootpassword\n";
+        }
+        
         // @phpstan-ignore-next-line
         if (isset($service['ports'])) {
             $content .= "    ports:\n";
@@ -452,7 +456,7 @@ EOT;
         }
         
         // @phpstan-ignore-next-line
-        if (isset($service['environment'])) {
+        if (isset($service['environment']) && !empty($service['environment'])) {
             $content .= "    environment:\n";
             foreach ($service['environment'] as $key => $value) {
                 $content .= "      {$key}: \"{$value}\"\n";
