@@ -4,8 +4,11 @@ FROM php:8.2-fpm
 RUN apt-get update && apt-get install -y \
     nginx \
     libpq-dev \
+    libzip-dev \
     curl \
-    && docker-php-ext-install pdo pdo_mysql pdo_pgsql opcache \
+    unzip \
+    git \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql opcache zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
@@ -15,6 +18,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Copy composer.json first (for better Docker layer caching)
+# Note: composer.lock is optional - composer will work without it and generate it if needed
+COPY composer.json ./
+
+# Install dependencies (this layer will be cached if composer.json doesn't change)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Copy application files
 COPY . .
@@ -44,9 +54,6 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.revalidate_freq=60" >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/opcache.ini
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
 # Expose port
 EXPOSE 80
 
@@ -56,4 +63,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start both Nginx and PHP-FPM
 CMD ["bash", "-c", "php-fpm -D && nginx -g 'daemon off;'"]
-

@@ -1,11 +1,9 @@
 composer.phar
 /vendor/
-composer.lock
 app/config.php
 Dockerfile
 docker-compose.yml
 LICENSE
 README.md
 .gitignore
-composer.json
-
+# Note: composer.json and composer.lock are NOT excluded here because Nginx Dockerfile needs them for composer install
