@@ -212,7 +212,8 @@ class InitSwoole extends AbstractInit
     protected function copyWebserverSpecificFiles(): void
     {
         // Copy OpenSwoole-specific files:
-        // - server/handlers/
+        // - index.php (OpenSwoole bootstrap)
+        // - Dockerfile (OpenSwoole container configuration)
         // - Swoole composer.json (with Hyperf dependencies)
     }
     
@@ -1444,4 +1445,3 @@ CreateCrud::execute()
 - Facade (FileSystemManager)
 
 **Result**: Clean, maintainable, extensible CLI architecture! 🎯
-

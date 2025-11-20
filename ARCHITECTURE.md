@@ -179,7 +179,7 @@ startup/
 │   ├── index.php     # OpenSwoole entry point
 │   ├── appIndex.php  # Application bootstrap
 │   ├── composer.json # OpenSwoole dependencies (Hyperf)
-│   └── server/handlers/request.php
+│   └── docker-compose.yml
 ├── nginx/            # Nginx files (coming soon)
 └── common/           # Shared files for all platforms
     └── user/         # Example User files

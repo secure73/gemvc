@@ -8,7 +8,7 @@ use Gemvc\CLI\AbstractInit;
  * Initialize a new GEMVC OpenSwoole project
  * 
  * This command sets up a new project specifically configured for OpenSwoole,
- * including server handlers, Dockerfile, and OpenSwoole-specific configurations.
+ * including Dockerfile, and OpenSwoole-specific configurations.
  * 
  * Extends AbstractInit to leverage shared initialization functionality while
  * providing OpenSwoole-specific implementations.
@@ -17,13 +17,6 @@ use Gemvc\CLI\AbstractInit;
  */
 class InitSwoole extends AbstractInit
 {
-    /**
-     * OpenSwoole-specific required directories
-     */
-    private const SWOOLE_DIRECTORIES = [
-        'server',
-        'server/handlers'
-    ];
     
     /**
      * OpenSwoole-specific file mappings
@@ -51,7 +44,9 @@ class InitSwoole extends AbstractInit
      */
     protected function getWebserverSpecificDirectories(): array
     {
-        return self::SWOOLE_DIRECTORIES;
+        // server/handlers/ directory no longer needed (unused legacy code)
+        // return self::SWOOLE_DIRECTORIES;
+        return [];
     }
     
     /**
@@ -59,8 +54,9 @@ class InitSwoole extends AbstractInit
      * This includes:
      * - index.php (OpenSwoole bootstrap)
      * - Dockerfile (OpenSwoole container configuration)
-     * - server/handlers/* (WebSocket and HTTP handlers)
      * - appIndex.php -> app/api/Index.php
+     * 
+     * Note: server/handlers/ directory copying is commented out (unused legacy code)
      * 
      * @return void
      */
@@ -99,15 +95,7 @@ class InitSwoole extends AbstractInit
                 $this->fileSystem->createDirectoryIfNotExists($destDir);
                 $this->fileSystem->copyFileWithConfirmation($sourceFile, $destFile, $sourceFileName);
             }
-        }
-        
-        // Copy server handlers directory if it exists
-        $this->copyDirectoryIfExists(
-            $startupPath . DIRECTORY_SEPARATOR . 'server' . DIRECTORY_SEPARATOR . 'handlers',
-            $this->basePath . DIRECTORY_SEPARATOR . 'server' . DIRECTORY_SEPARATOR . 'handlers',
-            'Server handlers'
-        );
-        
+        }       
         $this->info("✅ OpenSwoole files copied");
     }
     
@@ -186,7 +174,7 @@ class InitSwoole extends AbstractInit
             "   \033[90m# Auto-restart server on file changes\033[0m",
             "",
             "\033[1;94m📡 WebSocket Support:\033[0m",
-            " • WebSocket handlers in \033[1;36mserver/handlers/\033[0m",
+            " • WebSocket support available via OpenSwooleServer class",
             " • View logs: \033[1;95mtail -f swoole.log\033[0m"
         ];
     }
@@ -302,4 +290,3 @@ class InitSwoole extends AbstractInit
         }
     }
 }
-

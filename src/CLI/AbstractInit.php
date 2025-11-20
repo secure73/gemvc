@@ -101,7 +101,7 @@ abstract class AbstractInit extends Command
     
     /**
      * Copy webserver-specific files
-     * (e.g., server handlers for Swoole, .htaccess for Apache, nginx.conf for Nginx)
+     * (e.g., .htaccess for Apache, nginx.conf for Nginx, Dockerfile for OpenSwoole)
      * 
      * @return void
      */
@@ -911,7 +911,7 @@ EOT;
      * 
      * @param string $sourcePath Source directory path
      * @param string $targetPath Target directory path
-     * @param string $dirName Friendly name for logging (e.g., 'Server handlers', 'Public files')
+     * @param string $dirName Friendly name for logging (e.g., 'Public files', 'Templates')
      * @return void
      */
     protected function copyDirectoryIfExists(
@@ -934,4 +934,3 @@ EOT;
         $this->info("Copied {$dirName} to: {$targetPath}");
     }
 }
-
