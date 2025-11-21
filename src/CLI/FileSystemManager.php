@@ -173,18 +173,37 @@ class FileSystemManager extends Command
     }
     
     /**
-     * Copy README.md to project root
+     * Copy PROJECT_README.md from library to project root as README.md
      */
     public function copyReadmeToRoot(string $packagePath, string $basePath): void
     {
-        $sourceReadme = $packagePath . '/src/startup/README.md';
-        $targetReadme = $basePath . '/README.md';
+        // PROJECT_README.md is in vendor/gemvc/library/
+        // Try multiple possible paths to find the library directory
+        $possibleLibraryPaths = [
+            // Normal case: packagePath is vendor/gemvc/{swoole|apache|nginx}, library is sibling
+            dirname($packagePath) . DIRECTORY_SEPARATOR . 'library',
+            // If packagePath is already library (edge case)
+            $packagePath,
+            // Direct path: FileSystemManager is in vendor/gemvc/library/src/CLI/
+            // So library root is 3 levels up
+            dirname(dirname(dirname(__DIR__))),
+        ];
         
-        if (!file_exists($sourceReadme)) {
-            $this->warning("Source README.md not found: {$sourceReadme} - skipping README copy");
+        $sourceReadme = null;
+        foreach ($possibleLibraryPaths as $libraryPath) {
+            $testPath = $libraryPath . DIRECTORY_SEPARATOR . 'PROJECT_README.md';
+            if (file_exists($testPath)) {
+                $sourceReadme = $testPath;
+                break;
+            }
+        }
+        
+        if ($sourceReadme === null) {
+            $this->warning("Source PROJECT_README.md not found. Tried: " . implode(", ", $possibleLibraryPaths) . " - skipping README copy");
             return;
         }
         
+        $targetReadme = $basePath . DIRECTORY_SEPARATOR . 'README.md';
         $this->copyFileWithConfirmation($sourceReadme, $targetReadme, "README.md");
     }
     
