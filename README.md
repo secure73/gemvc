@@ -1,13 +1,54 @@
-# 🚀 GEMVC - Multi-Platform PHP REST API Framework
+# [GEMVC](https://www.gemvc.de) - The PHP Multi-Platform Microservices REST API Framework
 
-> **GEMVC is NOT Laravel or Symfony** - It has its own unique architecture, naming conventions, and design philosophy. This guide will teach you how to write code the GEMVC way.
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-777bb4.svg?style=flat-square&logo=php&logoColor=white)](https://www.php.net/releases/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Swoole](https://img.shields.io/badge/Swoole-Supported-green.svg?style=flat-square&logo=swoole&logoColor=white)](https://openswoole.com/)
+[![Apache](https://img.shields.io/badge/Apache-Supported-D22128.svg?style=flat-square&logo=apache&logoColor=white)](https://httpd.apache.org/)
+[![Nginx](https://img.shields.io/badge/Nginx-Supported-009639.svg?style=flat-square&logo=nginx&logoColor=white)](https://nginx.org/)
+[![PHPStan](https://img.shields.io/badge/PHPStan-Level%209-brightgreen.svg?style=flat-square)](https://phpstan.org/)
+[![PHPUnit](https://img.shields.io/badge/PHPUnit-Supported-3b8c3b.svg?style=flat-square&logo=phpunit&logoColor=white)](https://phpunit.de/)
+[![Pest](https://img.shields.io/badge/Pest-Supported-purple.svg?style=flat-square&logo=pest&logoColor=white)](https://pestphp.com/)
+### Stop using a Swiss Army Knife when you need a Scalpel. *GEMVC* is a PHP Multi-Platform(OpenSwoole, Apache and NginX) specialized, ultra-lightweight framework designed for high-performance REST APIs and Microservices.
+
+### Not to replace, but to complete
+> GEMVC is not a replacement for lovely Laravel or powerful Symfony; it is a complementary tool designed to solve special challenges. It is always good to have it in your arsenal!
+
+### You are the Master of your Code
+> In GEMVC, architecture is just a recommendation. GEMVC NEVER forces you to follow its rules. You can implement the recommended 4-layer architecture, or write your own familiar 3, 2, or even single-layer code!
+
+### Easy to Learn
+> It takes only a couple of hours to master this tool. GEMVC respects your time and is not here to replace your existing knowledge, but to sharpen it.
+
+### No-Hassle Documentation
+> In GEMVC, **Sanitization IS Documentation**. When you sanitize API inputs (as you normally should), the framework automatically generates full documentation for your endpoints. You get beautiful, well-designed documentation simply by defining your validation rules. Plus, you get out-of-the-box support to export your latest API version to **Postman** with a single click. Your frontend developers will love GEMVC!
+
+### ⚡ The "Async Magic"
+> Write standard, synchronous PHP code (like you always do) on Apache/Nginx. 
+Switch to **OpenSwoole**, and your exact same code automatically runs as **Asynchronous Non-blocking I/O**.
+**Zero code changes required.**
+
+### Fully and Easily Customizable
+> You can easily define custom Class Templates for any layer, and then CLI Commands will generate your classes in seconds!
+
+### Library or Framework? The Choice is Yours.
+> You can use GEMVC as a library within a legacy project to migrate to a modern architecture step-by-step, without **breaking** existing functionality. Or, for new projects, simply install it via Composer and run the `gemvc init` command to use it as a modern framework from day one.
+
+### Testing & Quality Assurance
+> When coding with GEMVC, you can enjoy **PHPStan Level 9** compliance! The framework natively supports strong typing—while not forced, it is strongly recommended. It also comes with **PHPUnit** and **Pest** support right out of the box during the installation process. You can easily test your product using your beloved PHPUnit or the beautiful Pest framework. Plus, the 4-layer architecture makes creating comprehensive Unit and Integration tests a breeze.
+
+### AI-Ready
+>Thanks to its transparent structure, strict naming conventions, and clean 4-layer separation of concerns (with no magic functions or hidden classes), GEMVC is natively **AI-Friendly**. AI Assistants can easily understand your code context and assist you efficiently. Writing code with GEMVC is a joy for both humans and AI.
+
+### Full Transparency Policy
+> It is Open Source, MIT Licensed, and small. There is no hidden code or "black box". You can download the source code, analyze it, test it, and use it with **peace of mind**. It is built with love to make your life as a developer more enjoyable.
+
 
 ---
 
 ## 🤖 FOR AI ASSISTANTS - READ THIS FIRST!
 
 **ATTENTION: If you are an AI assistant (Cursor AI, GitHub Copilot, Claude, etc.), you MUST read the following file first:**
-
+> **GEMVC is NOT Laravel or Symfony** - It has its own unique architecture, naming conventions, and design philosophy. This guide will teach you how to write code the GEMVC way.
 ### ⚠️ **[QUICK_START_AI.md](QUICK_START_AI.md)** - MASTER INSTRUCTIONS FOR AI ASSISTANTS
 
 **This file will:**
