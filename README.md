@@ -73,7 +73,7 @@ Switch to **OpenSwoole**, and your exact same code automatically runs as **Async
 
 - [🤖 FOR AI ASSISTANTS - READ THIS FIRST!](#-for-ai-assistants---read-this-first)
 - [📦 Installation Guide](INSTALLATION.md) ⭐ **Start Here!**
-- [What is GEMVC?](#what-is-gemvc)
+- [What is GEMVC?](GEMVC.md)
 - [Architecture Overview](#architecture-overview)
 - [4-Layer Architecture](#4-layer-architecture)
 - [Model Aggregation & Composition](#-model-aggregation--composition-properties-with--prefix)
