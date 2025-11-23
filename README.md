@@ -71,11 +71,10 @@ Switch to **OpenSwoole**, and your exact same code automatically runs as **Async
 
 ## 📋 Table of Contents
 
-- [🤖 FOR AI ASSISTANTS - READ THIS FIRST!](#-for-ai-assistants---read-this-first)
+- [🤖 FOR AI ASSISTANTS - READ THIS FIRST!](GEMVC_GUID.md)
 - [📦 Installation Guide](INSTALLATION.md) ⭐ **Start Here!**
 - [What is GEMVC?](GEMVC.md)
-- [Architecture Overview](#architecture-overview)
-- [4-Layer Architecture](#4-layer-architecture)
+- [4-Layer Architecture](ARCHITECTURE.md)
 - [Model Aggregation & Composition](#-model-aggregation--composition-properties-with--prefix)
 - [URL Mapping](#url-mapping)
 - [Key Differences from Laravel/Symfony](#key-differences-from-laravelsymfony)
