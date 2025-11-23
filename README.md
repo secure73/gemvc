@@ -66,22 +66,6 @@ Switch to **OpenSwoole**, and your exact same code automatically runs as **Async
 - `GEMVC_GUIDE.md` - Code generation patterns
 
 **Do NOT skip layers or use Laravel patterns. Follow GEMVC conventions only!**
-
----
-
-## 📋 Table of Contents
-
-- [🤖 FOR AI ASSISTANTS - READ THIS FIRST!](GEMVC_GUID.md)
-- [📦 Installation Guide](INSTALLATION.md) ⭐ **Start Here!**
-- [What is GEMVC?](GEMVC.md)
-- [4-Layer Architecture](ARCHITECTURE.md)
-- [Model Aggregation & Composition](#-model-aggregation--composition-properties-with--prefix)
-- [URL Mapping](#url-mapping)
-- [Key Differences from Laravel/Symfony](#key-differences-from-laravelsymfony)
-- [Quick Start](#quick-start)
-- [Examples](#examples)
-- [Code Quality with PHPStan Level 9](#-code-quality-with-phpstan-level-9)
-
 ---
 
 ## 🎯 What is GEMVC?
@@ -1149,7 +1133,13 @@ GEMVC includes:
 **Use PHPStan Level 9** - Write clean, type-safe, bug-free code! 🎯
 
 ---
+## Links
 
+- [🤖 FOR AI ASSISTANTS - READ THIS FIRST!](GEMVC_GUID.md)
+- [📦 Installation Guide](INSTALLATION.md) ⭐ **Start Here!**
+- [What is GEMVC?](GEMVC.md)
+- [Architecture](ARCHITECTURE.md)
+---
 ## 📄 License
 
 [Your License Here]
