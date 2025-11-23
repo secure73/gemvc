@@ -1142,7 +1142,8 @@ GEMVC includes:
 ---
 ## 📄 License
 
-[Your License Here]
+MIT License bei Ali Khorsandfard gemvc.de(https://www.gemvc.de)
+
 
 ---
 
