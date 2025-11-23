@@ -94,19 +94,51 @@ SELECT * FROM user_order_summary WHERE user_id = 123;
 
 #### 3. **Explicit Service Boundaries**
 
-GEMVC enforces clean service boundaries:
+GEMVC Stronlgy recommened clean service boundaries:
 
 ```php
-// User Service
-class UserService extends Table {
-    // Only manages User table
+<?php
+namespace App\Api;
+
+use App\Controller\UserController;
+use Gemvc\Core\ApiService;
+use Gemvc\Http\Request;
+use Gemvc\Http\JsonResponse;
+
+class User extends ApiService
+{
+    /**
+     * @param Request $request
+     */
+    public function __construct(Request $request)
+    {
+        // Inject incoming request to parent constructor
+        parent::__construct($request);
+    }
+
+    /**
+     * Create new User
+     * Route: POST /api/User/create
+     */
+    public function create(): JsonResponse
+    {
+        // Step 1: Sanitize & Validate (Sanitization IS Documentation)
+        if (!$this->request->definePostSchema([
+            'name' => 'string',
+            'description' => 'string',
+            'email' => 'email',
+            'password' => 'string'
+        ])) {
+            // Easy error handling: GemVC automatically fills the response 
+            // with what failed (e.g., "email is not valid") and sets correct HTTP code.
+            return $this->request->returnResponse();
+        }
+
+        // Step 2: Inject sanitized request to Controller and execute business logic
+        return (new UserController($this->request))->create();
+    }
 }
 
-// Order Service  
-class OrderService extends Table {
-    // Only manages Order table
-    // Uses UserService API (not database joins)
-}
 ```
 
 ---
