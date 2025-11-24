@@ -5,7 +5,7 @@
     "homepage": "https://gemvc.de",
     "require": {
         "firebase/php-jwt": "^6.8",
-        "symfony/dotenv": "^7.2"
+        "symfony/dotenv": "^6.4 || ^7.2"
     },
     "license": "MIT",
     "autoload": {
