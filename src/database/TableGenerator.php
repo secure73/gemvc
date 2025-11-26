@@ -603,6 +603,7 @@ class TableGenerator {
         $type = trim($type);
         
         // Map common variations to standard types
+        // NOTE: TEXT types are NOT normalized to 'string' to allow proper type change detection
         $typeMap = [
             'tinyint' => 'int',
             'smallint' => 'int',
@@ -612,10 +613,6 @@ class TableGenerator {
             'real' => 'double',
             'varchar' => 'string',
             'char' => 'string',
-            'text' => 'string',
-            'mediumtext' => 'string',
-            'longtext' => 'string',
-            'tinytext' => 'string',
             'datetime' => 'datetime',
             'timestamp' => 'datetime',
             'date' => 'datetime',
@@ -671,7 +668,25 @@ class TableGenerator {
      * @return string The property type
      */
     private function getPropertyType(\ReflectionProperty $property, object $object): string {
-        // Try to get type from PHP 7.4+ property type declaration
+        $propertyName = $property->getName();
+        
+        // FIRST: Check $_type_map if it exists (this allows overriding PHP property types)
+        // This is critical for types like 'text' and 'longtext' that can't be expressed as PHP property types
+        try {
+            $reflection = new \ReflectionClass($object);
+            if ($reflection->hasProperty('_type_map')) {
+                $typeMapProperty = $reflection->getProperty('_type_map');
+                $typeMapProperty->setAccessible(true);
+                $typeMap = $typeMapProperty->getValue($object);
+                if (is_array($typeMap) && isset($typeMap[$propertyName]) && is_string($typeMap[$propertyName])) {
+                    return $typeMap[$propertyName];
+                }
+            }
+        } catch (\Error | \Exception $e) {
+            // Silently handle errors - fall through to PHP property type
+        }
+        
+        // SECOND: Try to get type from PHP 7.4+ property type declaration
         if ($property->hasType()) {
             $type = $property->getType();
             if ($type instanceof \ReflectionNamedType) {
@@ -679,7 +694,7 @@ class TableGenerator {
             }
         }
         
-        // Fallback to runtime type detection if property is accessible and initialized
+        // THIRD: Fallback to runtime type detection if property is accessible and initialized
         try {
             if ($property->isInitialized($object)) {
                 $value = $property->getValue($object);
@@ -712,6 +727,8 @@ class TableGenerator {
             'float', 'double' => 'DOUBLE',
             'bool', 'boolean' => 'TINYINT(1)',
             'string' => 'VARCHAR(255)',
+            'text' => 'TEXT',     
+            'longtext' => 'LONGTEXT',
             'datetime' => 'DATETIME',
             'array' => 'JSON',
             'null', 'unknown' => 'TEXT',
