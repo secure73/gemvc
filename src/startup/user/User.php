@@ -5,6 +5,7 @@ use App\Controller\UserController;
 use Gemvc\Core\ApiService;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
+use Gemvc\Http\Response;
 
 class User extends ApiService
 {
@@ -49,6 +50,10 @@ class User extends ApiService
      */
     public function read(): JsonResponse
     {
+        //this endpoint does not accept post parameters
+        if (!$this->request->definePostSchema([])){
+            return $this->request->returnResponse();
+        };
         // Validate GET parameters
         if(!$this->request->defineGetSchema(["id" => "int"])) {
             return $this->request->returnResponse();
@@ -127,6 +132,54 @@ class User extends ApiService
         ]);
         
         return (new UserController($this->request))->list();
+    }
+
+        /**
+     * User Login
+     * 
+     * @return JsonResponse
+     * @http POST
+     * @description User login with email and password
+     * @example /api/auth/login
+     */
+    public function login(): JsonResponse{
+        if(!$this->request->definePostSchema([
+            'email' => 'email',
+            'password' => 'string'
+        ])) {
+            return $this->request->returnResponse();
+        }
+        //return Response::success($this->request->post, 1,"Token is valid");
+        //echo "hi".$this->request->post['email'];
+        return (new UserController($this->request))->loginByEmailPassword();
+    }
+
+    /**
+     * Summary of validateToken
+     * @return JsonResponse
+     * @http GET
+     * @description Validate token , just send get request with token in Authorization header Bearer <token>
+     * @example /api/auth/validateToken
+     */
+    public function validateToken(): JsonResponse{
+        if(!$this->request->auth()){
+            return Response::unauthorized("Invalid or missing token");
+        }
+        return Response::success(null, 1,"Token is valid");
+    }
+
+    /**
+     * Summary of renewToken
+     * @return JsonResponse
+     * @http GET
+     * @description Renew token , send get request with token in Authorization header Bearer <token>
+     * @example /api/auth/renewToken
+     */
+    public function renewToken(): JsonResponse{
+        if(!$this->request->auth()){
+            return Response::unauthorized("Invalid or missing token");
+        }
+        return (new UserController($this->request))->renewToken();
     }
 
     /**
