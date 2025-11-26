@@ -8,6 +8,12 @@
 [![PHPStan](https://img.shields.io/badge/PHPStan-Level%209-brightgreen.svg?style=flat-square)](https://phpstan.org/)
 [![PHPUnit](https://img.shields.io/badge/PHPUnit-Supported-3b8c3b.svg?style=flat-square&logo=phpunit&logoColor=white)](https://phpunit.de/)
 [![Pest](https://img.shields.io/badge/Pest-Supported-purple.svg?style=flat-square&logo=pest&logoColor=white)](https://pestphp.com/)
+## 🚀 Start in 30 Seconds
+```bash
+composer require gemvc/library
+php vendor/bin/gemvc init
+```
+
 ### Stop using a Swiss Army Knife when you need a Scalpel. *GEMVC* is a PHP Multi-Platform(OpenSwoole, Apache and NginX) specialized, ultra-lightweight framework designed for high-performance REST APIs and Microservices.
 
 ### Not to replace, but to complete
