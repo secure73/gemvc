@@ -16,6 +16,12 @@
 ### You are the Master of your Code
 > In GEMVC, architecture is just a recommendation. GEMVC NEVER forces you to follow its rules. You can implement the recommended 4-layer architecture, or write your own familiar 3, 2, or even single-layer code!
 
+### AI-Ready - Born for AI Agents
+>Thanks to its transparent structure, strict naming conventions, and clean 4-layer separation of concerns (with no magic functions or hidden classes), GEMVC is natively **AI-Friendly**. AI Assistants can easily understand your code context and assist you efficiently. Writing code with GEMVC is a joy for both humans and AI.
+>GEMVC is designed to work seamlessly with **Cursor, Copilot, and ChatGPT**.
+We include pre-configured context files (`AI_API_REFERENCE.md`, `.cursorrules`) right in the root. 
+Your AI assistant already knows how to write GEMVC code perfectly!
+
 ### Easy to Learn
 > It takes only a couple of hours to master this tool. GEMVC respects your time and is not here to replace your existing knowledge, but to sharpen it.
 
@@ -35,9 +41,6 @@ Switch to **OpenSwoole**, and your exact same code automatically runs as **Async
 
 ### Testing & Quality Assurance
 > When coding with GEMVC, you can enjoy **PHPStan Level 9** compliance! The framework natively supports strong typing—while not forced, it is strongly recommended. It also comes with **PHPUnit** and **Pest** support right out of the box during the installation process. You can easily test your product using your beloved PHPUnit or the beautiful Pest framework. Plus, the 4-layer architecture makes creating comprehensive Unit and Integration tests a breeze.
-
-### AI-Ready
->Thanks to its transparent structure, strict naming conventions, and clean 4-layer separation of concerns (with no magic functions or hidden classes), GEMVC is natively **AI-Friendly**. AI Assistants can easily understand your code context and assist you efficiently. Writing code with GEMVC is a joy for both humans and AI.
 
 ### Full Transparency Policy
 > It is Open Source, MIT Licensed, and small. There is no hidden code or "black box". You can download the source code, analyze it, test it, and use it with **peace of mind**. It is built with love to make your life as a developer more enjoyable.
