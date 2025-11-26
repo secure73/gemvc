@@ -28,7 +28,14 @@ class ApacheRequest
         $this->request->remoteAddress = $this->getRemoteAddress();
         $this->request->queryString = is_string($_SERVER['QUERY_STRING']) ?$_SERVER['QUERY_STRING'] : '' ;
         $this->request->post = $_POST;
-        $this->request->get = $_GET;
+        // Remove '_gemvc_url_path' parameter added by Apache rewrite rule - it's not used by the framework
+        // The framework uses $this->request->requestedUrl from $_SERVER['REQUEST_URI'] instead
+        // Using '_gemvc_url_path' (with framework prefix) prevents conflicts with developer parameters like 'url'
+        $getParams = $_GET;
+        if (isset($getParams['_gemvc_url_path'])) {
+            unset($getParams['_gemvc_url_path']);
+        }
+        $this->request->get = $getParams;
         $this->request->put = $put;
         $this->request->patch = $patch;
         $this->request->files = [];
