@@ -21,6 +21,9 @@ class CommandCategories
             'db:list' => 'Show list of all tables in the database',
             'db:drop' => 'Drop a specific table (db:drop TableName)',
         ],
+        'Admin' => [
+            'admin:setpassword' => 'Set admin password for accessing system pages in development mode',
+        ],
     ];
 
     public static function getCommandClass(string $command): string
@@ -36,6 +39,7 @@ class CommandCategories
             'db:migrate' => 'DbMigrate',
             'db:list' => 'DbList',
             'db:drop' => 'DbDrop',
+            'admin:setpassword' => 'AdminSetpassword',
         ];
 
         return $commandMappings[$command] ?? '';
@@ -79,7 +83,8 @@ class CommandCategories
             'db:init' => 'vendor/bin/gemvc db:init',
             'db:migrate' => 'vendor/bin/gemvc db:migrate UserTable',
             'db:list' => 'vendor/bin/gemvc db:list',
-            'db:drop' => 'vendor/bin/gemvc db:drop users'
+            'db:drop' => 'vendor/bin/gemvc db:drop users',
+            'admin:setpassword' => 'vendor/bin/gemvc admin:setpassword'
         ];
     }
 } 

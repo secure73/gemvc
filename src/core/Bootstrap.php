@@ -119,31 +119,7 @@ class Bootstrap
         } catch (\Throwable $e) {
             // Handle errors
             http_response_code(500);
-            
-            echo '<!DOCTYPE html>
-                <html>
-                <head>
-                    <title>500 - Server Error</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                        h1 { font-size: 36px; color: #333; }
-                        p { font-size: 18px; color: #666; }
-                        .error { color: #cc0000; text-align: left; margin: 20px auto; max-width: 800px; }
-                        pre { text-align: left; background: #f8f8f8; padding: 15px; border-radius: 5px; overflow: auto; }
-                    </style>
-                </head>
-                <body>
-                    <h1>500 - Server Error</h1>
-                    <p>An error occurred while processing your request.</p>';
-            
-            if ($_ENV['DEBUG'] ?? false) {
-                echo '<div class="error">';
-                echo '<p>' . htmlspecialchars($e->getMessage()) . '</p>';
-                echo '<pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
-                echo '</div>';
-            }
-            
-            echo '</body></html>';
+            $this->showServerError($e);
         }
         
         die;
@@ -206,6 +182,15 @@ class Bootstrap
 
     private function showWebNotFound(): void
     {
+        // In development mode, show helpful developer page for root URL
+        $isDevelopment = ($_ENV['APP_ENV'] ?? '') === 'dev';
+        $isRootUrl = empty($this->requested_service) || strtolower($this->requested_service) === 'home';
+        
+        if ($isDevelopment && $isRootUrl) {
+            $this->showDeveloperWelcomePage();
+            return;
+        }
+        
         header('HTTP/1.0 404 Not Found');
         
         // Check if a custom 404 page exists
@@ -213,21 +198,116 @@ class Bootstrap
             // @phpstan-ignore-next-line
             include './app/web/Error/404.php';
         } else {
-            echo '<!DOCTYPE html>
-                <html>
-                <head>
-                    <title>404 - Page Not Found</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-                        h1 { font-size: 36px; color: #333; }
-                        p { font-size: 18px; color: #666; }
-                    </style>
-                </head>
-                <body>
-                    <h1>404 - Page Not Found</h1>
-                    <p>The page you are looking for does not exist.</p>
-                </body>
-                </html>';
+            $this->show404Error();
         }
+    }
+    
+    /**
+     * Show helpful developer welcome page in development mode
+     * 
+     * @return void
+     */
+    private function showDeveloperWelcomePage(): void
+    {
+        // Construct base URL from server information
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $port = $_SERVER['SERVER_PORT'] ?? '';
+        $portDisplay = ($port && $port !== '80' && $port !== '443') ? ':' . $port : '';
+        $baseUrl = $protocol . '://' . $host . $portDisplay;
+        $apiBaseUrl = rtrim($baseUrl, '/') . '/api';
+        
+        // Detect webserver type
+        $webserverType = WebserverDetector::get();
+        $webserverName = match($webserverType) {
+            'swoole' => 'OpenSwoole',
+            'apache' => 'Apache',
+            'nginx' => 'Nginx',
+            default => ucfirst($webserverType)
+        };
+        
+        // Get template directory path (template handles all presentation logic)
+        $templatePath = $this->getTemplatePath('index.php');
+        $templateDir = dirname($templatePath);
+        
+        // Load central index controller
+        if (file_exists($templatePath)) {
+            include $templatePath;
+        } else {
+            // Fallback if index not found, try developer-welcome
+            $fallbackPath = $this->getTemplatePath('developer-welcome.php');
+            if (file_exists($fallbackPath)) {
+                include $fallbackPath;
+            } else {
+                // Last resort fallback
+                $lastResortPath = $this->getTemplatePath('developer-welcome-fallback.php');
+                if (file_exists($lastResortPath)) {
+                    include $lastResortPath;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Show 500 server error page
+     * 
+     * @param \Throwable $exception The exception that caused the error
+     * @return void
+     */
+    private function showServerError(\Throwable $exception): void
+    {
+        $debugMode = ($_ENV['DEBUG'] ?? false) === true || ($_ENV['DEBUG'] ?? false) === 'true';
+        $templatePath = $this->getTemplatePath('error-500.php');
+        
+        if (file_exists($templatePath)) {
+            include $templatePath;
+        }
+    }
+    
+    /**
+     * Show 404 page not found error
+     * 
+     * @return void
+     */
+    private function show404Error(): void
+    {
+        $templatePath = $this->getTemplatePath('error-404.php');
+        
+        if (file_exists($templatePath)) {
+            include $templatePath;
+        }
+    }
+    
+    /**
+     * Get template path from startup/common/system_pages directory
+     * Uses similar path resolution logic as AbstractInit::findStartupPath()
+     * 
+     * @param string $templateName Template filename (e.g., 'error-404.php')
+     * @return string Full path to template file
+     */
+    private function getTemplatePath(string $templateName): string
+    {
+        // From core directory, go up one level to src, then to startup/common/system_pages
+        // __DIR__ = vendor/gemvc/library/src/core
+        // dirname(__DIR__) = vendor/gemvc/library/src
+        $basePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'startup' . DIRECTORY_SEPARATOR . 'common' . DIRECTORY_SEPARATOR . 'system_pages';
+        $templatePath = $basePath . DIRECTORY_SEPARATOR . $templateName;
+        
+        // If not found, try alternative paths (for different installation structures)
+        if (!file_exists($templatePath)) {
+            $alternativePaths = [
+                // Standard Composer vendor path
+                dirname(dirname(dirname(dirname(__DIR__)))) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'gemvc' . DIRECTORY_SEPARATOR . 'library' . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'startup' . DIRECTORY_SEPARATOR . 'common' . DIRECTORY_SEPARATOR . 'system_pages',
+            ];
+            
+            foreach ($alternativePaths as $altPath) {
+                $altTemplatePath = $altPath . DIRECTORY_SEPARATOR . $templateName;
+                if (file_exists($altTemplatePath)) {
+                    return $altTemplatePath;
+                }
+            }
+        }
+        
+        return $templatePath;
     }
 }
