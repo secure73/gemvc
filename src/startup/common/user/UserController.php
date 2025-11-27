@@ -6,7 +6,9 @@ use App\Model\UserModel;
 use Gemvc\Core\Controller;
 use Gemvc\Http\Request;
 use Gemvc\Http\JsonResponse;
+use Gemvc\Http\JWTToken;
 use Gemvc\Http\Response;
+use stdClass;
 
 class UserController extends Controller
 {
@@ -82,4 +84,53 @@ class UserController extends Controller
         $model = new UserModel();
         return $this->createList($model);
     }
+
+    public function loginByEmailPassword(): JsonResponse
+    {
+        //return Response::success($this->request->post, 1,"Token is valid");
+        $model = new UserModel();
+        $email = $this->request->post['email'];
+        $password = $this->request->post['password'];
+        return $model->loginByEmailPassword($email, $password);
+    }
+
+    public function validateToken(): JsonResponse
+    {
+        
+        $token = $this->request->getJwtToken();
+        if (!$token) {
+            return Response::forbidden("No token provided");
+        }
+        if(!$token->verify()){
+            return Response::unauthorized("Invalid or expired token");
+        }
+        return Response::success(null, 1,"Token is valid");
+    }
+
+    public function renewToken(): JsonResponse
+    {
+        $token = $this->request->getJwtToken();
+        if (!$token) {
+            return Response::forbidden("No token provided");
+        }
+        $token = $token->verify();
+        if(!$token){
+            return Response::unauthorized("Invalid or expired token");
+        }
+        $tokenType = $token->GetType();
+        $new_token = null;
+        if($tokenType === 'refresh'){
+            $new_token = $token->renew($_ENV['REFRESH_TOKEN_VALIDATION_IN_SECONDS']);
+        }
+        if($tokenType === 'access') {
+            $new_token = $token->renew($_ENV['ACCESS_TOKEN_VALIDATION_IN_SECONDS']);
+        }
+        if($tokenType === 'login') {
+            $new_token = $token->renew($_ENV['LOGIN_TOKEN_VALIDATION_IN_SECONDS']);
+        }
+        $std = new stdClass();
+        $std->token = $new_token;
+        return Response::success($std, 1,$tokenType."token renewed successfully");  
+    }
+
 } 

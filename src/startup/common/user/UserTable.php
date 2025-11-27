@@ -15,6 +15,9 @@ use Gemvc\Database\Schema;
  * @property int $id User's unique identifier column id in database table
  * @property string $name User's name column name in database table
  * @property string $description User's description column description in database table
+ * @property string $password User's password column password in database table
+ * @property string $created_at User's created_at column created_at in database table
+ * @property string $updated_at User's updated_at column updated_at in database table
  */
 class UserTable extends Table
 {
@@ -24,6 +27,9 @@ class UserTable extends Table
     public ?string $description;
     //password is not shown in the result of the select query , but this property can be setted trough setPassword() method in the UserModel class
     protected string $password;
+    public string $created_at;
+    public ?string $updated_at;
+
 
     /**
      * Summary of type mapping for properties
@@ -37,13 +43,15 @@ class UserTable extends Table
         'email' => 'string',
         'description' => 'string',
         'password' => 'string',
+        'created_at' => 'string',
+        'updated_at' => 'string'
     ];
     /*
     * Summary of defineSchema() method
      * it is used to map the properties to the database columns
      * it is used in the TableGenerator class to generate the schema for the table
-
-    protected function defineSchema(): array 
+     */
+    public function defineSchema(): array 
     {
         return [
             // Primary key with auto increment
@@ -53,16 +61,12 @@ class UserTable extends Table
             // Unique constraints
             Schema::unique('email'),                    // Single column unique
             Schema::unique(['name', 'email']),          // Composite unique
-            
-            // Foreign keys with different actions
-            Schema::foreignKey('role_id', 'roles.id')->onDeleteRestrict(),
-            Schema::foreignKey('parent_id', 'users.id')->onDeleteCascade(),
-            Schema::foreignKey('category_id', 'categories.id')->onDeleteSetNull(),
-            
+                        
             // Indexes for performance
             Schema::index('email'),                     // Single column index
             Schema::index(['name', 'is_active']),       // Composite index
             Schema::index('created_at')->name('idx_created'),  // Named index
+            Schema::index('updated_at')->name('idx_updated'),  // Named index
             
             // Check constraints for data validation
             Schema::check('age >= 18')->name('valid_age'),
@@ -70,14 +74,16 @@ class UserTable extends Table
             
             // Full-text search
             Schema::fulltext(['name', 'description'])
+            
         ];
     }
-        */
+        
 
     public function __construct()
     {
         parent::__construct();
         $this->description = null;
+        $this->updated_at = null;
     }
 
 
@@ -89,19 +95,6 @@ class UserTable extends Table
     {
         //return the name of the table in database
         return 'users';
-    }
-
-    /**
-     * @return array
-     * the schema of the table in database and its relations
-     */
-    public function defineSchema(): array
-    {
-        return [
-            Schema::index('email'),
-            Schema::unique('email'),
-            Schema::index('description')
-        ];
     }
 
     /**

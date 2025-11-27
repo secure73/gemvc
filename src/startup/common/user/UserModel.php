@@ -9,6 +9,7 @@ namespace App\Model;
 use App\Table\UserTable;
 use Gemvc\Helper\CryptHelper;
 use Gemvc\Http\JsonResponse;
+use Gemvc\Http\JWTToken;
 use Gemvc\Http\Response;
 
 class UserModel extends UserTable
@@ -39,10 +40,10 @@ class UserModel extends UserTable
             return Response::unprocessableEntity("User already exists");
         
         }
-        $this->setPassword($this->password);
+        $this->created_at = date('Y-m-d H:i:s');
 
         $success = $this->insertSingleQuery();
-        if ($this->getError()) {
+        if (!$success ||$this->getError() ) {
             return Response::internalError(  $this->getError());
         }
         $this->_message = "User created successfully";
@@ -75,6 +76,8 @@ class UserModel extends UserTable
         if (!$item) {
             return Response::notFound("User not found");
         }
+        $this->updated_at = date('Y-m-d H:i:s');
+
         $success = $this->updateSingleQuery();
         if ($this->getError()) {
             return Response::internalError("Failed to update User: " . $this->getError());
@@ -108,5 +111,29 @@ class UserModel extends UserTable
     public function getPassword(): string
     {
         return $this->password;
+    }
+
+    public function loginByEmailPassword(string $email, string $password): JsonResponse
+    {
+        //return Response::success([$email, $password], 1,"Token is valid");
+        $user = $this->selectByEmail($email);
+        //return Response::success($user->password, 1,"Token is valid");
+        if (!$user) {
+            return Response::unauthorized("Invalid email or password");
+        }
+        if (!CryptHelper::passwordVerify($password, $user->password)) {
+            return Response::unauthorized("Invalid password");
+        }
+        $token = new JWTToken();
+        $loginToken = $token->createLoginToken($user->id);
+        $refreshToken = $token->createRefreshToken($user->id);
+        $accessToken = $token->createAccessToken($user->id);
+        $std = new \stdClass();
+        $std->user = $user;
+        $std->access_token = $accessToken;
+        $std->refresh_token = $refreshToken;
+        $std->login_token = $loginToken;
+
+        return Response::success($std, 1, "Login successful");
     }
 } 
