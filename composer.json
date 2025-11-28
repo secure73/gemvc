@@ -1,5 +1,5 @@
 {
-    "name": "gemvc/library",
+    "name": "secure73/gemvc",
     "description": "Server Agnostic (openSwoole/Nginx/Apache) Rest Api Microservice ready Framework/Library",
     "type": "library",
     "homepage": "https://gemvc.de",
